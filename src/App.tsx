@@ -87,7 +87,7 @@ const App: React.FC = () => {
       </div>
 
       {responseMessage && (
-        <p style={{ marginTop: '20px', color: 'white', backgroundColor: '#333', padding: '10px', borderRadius: '5px' }}>
+        <p>
           {responseMessage}
         </p>
       )}
