@@ -4,9 +4,10 @@ import { useAuthenticator } from '@aws-amplify/ui-react';
 
 const App: React.FC = () => {
   const { signOut } = useAuthenticator();
-  const [File, File] = useState<File | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [responseMessage, setResponseMessage] = useState<string>("");
 
-// Validate file type
+  // Validate file type
   const validateFile = (file: File | null): boolean => {
     if (file && file.name.endsWith(".csv")) {
       return true;
@@ -15,7 +16,7 @@ const App: React.FC = () => {
     return false;
   };
 
-    // Upload file function
+  // Upload file function
   const uploadFile = async (file: File | null, apiUrl: string) => {
     if (!file) {
       alert("Please select a CSV file to upload.");
@@ -42,8 +43,9 @@ const App: React.FC = () => {
       console.error("Error:", error);
       setResponseMessage("An error occurred while uploading the file.");
     }
+  };
 
-    return (
+  return (
     <main style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '90vw', backgroundColor: '#008080' }}>
       <header style={{ width: '100%' }}>
         <div style={{ width: '130px', height: '90px', overflow: 'hidden', borderRadius: '8px' }}>
@@ -74,8 +76,8 @@ const App: React.FC = () => {
           />
           <button
             onClick={() => {
-              if (validateFile(File)) {
-                uploadFile(File, "https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/default/Production_Uploadlink");
+              if (validateFile(file)) {
+                uploadFile(file, "https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/default/Production_Uploadlink");
               }
             }}
           >
@@ -83,8 +85,14 @@ const App: React.FC = () => {
           </button>
         </p>
       </div>
-      </main>
-      );
+
+      {responseMessage && (
+        <p style={{ marginTop: '20px', color: 'white', backgroundColor: '#333', padding: '10px', borderRadius: '5px' }}>
+          {responseMessage}
+        </p>
+      )}
+    </main>
+  );
 };
 
-  export default App;
+export default App;
