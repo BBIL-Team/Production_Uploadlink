@@ -47,7 +47,7 @@ const App: React.FC = () => {
 
   return (
     <main style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '90vw', backgroundColor: '#f8f8ff' }}>
-      <header style={{ width: '100%' }}>
+      <header style={{ width: '100%',backgroundColor: '#008080' }}>
         <div style={{ width: '130px', height: '90px', overflow: 'hidden', borderRadius: '8px' }}>
           <img
             style={{ padding: '10px', width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 50%' }}
