@@ -77,7 +77,7 @@ const App: React.FC = () => {
           <button
             onClick={() => {
               if (validateFile(file)) {
-                uploadFile(file, "https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/default/Production_Uploadlink");
+                uploadFile(file, "https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink");
               }
             }}
           >
