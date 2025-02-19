@@ -49,7 +49,7 @@ const App: React.FC = () => {
         <div style={{ width: '130px', height: '90px', overflow: 'hidden', borderRadius: '8px' }}>
           <img
             style={{ padding: '10px', width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 50%' }}
-            src=src="https://www.bharatbiotech.com/images/bharat-biotech-logo.jpg"
+            src="https://www.bharatbiotech.com/images/bharat-biotech-logo.jpg"
             alt="Company Logo"
             className="logo"
           />
@@ -83,3 +83,8 @@ const App: React.FC = () => {
           </button>
         </p>
       </div>
+      </main>
+      );
+};
+
+  export default App;
