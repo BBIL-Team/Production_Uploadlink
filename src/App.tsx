@@ -12,7 +12,8 @@ const App: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [responseMessage, setResponseMessage] = useState<string>("");
   const [selectedMonth, setSelectedMonth] = useState<string>("");
-  const [dataUpdateStatus, setDataUpdateStatus] = useState("No"); // This can be made dynamic later
+  const dataUpdateStatus = "No";
+
 
   const validateFile = (file: File | null): boolean => {
     if (file && file.name.endsWith(".csv")) {
