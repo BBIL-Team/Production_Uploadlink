@@ -67,12 +67,12 @@ const App: React.FC = () => {
               className="logo"
             />
           </div>
-          <button style={{ marginLeft: 'auto', marginRight: '20px' }} onClick={signOut}>
+          <button style={{ marginLeft: 'auto', marginRight: '20px', fontSize: '16px' }} onClick={signOut}>
             Sign out
           </button>
         </header>
 
-        <h1 style={{ padding: '10px', textAlign: 'center', width: '100%' }}>
+        <h1 style={{ padding: '20px 10px 10px', textAlign: 'center', width: '100%', fontSize: '28px' }}>
           <u>BBIL Production-Upload Interface</u>
         </h1>
 
@@ -84,34 +84,48 @@ const App: React.FC = () => {
             justifyContent: 'space-between',
             gap: '20px',
             width: '100%',
-            padding: '20px'
+            padding: '20px',
+            boxSizing: 'border-box'
           }}
         >
           {/* Upload Section */}
-          <div style={{ flex: '1', minWidth: '300px', backgroundColor: '#f0f0f0', padding: '20px', borderRadius: '10px' }}>
-            <h2>Upload File</h2>
+          <div style={{
+            flex: 2,
+            minWidth: '400px',
+            backgroundColor: '#f0f0f0',
+            padding: '24px',
+            borderRadius: '12px',
+            fontSize: '16px'
+          }}>
+            <h2 style={{ fontSize: '22px' }}>Upload File</h2>
             <div
               style={{
                 backgroundColor: '#e6e6e6',
                 borderRadius: '8px',
-                padding: '10px',
+                padding: '16px',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '10px'
+                gap: '12px'
               }}
             >
               <input
                 type="file"
                 accept=".csv"
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
+                style={{ fontSize: '16px' }}
               />
-              <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                style={{ fontSize: '16px', padding: '8px', borderRadius: '6px' }}
+              >
                 <option value="">Select Month</option>
                 {months.map((month) => (
                   <option key={month} value={month}>{month}</option>
                 ))}
               </select>
               <button
+                style={{ fontSize: '16px', padding: '10px' }}
                 onClick={() => {
                   if (validateFile(file)) {
                     uploadFile(file, "https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink");
@@ -122,16 +136,23 @@ const App: React.FC = () => {
               </button>
             </div>
             {responseMessage && (
-              <p style={{ marginTop: '10px', color: 'green' }}>{responseMessage}</p>
+              <p style={{ marginTop: '12px', color: 'green', fontSize: '16px' }}>{responseMessage}</p>
             )}
           </div>
 
           {/* Download Sample Files Section */}
-          <div style={{ flex: '1', minWidth: '300px', backgroundColor: '#f0f0f0', padding: '20px', borderRadius: '10px' }}>
-            <h2>📥 Download Sample Files (Monthly)</h2>
-            <ul style={{ listStyleType: 'none', padding: 0, columns: 1 }}>
+          <div style={{
+            flex: 2,
+            minWidth: '400px',
+            backgroundColor: '#f0f0f0',
+            padding: '24px',
+            borderRadius: '12px',
+            fontSize: '16px'
+          }}>
+            <h2 style={{ fontSize: '22px' }}>📥 Download Sample Files (Monthly)</h2>
+            <ul style={{ listStyleType: 'none', padding: 0 }}>
               {months.map((month) => (
-                <li key={month} style={{ marginBottom: '8px' }}>
+                <li key={month} style={{ marginBottom: '10px' }}>
                   <a
                     href={`https://your-bucket-name.s3.amazonaws.com/sample-files/${month}.xlsx`}
                     download
@@ -141,9 +162,10 @@ const App: React.FC = () => {
                       textDecoration: 'none',
                       color: '#007BFF',
                       backgroundColor: '#e6f2ff',
-                      padding: '8px 12px',
+                      padding: '10px 14px',
                       borderRadius: '6px',
-                      display: 'inline-block'
+                      display: 'inline-block',
+                      fontSize: '16px'
                     }}
                   >
                     {month} Sample Excel
