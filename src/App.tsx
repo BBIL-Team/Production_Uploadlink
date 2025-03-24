@@ -12,8 +12,7 @@ const App: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [responseMessage, setResponseMessage] = useState<string>("");
   const [selectedMonth, setSelectedMonth] = useState<string>("");
-  const dataUpdateStatus = "No";
-
+  const dataUpdateStatus: "Yes" | "No" = "No";
 
   const validateFile = (file: File | null): boolean => {
     if (file && file.name.endsWith(".csv")) {
