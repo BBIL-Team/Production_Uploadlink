@@ -140,7 +140,7 @@ const App: React.FC = () => {
 
         {/* Calendar Section */}
         <div style={{
-          flex: 2,
+          flex: 1,
           minWidth: '400px',
           backgroundColor: '#f0f0f0',
           padding: '24px',
