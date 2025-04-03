@@ -147,7 +147,7 @@ const App: React.FC = () => {
           borderRadius: '12px',
           fontSize: '16px'
         }}>
-          <h2 style={{ fontSize: '22px' }}>📅 Sample Files Calendar</h2>
+          <h2 style={{ fontSize: '22px' }}>📅2025</h2>
           <div
             style={{
               display: 'grid',
