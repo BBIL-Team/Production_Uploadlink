@@ -13,7 +13,6 @@ const App: React.FC = () => {
   const [responseMessage, setResponseMessage] = useState<string>("");
   const [selectedMonth, setSelectedMonth] = useState<string>(""); // For upload selection
   const [displayedMonth, setDisplayedMonth] = useState<string>(""); // For calendar selection
-  const dataUpdateStatus: "Yes" | "No" = "No";
 
   const validateFile = (file: File | null): boolean => {
     if (file && file.name.endsWith(".csv")) {
@@ -200,31 +199,6 @@ const App: React.FC = () => {
               </a>
             </div>
           )}
-        </div>
-
-        {/* Data Updation Status Section */}
-        <div style={{
-          flex: 1.2,
-          minWidth: '250px',
-          backgroundColor: '#f0f0f0',
-          padding: '24px',
-          borderRadius: '12px',
-          fontSize: '16px',
-          alignSelf: 'flex-start',
-          height: 'fit-content'
-        }}>
-          <h2 style={{ fontSize: '22px' }}>📊 Data Updation Status</h2>
-          <p style={{
-            fontSize: '18px',
-            color: dataUpdateStatus === "Yes" ? "green" : "red",
-            fontWeight: 'bold',
-            padding: '10px',
-            backgroundColor: '#fff',
-            borderRadius: '8px',
-            textAlign: 'center'
-          }}>
-            {dataUpdateStatus}
-          </p>
         </div>
       </div>
     </main>
