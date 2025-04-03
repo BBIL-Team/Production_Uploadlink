@@ -13,6 +13,7 @@ const App: React.FC = () => {
   const [responseMessage, setResponseMessage] = useState<string>("");
   const [selectedMonth, setSelectedMonth] = useState<string>(""); // For upload selection
   const [displayedMonth, setDisplayedMonth] = useState<string>(""); // For calendar selection
+  const [year, setYear] = useState<number>(2025); // Initial year
 
   const validateFile = (file: File | null): boolean => {
     if (file && file.name.endsWith(".csv")) {
@@ -54,6 +55,10 @@ const App: React.FC = () => {
       setResponseMessage("An error occurred while uploading the file.");
     }
   };
+
+  // Functions to change the year
+  const handlePreviousYear = () => setYear((prevYear) => prevYear - 1);
+  const handleNextYear = () => setYear((prevYear) => prevYear + 1);
 
   return (
     <main style={{ width: '100vw', minHeight: '100vh', backgroundColor: '#f8f8ff', overflowX: 'auto' }}>
@@ -147,7 +152,14 @@ const App: React.FC = () => {
           borderRadius: '12px',
           fontSize: '16px'
         }}>
-          <h2 style={{ fontSize: '22px' }}>📅2025</h2>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <button
+              onClick={handlePreviousYear}>&lt;</button>
+            <h2 style={{ fontSize: '22px', margin: '0' }}> {year}</h2>
+            <button
+              onClick={handleNextYear}>&gt;
+            </button>
+          </div>
           <div
             style={{
               display: 'grid',
