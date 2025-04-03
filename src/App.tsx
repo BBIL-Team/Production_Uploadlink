@@ -68,4 +68,167 @@ const App: React.FC = () => {
           />
         </div>
         <button style={{ marginLeft: 'auto', marginRight: '20px', padding: '10px 16px', fontSize: '16px' }} onClick={signOut}>
-          Sign
+          Sign out
+        </button>
+      </header>
+
+      <h1 style={{ padding: '10px', textAlign: 'center', width: '100%', fontSize: '28px' }}>
+        <u>BBIL Production-Upload Interface</u>
+      </h1>
+
+      <div
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'space-between',
+          gap: '20px',
+          width: '100%',
+          padding: '20px',
+          boxSizing: 'border-box'
+        }}
+      >
+        {/* Upload Section */}
+        <div style={{
+          flex: 2,
+          minWidth: '400px',
+          backgroundColor: '#f0f0f0',
+          padding: '24px',
+          borderRadius: '12px',
+          fontSize: '16px'
+        }}>
+          <h2 style={{ fontSize: '22px' }}>📤 Upload File</h2>
+          <div
+            style={{
+              backgroundColor: '#e6e6e6',
+              borderRadius: '8px',
+              padding: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px'
+            }}
+          >
+            <input
+              type="file"
+              accept=".csv"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              style={{ fontSize: '16px' }}
+            />
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              style={{ fontSize: '16px', padding: '8px', borderRadius: '6px' }}
+            >
+              <option value="">Select Month</option>
+              {months.map((month) => (
+                <option key={month} value={month}>{month}</option>
+              ))}
+            </select>
+            <button
+              style={{ fontSize: '16px', padding: '10px' }}
+              onClick={() => {
+                if (validateFile(file)) {
+                  uploadFile(file, "https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink");
+                }
+              }}
+            >
+              Submit File
+            </button>
+          </div>
+          {responseMessage && (
+            <p style={{ marginTop: '12px', color: 'green', fontSize: '16px' }}>{responseMessage}</p>
+          )}
+        </div>
+
+        {/* Calendar Section */}
+        <div style={{
+          flex: 2,
+          minWidth: '400px',
+          backgroundColor: '#f0f0f0',
+          padding: '24px',
+          borderRadius: '12px',
+          fontSize: '16px'
+        }}>
+          <h2 style={{ fontSize: '22px' }}>📅 Sample Files Calendar</h2>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)', // 4 columns for 12 months
+              gap: '10px',
+              padding: '10px',
+              backgroundColor: '#e6e6e6',
+              borderRadius: '8px'
+            }}
+          >
+            {months.map((month) => (
+              <button
+                key={month}
+                onClick={() => setDisplayedMonth(month === displayedMonth ? "" : month)} // Toggle selection
+                style={{
+                  padding: '10px',
+                  fontSize: '16px',
+                  backgroundColor: displayedMonth === month ? '#007BFF' : '#fff',
+                  color: displayedMonth === month ? '#fff' : '#000',
+                  border: '1px solid #ccc',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  textAlign: 'center'
+                }}
+              >
+                {month}
+              </button>
+            ))}
+          </div>
+          {/* Display sample file link for selected month */}
+          {displayedMonth && (
+            <div style={{ marginTop: '20px' }}>
+              <a
+                href={`https://your-bucket-name.s3.amazonaws.com/sample-files/${displayedMonth}.xlsx`}
+                download
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  textDecoration: 'none',
+                  color: '#007BFF',
+                  backgroundColor: '#e6f2ff',
+                  padding: '10px 14px',
+                  borderRadius: '6px',
+                  display: 'inline-block',
+                  fontSize: '16px'
+                }}
+              >
+                {displayedMonth} Sample Excel
+              </a>
+            </div>
+          )}
+        </div>
+
+        {/* Data Updation Status Section */}
+        <div style={{
+          flex: 1.2,
+          minWidth: '250px',
+          backgroundColor: '#f0f0f0',
+          padding: '24px',
+          borderRadius: '12px',
+          fontSize: '16px',
+          alignSelf: 'flex-start',
+          height: 'fit-content'
+        }}>
+          <h2 style={{ fontSize: '22px' }}>📊 Data Updation Status</h2>
+          <p style={{
+            fontSize: '18px',
+            color: dataUpdateStatus === "Yes" ? "green" : "red",
+            fontWeight: 'bold',
+            padding: '10px',
+            backgroundColor: '#fff',
+            borderRadius: '8px',
+            textAlign: 'center'
+          }}>
+            {dataUpdateStatus}
+          </p>
+        </div>
+      </div>
+    </main>
+  );
+};
+
+export default App;
