@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import './App.css';
 import { useAuthenticator } from '@aws-amplify/ui-react';
@@ -73,7 +72,7 @@ const App: React.FC = () => {
     };
 
     loadUserAttributes();
-  }, []);
+  },
 
 
   return (
