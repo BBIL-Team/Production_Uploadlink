@@ -199,20 +199,13 @@ const App: React.FC = () => {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <button
-              onClick={handlePreviousYear}
-              style={{ fontSize: '16px', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer' }}
-            >
-              <
-            </button>
-            <h2 style={{ fontSize: '22px', margin: '0', textAlign: 'center' }}>📅 {year}</h2>
+              onClick={handlePreviousYear}>&lt;</button>
+            <h2 style={{ fontSize: '22px', margin: '0',textAlign: 'center' }}> {year}</h2>
             <button
-              onClick={handleNextYear}
-              style={{ fontSize: '16px', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer' }}
-            >
-              >
+              onClick={handleNextYear}>&gt;
             </button>
           </div>
-          <div
+          <div>
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(4, 1fr)', // 4 columns for 12 months
