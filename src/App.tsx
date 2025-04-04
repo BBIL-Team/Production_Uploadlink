@@ -8,7 +8,7 @@ const months = [
 ];
 
 const App: React.FC = () => {
-  const { signOut } = useAuthenticator();
+  const { signOut, user } = useAuthenticator(); // Added 'user' from useAuthenticator
   const [file, setFile] = useState<File | null>(null);
   const [responseMessage, setResponseMessage] = useState<string>("");
   const [selectedMonth, setSelectedMonth] = useState<string>(""); // For upload selection
@@ -141,6 +141,39 @@ const App: React.FC = () => {
           {responseMessage && (
             <p style={{ marginTop: '12px', color: 'green', fontSize: '16px' }}>{responseMessage}</p>
           )}
+
+          {/* User Info Table */}
+          <div style={{ marginTop: '20px' }}>
+            <h3 style={{ fontSize: '18px', marginBottom: '10px' }}>Logged-in User</h3>
+            <table
+              style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                backgroundColor: '#fff',
+                borderRadius: '8px',
+                overflow: 'hidden'
+              }}
+            >
+              <thead>
+                <tr style={{ backgroundColor: '#e6e6e6' }}>
+                  <th style={{ padding: '10px', textAlign: 'left', borderBottom: '1px solid #ccc' }}>Attribute</th>
+                  <th style={{ padding: '10px', textAlign: 'left', borderBottom: '1px solid #ccc' }}>Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={{ padding: '10px', borderBottom: '1px solid #ccc' }}>Username</td>
+                  <td style={{ padding: '10px', borderBottom: '1px solid #ccc' }}>{user?.username || 'N/A'}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '10px', borderBottom: '1px solid #ccc' }}>Email</td>
+                  <td style={{ padding: '10px', borderBottom: '1px solid #ccc' }}>
+                    {user?.attributes?.email || 'N/A'}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Calendar Section */}
@@ -154,10 +187,17 @@ const App: React.FC = () => {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <button
-              onClick={handlePreviousYear}>&lt;</button>
-            <h2 style={{ fontSize: '22px', margin: '0',textAlign: 'center' }}> {year}</h2>
+              onClick={handlePreviousYear}
+              style={{ fontSize: '16px', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer' }}
+            >
+              &lt;
+            </button>
+            <h2 style={{ fontSize: '22px', margin: '0', textAlign: 'center' }}>📅 {year}</h2>
             <button
-              onClick={handleNextYear}>&gt;
+              onClick={handleNextYear}
+              style={{ fontSize: '16px', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer' }}
+            >
+              &gt;
             </button>
           </div>
           <div
@@ -167,7 +207,8 @@ const App: React.FC = () => {
               gap: '10px',
               padding: '10px',
               backgroundColor: '#e6e6e6',
-              borderRadius: '8px'
+              borderRadius: '8px',
+              marginTop: '10px'
             }}
           >
             {months.map((month) => (
@@ -191,7 +232,7 @@ const App: React.FC = () => {
           </div>
           {/* Display sample file link for selected month */}
           {displayedMonth && (
-            <div style={{ marginTop: '20px' }}>
+            <div style={{ marginTop: '20px', textAlign: 'center' }}>
               <a
                 href={`https://your-bucket-name.s3.amazonaws.com/sample-files/${displayedMonth}.xlsx`}
                 download
