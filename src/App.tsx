@@ -1,13 +1,17 @@
 import React from "react";
-import { Auth, API } from "aws-amplify";
 import { useAuthenticator } from "@aws-amplify/ui-react";
+import { fetchUserAttributes } from "aws-amplify/auth"; // Updated Auth import
+import { API } from "aws-amplify/api"; // Updated API import
 
 const App: React.FC = () => {
   const { user, signOut } = useAuthenticator((context) => [context.user]);
 
   async function uploadFileMetadata(file: File) {
     try {
-      const userId = user?.attributes?.sub || user?.username;
+      // Get user attributes (modern Amplify way)
+      const userAttributes = await fetchUserAttributes();
+      const userId = userAttributes.sub || user?.username; // 'sub' is the unique user ID
+
       const fileName = file.name;
       const fileSize = file.size; // Size in bytes
       const uploadTime = new Date().toISOString();
