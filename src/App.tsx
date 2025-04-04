@@ -1,15 +1,6 @@
 import React, { useState } from 'react';
 import './App.css';
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { AuthUser } from '@aws-amplify/auth'; // Import AuthUser type
-
-// Extend AuthUser type to include attributes (if needed)
-interface ExtendedAuthUser extends AuthUser {
-  attributes?: {
-    email?: string;
-    [key: string]: string | undefined; // Allow other attributes
-  };
-}
 
 const months = [
   "January", "February", "March", "April", "May", "June",
@@ -17,7 +8,7 @@ const months = [
 ];
 
 const App: React.FC = () => {
-  const { signOut, user } = useAuthenticator();
+  const { signOut } = useAuthenticator();
   const [file, setFile] = useState<File | null>(null);
   const [responseMessage, setResponseMessage] = useState<string>("");
   const [selectedMonth, setSelectedMonth] = useState<string>(""); // For upload selection
@@ -68,9 +59,6 @@ const App: React.FC = () => {
   // Functions to change the year
   const handlePreviousYear = () => setYear((prevYear) => prevYear - 1);
   const handleNextYear = () => setYear((prevYear) => prevYear + 1);
-
-  // Cast user to ExtendedAuthUser to access attributes
-  const extendedUser = user as ExtendedAuthUser;
 
   return (
     <main style={{ width: '100vw', minHeight: '100vh', backgroundColor: '#f8f8ff', overflowX: 'auto' }}>
@@ -153,39 +141,6 @@ const App: React.FC = () => {
           {responseMessage && (
             <p style={{ marginTop: '12px', color: 'green', fontSize: '16px' }}>{responseMessage}</p>
           )}
-
-          {/* User Info Table */}
-          <div style={{ marginTop: '20px' }}>
-            <h3 style={{ fontSize: '18px', marginBottom: '10px' }}>Logged-in User</h3>
-            <table
-              style={{
-                width: '100%',
-                borderCollapse: 'collapse',
-                backgroundColor: '#fff',
-                borderRadius: '8px',
-                overflow: 'hidden'
-              }}
-            >
-              <thead>
-                <tr style={{ backgroundColor: '#e6e6e6' }}>
-                  <th style={{ padding: '10px', textAlign: 'left', borderBottom: '1px solid #ccc' }}>Attribute</th>
-                  <th style={{ padding: '10px', textAlign: 'left', borderBottom: '1px solid #ccc' }}>Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style={{ padding: '10px', borderBottom: '1px solid #ccc' }}>Username</td>
-                  <td style={{ padding: '10px', borderBottom: '1px solid #ccc' }}>{extendedUser?.username || 'N/A'}</td>
-                </tr>
-                <tr>
-                  <td style={{ padding: '10px', borderBottom: '1px solid #ccc' }}>Email</td>
-                  <td style={{ padding: '10px', borderBottom: '1px solid #ccc' }}>
-                    {extendedUser?.attributes?.email || 'N/A'}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
         </div>
 
         {/* Calendar Section */}
@@ -205,16 +160,16 @@ const App: React.FC = () => {
               onClick={handleNextYear}>&gt;
             </button>
           </div>
-          <div>
+          <div
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(4, 1fr)', // 4 columns for 12 months
               gap: '10px',
               padding: '10px',
               backgroundColor: '#e6e6e6',
-              borderRadius: '8px',
-              marginTop: '10px'
+              borderRadius: '8px'
             }}
+          >
             {months.map((month) => (
               <button
                 key={month}
@@ -236,7 +191,7 @@ const App: React.FC = () => {
           </div>
           {/* Display sample file link for selected month */}
           {displayedMonth && (
-            <div style={{ marginTop: '20px', textAlign: 'center' }}>
+            <div style={{ marginTop: '20px' }}>
               <a
                 href={`https://your-bucket-name.s3.amazonaws.com/sample-files/${displayedMonth}.xlsx`}
                 download
