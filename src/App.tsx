@@ -142,6 +142,39 @@ const App: React.FC = () => {
             <p style={{ marginTop: '12px', color: 'green', fontSize: '16px' }}>{responseMessage}</p>
           )}
         </div>
+        {/* User Info Table */}
+          <div style={{ marginTop: '20px' }}>
+            <h3 style={{ fontSize: '18px', marginBottom: '10px' }}>Logged-in User</h3>
+            <table
+              style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                backgroundColor: '#fff',
+                borderRadius: '8px',
+                overflow: 'hidden'
+              }}
+            >
+              <thead>
+                <tr style={{ backgroundColor: '#e6e6e6' }}>
+                  <th style={{ padding: '10px', textAlign: 'left', borderBottom: '1px solid #ccc' }}>Attribute</th>
+                  <th style={{ padding: '10px', textAlign: 'left', borderBottom: '1px solid #ccc' }}>Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={{ padding: '10px', borderBottom: '1px solid #ccc' }}>Username</td>
+                  <td style={{ padding: '10px', borderBottom: '1px solid #ccc' }}>{user?.username || 'N/A'}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '10px', borderBottom: '1px solid #ccc' }}>Email</td>
+                  <td style={{ padding: '10px', borderBottom: '1px solid #ccc' }}>
+                    {user?.attributes?.email || 'N/A'}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
 
         {/* Calendar Section */}
         <div style={{
