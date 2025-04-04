@@ -18,21 +18,19 @@ const App: React.FC = () => {
   const [userAttributes, setUserAttributes] = useState<{ email?: string; phone_number?: string }>({});
 
   useEffect(() => {
-   const loadUserAttributes = async () => {
-      try {
-        const attributes = await fetchUserAttributes();
-        if (attributes) {
-           setUserAttributes(attributes);
-        } else {
-           console.warn("No user attributes found.");
-        }
-      } catch (error) {
-        console.error("Error fetching user attributes:", error);
-      }
-   };
+  const loadUserAttributes = async () => {
+    if (!user) return; // Ensure user is available before fetching attributes
+    try {
+      const attributes = await fetchUserAttributes();
+      setUserAttributes(attributes);
+    } catch (error) {
+      console.error("Error fetching user attributes:", error);
+    }
+  };
 
-   loadUserAttributes();
-}, []);
+  loadUserAttributes();
+}, [user]); // Run effect when `user` changes
+
 
 
   const validateFile = (file: File | null): boolean => {
@@ -164,11 +162,12 @@ const App: React.FC = () => {
         </div>
         
          <section style={{ padding: "20px", textAlign: "center" }}>
-        <h3>User Profile</h3>
-        <p><strong>Username:</strong> {user?.username}</p>
-        <p><strong>Email:</strong> {userAttributes?.email || "Not provided"}</p>
-        <p><strong>Phone:</strong> {userAttributes?.phone_number || "Not provided"}</p>
-      </section>
+  <h3>User Profile</h3>
+  <p><strong>Username:</strong> {user?.username || "Not provided"}</p>
+  <p><strong>Email:</strong> {userAttributes?.email || "Not provided"}</p>
+  <p><strong>Phone:</strong> {userAttributes?.phone_number || "Not provided"}</p>
+</section>
+
 
         {/* Calendar Section */}
         <div style={{
