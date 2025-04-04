@@ -240,7 +240,7 @@ const App: React.FC = () => {
                   fontSize: '16px'
                 }}
               >
-                {displayedMonth} Sample Excel
+               {displayedMonth} Sample Excel
               </a>
             </div>
           )}
