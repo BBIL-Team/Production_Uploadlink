@@ -1,8 +1,23 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useAuthenticator } from "@aws-amplify/ui-react";
+import { fetchUserAttributes } from "aws-amplify/auth";
 
 const App: React.FC = () => {
   const { user, signOut } = useAuthenticator((context) => [context.user]);
+  const [userAttributes, setUserAttributes] = useState<{ email?: string; phone_number?: string }>({});
+
+  useEffect(() => {
+    const loadUserAttributes = async () => {
+      try {
+        const attributes = await fetchUserAttributes();
+        setUserAttributes(attributes);
+      } catch (error) {
+        console.error("Error fetching user attributes:", error);
+      }
+    };
+
+    loadUserAttributes();
+  }, []);
 
   return (
     <main style={{ width: "100vw", minHeight: "100vh", backgroundColor: "#f8f8ff" }}>
@@ -14,8 +29,8 @@ const App: React.FC = () => {
       <section style={{ padding: "20px", textAlign: "center" }}>
         <h2>User Profile</h2>
         <p><strong>Username:</strong> {user?.username}</p>
-        <p><strong>Email:</strong> {user?.attributes?.email || "Not provided"}</p>
-        <p><strong>Phone:</strong> {user?.attributes?.phone_number || "Not provided"}</p>
+        <p><strong>Email:</strong> {userAttributes?.email || "Not provided"}</p>
+        <p><strong>Phone:</strong> {userAttributes?.phone_number || "Not provided"}</p>
       </section>
     </main>
   );
