@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import './App.css';
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { fetchUserAttributes } from "aws-amplify/auth";
@@ -16,6 +16,24 @@ const App: React.FC = () => {
   const [displayedMonth, setDisplayedMonth] = useState<string>(""); // For calendar selection
   const [year, setYear] = useState<number>(2025); // Initial year
   const [userAttributes, setUserAttributes] = useState<{ email?: string; phone_number?: string }>({});
+
+  useEffect(() => {
+   const loadUserAttributes = async () => {
+      try {
+        const attributes = await fetchUserAttributes();
+        if (attributes) {
+           setUserAttributes(attributes);
+        } else {
+           console.warn("No user attributes found.");
+        }
+      } catch (error) {
+        console.error("Error fetching user attributes:", error);
+      }
+   };
+
+   loadUserAttributes();
+}, []);
+
 
   const validateFile = (file: File | null): boolean => {
     if (file && file.name.endsWith(".csv")) {
@@ -61,19 +79,6 @@ const App: React.FC = () => {
   // Functions to change the year
   const handlePreviousYear = () => setYear((prevYear) => prevYear - 1);
   const handleNextYear = () => setYear((prevYear) => prevYear + 1);
-
-  const loadUserAttributes = async () => {
-      try {
-        const attributes = await fetchUserAttributes();
-        setUserAttributes(attributes);
-      } catch (error) {
-        console.error("Error fetching user attributes:", error);
-      }
-    };
-
-    loadUserAttributes();
-  },
-
 
   return (
     <main style={{ width: '100vw', minHeight: '100vh', backgroundColor: '#f8f8ff', overflowX: 'auto' }}>
