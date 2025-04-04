@@ -160,14 +160,6 @@ const App: React.FC = () => {
             <p style={{ marginTop: '12px', color: 'green', fontSize: '16px' }}>{responseMessage}</p>
           )}
         </div>
-        
-         <section style={{ padding: "20px", textAlign: "center" }}>
-  <h3>User Profile</h3>
-  <p><strong>Username:</strong> {user?.username || "Not provided"}</p>
-  <p><strong>Email:</strong> {userAttributes?.email || "Not provided"}</p>
-  <p><strong>Phone:</strong> {userAttributes?.phone_number || "Not provided"}</p>
-</section>
-
 
         {/* Calendar Section */}
         <div style={{
@@ -215,6 +207,7 @@ const App: React.FC = () => {
               </button>
             ))}
           </div>
+          
           {/* Display sample file link for selected month */}
           {displayedMonth && (
             <div style={{ marginTop: '20px' }}>
@@ -237,6 +230,12 @@ const App: React.FC = () => {
               </a>
             </div>
           )}
+          <section style={{ padding: "20px", textAlign: "center" }}>
+  <h3>User Profile</h3>
+  <p><strong>Username:</strong> {user?.username || "Not provided"}</p>
+  <p><strong>Email:</strong> {userAttributes?.email || "Not provided"}</p>
+  <p><strong>Phone:</strong> {userAttributes?.phone_number || "Not provided"}</p>
+</section>
         </div>
       </div>
     </main>
