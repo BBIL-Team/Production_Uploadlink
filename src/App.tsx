@@ -1,8 +1,8 @@
-import { Auth } from 'aws-amplify';
+import { Auth } from '@aws-amplify/auth';
 
-async function uploadFile(file) {
+async function uploadFile(file: File) {
   const user = await Auth.currentAuthenticatedUser();
-  const userId = user.username; // Or user.attributes.sub if using Cognito UUIDs
+  const userId = user.username; // Or user.attributes.sub for unique user ID
 
   const fileName = file.name;
   const uploadTime = new Date().toISOString();
@@ -19,4 +19,6 @@ async function uploadFile(file) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(requestBody),
   });
+
+  console.log('File uploaded successfully');
 }
