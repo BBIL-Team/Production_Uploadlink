@@ -9,7 +9,7 @@ const months = [
 ];
 
 const App: React.FC = () => {
-  const { signOut } = useAuthenticator();
+  const { signOut, user } = useAuthenticator();
   const [file, setFile] = useState<File | null>(null);
   const [responseMessage, setResponseMessage] = useState<string>("");
   const [selectedMonth, setSelectedMonth] = useState<string>(""); // For upload selection
