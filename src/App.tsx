@@ -215,7 +215,6 @@ const App: React.FC = () => {
               borderRadius: '8px',
               marginTop: '10px'
             }}
-          >
             {months.map((month) => (
               <button
                 key={month}
