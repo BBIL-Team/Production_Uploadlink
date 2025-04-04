@@ -1,48 +1,58 @@
-import { Storage, API } from 'aws-amplify';
-import { useState } from 'react';
-import { AuthUser, useAuthenticator } from '@aws-amplify/ui-react-native';
+import React from "react";
+import { Auth, API } from "aws-amplify";
+import { useAuthenticator } from "@aws-amplify/ui-react";
 
-export default function UploadFile() {
-  const { user } = useAuthenticator((context) => [context.user]);
-  const [file, setFile] = useState<File | null>(null);
+const App: React.FC = () => {
+  const { user, signOut } = useAuthenticator((context) => [context.user]);
 
-  // Handle file selection
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files.length > 0) {
-      setFile(event.target.files[0]);
-    }
-  };
-
-  // Upload file to S3 and log in DynamoDB
-  const uploadFile = async () => {
-    if (!file || !user) return alert('No file selected or user not logged in');
-
+  async function uploadFileMetadata(file: File) {
     try {
-      // Upload to S3
-      const fileKey = `${user.username}/${file.name}`;
-      await Storage.put(fileKey, file);
+      const userId = user?.attributes?.sub || user?.username;
+      const fileName = file.name;
+      const fileSize = file.size; // Size in bytes
+      const uploadTime = new Date().toISOString();
 
-      // Save metadata in DynamoDB
-      const uploadDetails = {
-        user_id: user.username,
-        file_name: file.name,
-        upload_time: new Date().toISOString(),
+      const requestBody = {
+        userId,
+        fileName,
+        fileSize,
+        uploadTime,
       };
 
-      await API.post('myApiName', '/saveUploadDetails', { body: uploadDetails });
+      // Send to Lambda via API Gateway
+      await API.post("FileUploadAPI", "/upload", {
+        body: requestBody,
+      });
 
-      alert('File uploaded and recorded successfully!');
+      console.log("File metadata sent successfully");
     } catch (error) {
-      console.error('Upload failed:', error);
-      alert('File upload failed');
+      console.error("Error sending metadata:", error);
+      throw error;
+    }
+  }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await uploadFileMetadata(file);
     }
   };
 
   return (
-    <div>
-      <h2>Upload File</h2>
-      <input type="file" onChange={handleFileChange} />
-      <button onClick={uploadFile} disabled={!file}>Upload</button>
-    </div>
+    <main style={{ width: "100vw", minHeight: "100vh", backgroundColor: "#f8f8ff" }}>
+      <header style={{ backgroundColor: "#008080", padding: "10px", display: "flex", justifyContent: "space-between" }}>
+        <h1 style={{ color: "white" }}>Welcome, {user?.username || "User"}</h1>
+        <button onClick={signOut} style={{ padding: "10px 16px", fontSize: "16px" }}>
+          Sign out
+        </button>
+      </header>
+
+      <section style={{ padding: "20px", textAlign: "center" }}>
+        <h2>Upload File Metadata</h2>
+        <input type="file" onChange={handleFileUpload} />
+      </section>
+    </main>
   );
-}
+};
+
+export default App;
