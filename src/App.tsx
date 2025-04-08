@@ -59,15 +59,19 @@ const uploadFile = async () => {
 const convertToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.readAsBinaryString(file);
+    reader.readAsArrayBuffer(file);
     reader.onload = () => {
-      const binary = reader.result as string;
+      const buffer = reader.result as ArrayBuffer;
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      bytes.forEach((b) => (binary += String.fromCharCode(b)));
       const base64 = btoa(binary);
       resolve(base64);
     };
     reader.onerror = (error) => reject(error);
   });
 };
+
 
 
   return (
