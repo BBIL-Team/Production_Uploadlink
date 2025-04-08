@@ -70,31 +70,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-
-const styles: { [key: string]: React.CSSProperties } = {
-  container: {
-    padding: 20,
-    fontFamily: 'Arial, sans-serif',
-    maxWidth: 400,
-    margin: 'auto',
-    textAlign: 'center',
-    border: '1px solid #ccc',
-    borderRadius: 10,
-    marginTop: 50,
-  },
-  button: {
-    marginTop: 10,
-    padding: '10px 20px',
-    cursor: 'pointer',
-    backgroundColor: '#007bff',
-    color: 'white',
-    border: 'none',
-    borderRadius: 5,
-  },
-  message: {
-    marginTop: 15,
-    fontWeight: 'bold',
-  },
-};
-
-export default App;
