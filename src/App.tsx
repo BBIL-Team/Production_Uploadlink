@@ -33,9 +33,10 @@ const App: React.FC = () => {
       const response = await fetch(apiUrl, {
         method: "POST",
         body: formData,
-        headers: {
-    "x-filename": file.name, // 👈 Important
-  },
+       headers: {
+  "x-filename": file!.name, // 👈 add "!" here
+},
+
       });
 
       if (response.ok) {
