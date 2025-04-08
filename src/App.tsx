@@ -33,6 +33,9 @@ const App: React.FC = () => {
       const response = await fetch(apiUrl, {
         method: "POST",
         body: formData,
+        headers: {
+    "x-filename": file.name, // 👈 Important
+  },
       });
 
       if (response.ok) {
@@ -40,7 +43,7 @@ const App: React.FC = () => {
         setMessage(data.message || "File uploaded successfully!");
       } else {
         const errorText = await response.text();
-        setMessage(`Failed to upload file: ${errorText}`);
+        setMessage(Failed to upload file: ${errorText});
       }
     } catch (error) {
       console.error("Error uploading file:", error);
