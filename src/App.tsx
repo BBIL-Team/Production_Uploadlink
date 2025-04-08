@@ -1,60 +1,75 @@
-import React, { useState, ChangeEvent } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 
 const App: React.FC = () => {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState<boolean>(false);
-  const [message, setMessage] = useState<string>('');
+  const [file, setFile] = useState<File | null>(null);
+  const [message, setMessage] = useState('');
 
-  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    setSelectedFile(file || null);
-    setMessage('');
+  const fetchUploadStatus = async () => {
+    try {
+      const response = await fetch("https://82qww13oi0.execute-api.ap-south-1.amazonaws.com/D2/Anamay_CalenderUpdate_Prod");
+      if (response.ok) {
+        const data = await response.json();
+        console.log("API Response:", data);
+        setUploadStatus(data);
+      } else {
+        console.error("Failed to fetch upload status, status:", response.status);
+      }
+    } catch (error) {
+      console.error("Error fetching upload status:", error);
+    }
   };
 
-  const uploadToLambda = async () => {
-    if (!selectedFile) {
-      alert('Please select a file first.');
+  // Validate file type
+  const validateFile = (file: File | null): boolean => {
+    if (file && file.name.endsWith(".csv")) {
+      return true;
+    }
+    alert("Please upload a valid CSV file.");
+    return false;
+  };
+
+    // Upload file function
+  const uploadFile = async (file: File | null, apiUrl: string) => {
+    if (!file) {
+      alert("Please select a CSV file to upload.");
       return;
     }
 
-    setUploading(true);
-    setMessage('');
-
     const formData = new FormData();
-    formData.append('file', selectedFile);
+    formData.append('file', file);
 
     try {
-      const response = await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink', {
-        method: 'POST',
+      const response = await fetch(apiUrl, {
+        method: "POST",
         body: formData,
-        headers: {
-          'user-id': 'example-user-id-123', // Optional: Replace with actual user ID from auth system
-        },
       });
 
-      const result = await response.json();
-      setMessage(result.message || 'Upload successful!');
+      if (response.ok) {
+        const data = await response.json();
+        setResponseMessage(data.message || "File uploaded successfully!");
+      } else {
+        const errorText = await response.text();
+        setResponseMessage(`Failed to upload file: ${errorText}`);
+      }
     } catch (error) {
-      console.error('Upload error:', error);
-      setMessage('Something went wrong during upload.');
+      console.error("Error:", error);
+      setResponseMessage("An error occurred while uploading the file.");
     }
 
-    setUploading(false);
-  };
-
-  return (
-    <div style={styles.container}>
-      <h2>Upload File to Lambda</h2>
-      <input type="file" onChange={handleFileChange} />
-      <br />
-      <button onClick={uploadToLambda} disabled={uploading} style={styles.button}>
-        {uploading ? 'Uploading...' : 'Upload File'}
-      </button>
-      {message && <p style={styles.message}>{message}</p>}
+     return (
+    <div style={{ padding: '2rem' }}>
+      <h1>Upload CSV File</h1>
+      <input type="file" accept=".csv" onChange={handleFileChange} />
+      <br /><br />
+      <button onClick={handleSubmit}>Submit</button>
+      <br /><br />
+      <p>{message}</p>
     </div>
   );
 };
+
+export default App;
 
 const styles: { [key: string]: React.CSSProperties } = {
   container: {
