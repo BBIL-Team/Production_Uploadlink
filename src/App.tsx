@@ -23,19 +23,23 @@ const App: React.FC = () => {
   };
 
   // Upload file function
- const uploadFile = async () => {
+const uploadFile = async () => {
   if (!file || !validateFile(file)) return;
 
-  const formData = new FormData();
-  formData.append('file', file);
-
   try {
+    // Convert file to base64
+    const base64 = await convertToBase64(file);
+
     const response = await fetch(apiUrl, {
       method: "POST",
-      body: formData,
       headers: {
+        "Content-Type": "application/json",
         "x-filename": file.name,
       },
+      body: JSON.stringify({
+        body: base64,
+        isBase64Encoded: true,
+      }),
     });
 
     if (response.ok) {
@@ -49,6 +53,20 @@ const App: React.FC = () => {
     console.error("Error uploading file:", error);
     setMessage("An error occurred while uploading the file.");
   }
+};
+
+// Helper function to convert file to base64
+const convertToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsBinaryString(file);
+    reader.onload = () => {
+      const binary = reader.result as string;
+      const base64 = btoa(binary);
+      resolve(base64);
+    };
+    reader.onerror = (error) => reject(error);
+  });
 };
 
 
