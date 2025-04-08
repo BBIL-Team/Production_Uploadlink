@@ -7,7 +7,7 @@ const App: React.FC = () => {
 
   const fetchUploadStatus = async () => {
     try {
-      const response = await fetch("https://82qww13oi0.execute-api.ap-south-1.amazonaws.com/D2/Anamay_CalenderUpdate_Prod");
+      const response = await fetch(" https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink");
       if (response.ok) {
         const data = await response.json();
         console.log("API Response:", data);
