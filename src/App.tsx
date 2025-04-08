@@ -23,33 +23,34 @@ const App: React.FC = () => {
   };
 
   // Upload file function
-  const uploadFile = async () => {
-    if (!validateFile(file)) return;
+ const uploadFile = async () => {
+  if (!file || !validateFile(file)) return;
 
-    const formData = new FormData();
-    if (file) formData.append('file', file);
+  const formData = new FormData();
+  formData.append('file', file);
 
-    try {
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        body: formData,
-        headers: {
-    "x-filename": file.name, // 👈 Important
-  },
-      });
+  try {
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      body: formData,
+      headers: {
+        "x-filename": file.name,
+      },
+    });
 
-      if (response.ok) {
-        const data = await response.json();
-        setMessage(data.message || "File uploaded successfully!");
-      } else {
-        const errorText = await response.text();
-        setMessage(Failed to upload file: ${errorText});
-      }
-    } catch (error) {
-      console.error("Error uploading file:", error);
-      setMessage("An error occurred while uploading the file.");
+    if (response.ok) {
+      const data = await response.json();
+      setMessage(data.message || "File uploaded successfully!");
+    } else {
+      const errorText = await response.text();
+      setMessage(`Failed to upload file: ${errorText}`);
     }
-  };
+  } catch (error) {
+    console.error("Error uploading file:", error);
+    setMessage("An error occurred while uploading the file.");
+  }
+};
+
 
   return (
     <div style={{ padding: '2rem' }}>
