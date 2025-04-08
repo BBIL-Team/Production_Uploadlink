@@ -5,7 +5,7 @@ const App: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [message, setMessage] = useState('');
 
-  const apiUrl = "https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink";
+  const apiUrl = " https://nkxcgcfsj6.execute-api.ap-south-1.amazonaws.com/P2/Production_Uploadlink";
 
   // Handle file selection
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
