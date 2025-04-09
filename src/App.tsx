@@ -44,7 +44,7 @@ const uploadFile = async () => {
 
     if (response.ok) {
       const data = await response.json();
-      setMessage(data.message || "File uploaded successfully!");
+      setMessage(data.message || "File uploaded successfully123!");
     } else {
       const errorText = await response.text();
       setMessage(`Failed to upload file: ${errorText}`);
