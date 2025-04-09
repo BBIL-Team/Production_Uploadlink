@@ -23,56 +23,36 @@ const App: React.FC = () => {
   };
 
   // Upload file function
-const uploadFile = async () => {
-  if (!file || !validateFile(file)) return;
+  const uploadFile = async () => {
+    if (!file || !validateFile(file)) return;
 
-  try {
-    // Convert file to base64
-    const base64 = await convertToBase64(file);
+    try {
+      // Create FormData object and append the file
+      const formData = new FormData();
+      formData.append('file', file);
 
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-filename": file.name,
-      },
-      body: JSON.stringify({
-        body: base64,
-        isBase64Encoded: true,
-      }),
-    });
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "x-filename": file.name, // Send filename in header
+        },
+        body: formData, // Send file as multipart/form-data
+      });
 
-    if (response.ok) {
-      const data = await response.json();
-      setMessage(data.message || "File uploaded successfully!");
-    } else {
-      const errorText = await response.text();
-      setMessage(`Failed to upload file: ${errorText}`);
+      const responseText = await response.text();
+      console.log("Response from Lambda:", responseText); // Debug log
+
+      if (response.ok) {
+        const data = JSON.parse(responseText);
+        setMessage(data.message || "File uploaded successfully!");
+      } else {
+        setMessage(`Failed to upload file: ${responseText}`);
+      }
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      setMessage("An error occurred while uploading the file.");
     }
-  } catch (error) {
-    console.error("Error uploading file:", error);
-    setMessage("An error occurred while uploading the file.");
-  }
-};
-
-// Helper function to convert file to base64
-const convertToBase64 = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsArrayBuffer(file);
-    reader.onload = () => {
-      const buffer = reader.result as ArrayBuffer;
-      const bytes = new Uint8Array(buffer);
-      let binary = '';
-      bytes.forEach((b) => (binary += String.fromCharCode(b)));
-      const base64 = btoa(binary);
-      resolve(base64);
-    };
-    reader.onerror = (error) => reject(error);
-  });
-};
-
-
+  };
 
   return (
     <div style={{ padding: '2rem' }}>
