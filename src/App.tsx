@@ -11,68 +11,73 @@ const App: React.FC = () => {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0] || null;
     setFile(selectedFile);
+    setMessage(''); // Clear previous message when selecting new file
   };
 
   // Validate file type
   const validateFile = (file: File | null): boolean => {
-    if (file && file.name.endsWith(".csv")) {
-      return true;
+    if (!file) {
+      setMessage("Please select a file to upload.");
+      return false;
     }
-    alert("Please upload a valid CSV file.");
-    return false;
+    if (!file.name.endsWith(".csv")) {
+      setMessage("Please upload a valid CSV file.");
+      return false;
+    }
+    return true;
   };
 
   // Upload file function
-const uploadFile = async () => {
-  if (!file || !validateFile(file)) return;
+  const uploadFile = async () => {
+    if (!file || !validateFile(file)) return;
 
-  try {
-    // Convert file to base64
-    const base64 = await convertToBase64(file);
+    try {
+      // Convert file to base64
+      const base64 = await convertToBase64(file);
 
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-filename": file.name,
-      },
-      body: JSON.stringify({
-        body: base64,
-        isBase64Encoded: true,
-      }),
-    });
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-filename": file.name,
+        },
+        body: JSON.stringify({
+          body: base64,
+          isBase64Encoded: true,
+        }),
+      });
 
-    if (response.ok) {
-      const data = await response.json();
-      setMessage(data.message || "File uploaded successfully123!");
-    } else {
-      const errorText = await response.text();
-      setMessage(`Failed to upload file: ${errorText}`);
+      const responseData = await response.json();
+      
+      if (response.ok) {
+        // Display the message from API gateway if it exists, otherwise show generic success
+        setMessage(responseData.message || "File uploaded successfully");
+      } else {
+        // Display API error message if provided, otherwise show status text
+        setMessage(responseData.message || `Upload failed: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      setMessage("An error occurred while uploading the file. Please try again.");
     }
-  } catch (error) {
-    console.error("Error uploading file:", error);
-    setMessage("An error occurred while uploading the file.");
-  }
-};
+  };
 
-// Helper function to convert file to base64
-const convertToBase64 = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsArrayBuffer(file);
-    reader.onload = () => {
-      const buffer = reader.result as ArrayBuffer;
-      const bytes = new Uint8Array(buffer);
-      let binary = '';
-      bytes.forEach((b) => (binary += String.fromCharCode(b)));
-      const base64 = btoa(binary);
-      resolve(base64);
-    };
-    reader.onerror = (error) => reject(error);
-  });
-};
-
-
+  // Helper function to convert file to base64
+  const convertToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsArrayBuffer(file);
+      reader.onload = () => {
+        const buffer = reader.result as ArrayBuffer;
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        bytes.forEach((b) => (binary += String.fromCharCode(b)));
+        const base64 = btoa(binary);
+        resolve(base64);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
 
   return (
     <div style={{ padding: '2rem' }}>
