@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Auth } from 'aws-amplify'; // Import Amplify Auth
+import { Auth } from '@aws-amplify/auth'; // Updated import for modern Amplify
 import './App.css';
 
 const App: React.FC = () => {
   const [responseMessage, setResponseMessage] = useState('');
   const [file, setFile] = useState<File | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null); // Store user's email
-  const [isAuthenticated, setIsAuthenticated] = useState(false); // Track auth status
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const apiUrl = "https://nkxcgcfsj6.execute-api.ap-south-1.amazonaws.com/P2/Production_Uploadlink";
 
@@ -15,7 +15,7 @@ const App: React.FC = () => {
     const checkUser = async () => {
       try {
         const user = await Auth.currentAuthenticatedUser();
-        setUserEmail(user.attributes.email); // Get email from user attributes
+        setUserEmail(user.attributes.email);
         setIsAuthenticated(true);
       } catch (error) {
         console.log('No user logged in:', error);
@@ -31,7 +31,7 @@ const App: React.FC = () => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile && selectedFile.type === 'text/csv') {
       setFile(selectedFile);
-      setResponseMessage(''); // Clear previous response
+      setResponseMessage('');
     } else {
       setFile(null);
       setResponseMessage('Please select a valid .csv file.');
@@ -66,8 +66,8 @@ const App: React.FC = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-filename': file.name,      // Original filename
-            'x-user-email': userEmail,    // Add user's email
+            'x-filename': file.name,
+            'x-user-email': userEmail,
           },
           body: JSON.stringify(payload),
         });
@@ -85,10 +85,11 @@ const App: React.FC = () => {
     }
   };
 
-  // Simple login/logout UI
+  // Simple login/logout UI (replace with your actual login flow)
   const handleLogin = async () => {
     try {
-      await Auth.signIn('user@example.com', 'password'); // Replace with actual login flow
+      // Replace with your actual login UI or flow (e.g., Auth.signIn(email, password))
+      await Auth.signIn('user@example.com', 'password');
       const user = await Auth.currentAuthenticatedUser();
       setUserEmail(user.attributes.email);
       setIsAuthenticated(true);
