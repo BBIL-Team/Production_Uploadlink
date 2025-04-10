@@ -1,8 +1,5 @@
 import React, { useState } from 'react';
-import { Auth } from 'aws-amplify'; // Fallback import
-import { Authenticator } from '@aws-amplify/ui-react'; // For auth UI
-import '@aws-amplify/ui-react/styles.css'; // Required for Authenticator styles
-import './App.css';
+
 
 const App: React.FC = () => {
   const [responseMessage, setResponseMessage] = useState('');
