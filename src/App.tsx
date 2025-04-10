@@ -49,12 +49,14 @@ const App: React.FC = () => {
 
       const responseData = await response.json();
       
-      if (response.ok) {
-        // Display the message from API gateway if it exists, otherwise show generic success
-        setMessage(responseData.message || "File uploaded successfully");
+      if (response.ok && responseData.message) {
+        setMessage(responseData.message);
+      } else if (!response.ok && responseData.message) {
+        setMessage(responseData.message);
+      } else if (!response.ok) {
+        setMessage(`Upload failed: ${response.statusText}`);
       } else {
-        // Display API error message if provided, otherwise show status text
-        setMessage(responseData.message || `Upload failed: ${response.statusText}`);
+        setMessage(''); // No message if API doesn't provide one on success
       }
     } catch (error) {
       console.error("Error uploading file:", error);
