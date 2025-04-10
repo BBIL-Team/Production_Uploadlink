@@ -6,7 +6,7 @@ const App: React.FC = () => {
 
   const apiUrl = "https://nkxcgcfsj6.execute-api.ap-south-1.amazonaws.com/P2/Production_Uploadlink";
 
-  // Provided JSON data
+  // Exact JSON data from your input
   const requestData = {
     body: "TmFtZSxBZ2UsQ2l0eQpKb2huIERvZSwzMCxOZXcgWW9ySwpKYW5lIFNtaXRoLDI1LExvbmRvbgpCb2IgSm9obnNvbiwzNSxQYXJpcw==",
     headers: {
@@ -18,21 +18,32 @@ const App: React.FC = () => {
   // Handle API call
   const sendData = async () => {
     try {
+      const payload = {
+        body: requestData.body,
+        isBase64Encoded: requestData.isBase64Encoded
+      };
+
+      console.log('Request Payload:', JSON.stringify(payload));
+      console.log('Headers:', {
+        'Content-Type': 'application/json',
+        'x-filename': requestData.headers["x-filename"]
+      });
+
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-filename': requestData.headers["x-filename"],
         },
-        body: JSON.stringify({
-          body: requestData.body,
-          isBase64Encoded: requestData.isBase64Encoded
-        }),
+        body: JSON.stringify(payload),
       });
 
-      const data = await response.json();
+      const responseText = await response.text(); // Get raw response first
+      console.log('Raw Response:', responseText);
 
-      // Display the API response message if it exists
+      const data = JSON.parse(responseText); // Parse JSON
+      console.log('Parsed Response:', data);
+
       if (data.message) {
         setResponseMessage(data.message);
       } else {
