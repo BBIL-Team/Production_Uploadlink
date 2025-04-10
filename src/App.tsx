@@ -14,7 +14,7 @@ const App: React.FC = () => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile && selectedFile.type === 'text/csv') {
       setFile(selectedFile);
-      setResponseMessage(''); // Clear previous response
+      setResponseMessage('');
     } else {
       setFile(null);
       setResponseMessage('Please select a valid .csv file.');
@@ -29,11 +29,10 @@ const App: React.FC = () => {
     }
 
     try {
-      // Convert file to base64
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = async () => {
-        const base64String = (reader.result as string).split(',')[1]; // Remove "data:text/csv;base64," prefix
+        const base64String = (reader.result as string).split(',')[1];
 
         const payload = {
           body: base64String,
@@ -44,14 +43,17 @@ const App: React.FC = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-filename': file.name, // Use the original filename
+            'x-filename': file.name,
           },
           body: JSON.stringify(payload),
         });
 
         const responseText = await response.text();
         let data = responseText ? JSON.parse(responseText) : {};
-        setResponseMessage(data.message || (response.ok ? 'Request succeeded but no message returned' : `Request failed: ${response.statusText}`));
+        setResponseMessage(
+          data.message ||
+            (response.ok ? 'Request succeeded but no message returned' : `Request failed: ${response.statusText}`)
+        );
       };
       reader.onerror = () => {
         setResponseMessage('Error reading the file.');
@@ -76,15 +78,18 @@ const App: React.FC = () => {
         Upload File
       </button>
       <br /><br />
-      {responseMessage && (<div>
+      {responseMessage && (
+        <div>
           <h3>API Response:</h3>
           <p>{responseMessage}</p>
-        </div>)
-        
-      <button style={{ marginLeft: 'auto', marginRight: '20px', padding: '10px 16px', fontSize: '16px' }} onClick={signOut}>
-          Sign out
-        </button>
+        </div>
       )}
+      <button
+        style={{ marginTop: '2rem', padding: '10px 16px', fontSize: '16px' }}
+        onClick={signOut}
+      >
+        Sign out
+      </button>
     </div>
   );
 };
