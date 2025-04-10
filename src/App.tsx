@@ -56,7 +56,7 @@ const App: React.FC = () => {
       } else if (!response.ok) {
         setMessage(`Upload failed: ${response.statusText}`);
       } else {
-        setMessage(''); // No message if API doesn't provide one on success
+        setMessage('No Response from API'); // No message if API doesn't provide one on success
       }
     } catch (error) {
       console.error("Error uploading file:", error);
