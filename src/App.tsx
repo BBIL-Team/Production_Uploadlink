@@ -1,32 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Auth } from '@aws-amplify/auth'; // Updated import for modern Amplify
+import React, { useState } from 'react';
+import { Auth } from 'aws-amplify'; // Fallback import
+import { Authenticator } from '@aws-amplify/ui-react'; // For auth UI
+import '@aws-amplify/ui-react/styles.css'; // Required for Authenticator styles
 import './App.css';
 
 const App: React.FC = () => {
   const [responseMessage, setResponseMessage] = useState('');
   const [file, setFile] = useState<File | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const apiUrl = "https://nkxcgcfsj6.execute-api.ap-south-1.amazonaws.com/P2/Production_Uploadlink";
 
-  // Check authentication status on mount
-  useEffect(() => {
-    const checkUser = async () => {
-      try {
-        const user = await Auth.currentAuthenticatedUser();
-        setUserEmail(user.attributes.email);
-        setIsAuthenticated(true);
-      } catch (error) {
-        console.log('No user logged in:', error);
-        setIsAuthenticated(false);
-        setResponseMessage('Please log in to upload files.');
-      }
-    };
-    checkUser();
-  }, []);
-
-  // Handle file selection
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile && selectedFile.type === 'text/csv') {
@@ -38,24 +21,17 @@ const App: React.FC = () => {
     }
   };
 
-  // Handle file upload
-  const sendData = async () => {
+  const sendData = async (userEmail: string) => {
     if (!file) {
       setResponseMessage('No file selected. Please choose a .csv file first.');
       return;
     }
 
-    if (!isAuthenticated || !userEmail) {
-      setResponseMessage('You must be logged in to upload files.');
-      return;
-    }
-
     try {
-      // Convert file to base64
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = async () => {
-        const base64String = (reader.result as string).split(',')[1]; // Remove "data:text/csv;base64," prefix
+        const base64String = (reader.result as string).split(',')[1];
 
         const payload = {
           body: base64String,
@@ -85,69 +61,38 @@ const App: React.FC = () => {
     }
   };
 
-  // Simple login/logout UI (replace with your actual login flow)
-  const handleLogin = async () => {
-    try {
-      // Replace with your actual login UI or flow (e.g., Auth.signIn(email, password))
-      await Auth.signIn('user@example.com', 'password');
-      const user = await Auth.currentAuthenticatedUser();
-      setUserEmail(user.attributes.email);
-      setIsAuthenticated(true);
-      setResponseMessage('');
-    } catch (error) {
-      console.error('Login Error:', error);
-      setResponseMessage('Login failed. Please try again.');
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await Auth.signOut();
-      setUserEmail(null);
-      setIsAuthenticated(false);
-      setResponseMessage('Logged out successfully.');
-    } catch (error) {
-      console.error('Logout Error:', error);
-      setResponseMessage('Logout failed.');
-    }
-  };
-
   return (
-    <div style={{ padding: '2rem' }}>
-      <h1>Upload CSV to API Gateway</h1>
-      {isAuthenticated ? (
-        <>
-          <p>Logged in as: {userEmail}</p>
-          <input
-            type="file"
-            accept=".csv"
-            onChange={handleFileChange}
-            style={{ marginBottom: '1rem' }}
-          />
-          <br />
-          <button onClick={sendData} disabled={!file}>
-            Upload File
-          </button>
-          <button onClick={handleLogout} style={{ marginLeft: '1rem' }}>
-            Logout
-          </button>
-          <br /><br />
-          {responseMessage && (
-            <div>
-              <h3>API Response:</h3>
-              <p>{responseMessage}</p>
-            </div>
-          )}
-        </>
-      ) : (
-        <>
-          <p>Please log in to upload files.</p>
-          <button onClick={handleLogin}>Login</button> {/* Replace with actual login UI */}
-          <br /><br />
-          {responseMessage && <p>{responseMessage}</p>}
-        </>
-      )}
-    </div>
+    <Authenticator>
+      {({ signOut, user }) => {
+        const userEmail = user?.attributes?.email || 'unknown';
+        return (
+          <div style={{ padding: '2rem' }}>
+            <h1>Upload CSV to API Gateway</h1>
+            <p>Logged in as: {userEmail}</p>
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleFileChange}
+              style={{ marginBottom: '1rem' }}
+            />
+            <br />
+            <button onClick={() => sendData(userEmail)} disabled={!file}>
+              Upload File
+            </button>
+            <button onClick={signOut} style={{ marginLeft: '1rem' }}>
+              Sign Out
+            </button>
+            <br /><br />
+            {responseMessage && (
+              <div>
+                <h3>API Response:</h3>
+                <p>{responseMessage}</p>
+              </div>
+            )}
+          </div>
+        );
+      }}
+    </Authenticator>
   );
 };
 
