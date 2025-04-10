@@ -1,9 +1,18 @@
 import React, { useState } from 'react';
 import './App.css';
 import { useAuthenticator } from '@aws-amplify/ui-react';
+import { AuthUser } from '@aws-amplify/ui'; // Import AuthUser type
+
+// Extend AuthUser type to include attributes
+interface ExtendedAuthUser extends AuthUser {
+  attributes?: {
+    email?: string;
+    [key: string]: string | undefined;
+  };
+}
 
 const App: React.FC = () => {
-  const { signOut, user } = useAuthenticator(); // Extract user from useAuthenticator
+  const { signOut, user } = useAuthenticator();
   const [responseMessage, setResponseMessage] = useState('');
   const [file, setFile] = useState<File | null>(null);
 
@@ -64,8 +73,9 @@ const App: React.FC = () => {
     }
   };
 
-  // Get the user's email from the authenticated user object
-  const userEmail = user?.attributes?.email || 'Not logged in';
+  // Safely access user's email with type assertion
+  const typedUser = user as ExtendedAuthUser;
+  const userEmail = typedUser?.attributes?.email || 'Not logged in';
 
   return (
     <div style={{ padding: '2rem', position: 'relative' }}>
