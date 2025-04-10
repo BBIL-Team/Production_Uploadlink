@@ -3,7 +3,7 @@ import './App.css';
 import { useAuthenticator } from '@aws-amplify/ui-react';
 
 const App: React.FC = () => {
-  const { signOut } = useAuthenticator();
+  const { signOut, user } = useAuthenticator(); // Extract user from useAuthenticator
   const [responseMessage, setResponseMessage] = useState('');
   const [file, setFile] = useState<File | null>(null);
 
@@ -64,8 +64,32 @@ const App: React.FC = () => {
     }
   };
 
+  // Get the user's email from the authenticated user object
+  const userEmail = user?.attributes?.email || 'Not logged in';
+
   return (
-    <div style={{ padding: '2rem' }}>
+    <div style={{ padding: '2rem', position: 'relative' }}>
+      {/* Top-right corner email display */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '10px',
+          right: '10px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+        }}
+      >
+        <span>{userEmail}</span>
+        <button
+          style={{ padding: '5px 10px', fontSize: '14px' }}
+          onClick={signOut}
+        >
+          Sign out
+        </button>
+      </div>
+
+      {/* Main content */}
       <h1>Upload CSV to API Gateway</h1>
       <input
         type="file"
@@ -77,19 +101,14 @@ const App: React.FC = () => {
       <button onClick={sendData} disabled={!file}>
         Upload File
       </button>
-      <br /><br />
+      <br />
+      <br />
       {responseMessage && (
         <div>
           <h3>API Response:</h3>
           <p>{responseMessage}</p>
         </div>
       )}
-      <button
-        style={{ marginTop: '2rem', padding: '10px 16px', fontSize: '16px' }}
-        onClick={signOut}
-      >
-        Sign out
-      </button>
     </div>
   );
 };
