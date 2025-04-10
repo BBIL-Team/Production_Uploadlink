@@ -76,11 +76,11 @@ const App: React.FC = () => {
         Upload File
       </button>
       <br /><br />
-      {responseMessage && (
-        <div>
+      {responseMessage && (<div>
           <h3>API Response:</h3>
           <p>{responseMessage}</p>
-        </div>
+        </div>)
+        
       <button style={{ marginLeft: 'auto', marginRight: '20px', padding: '10px 16px', fontSize: '16px' }} onClick={signOut}>
           Sign out
         </button>
