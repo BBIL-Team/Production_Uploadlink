@@ -1,22 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { AuthUser } from '@aws-amplify/ui'; // Import AuthUser type
-
-// Extend AuthUser type to include attributes
-interface ExtendedAuthUser extends AuthUser {
-  attributes?: {
-    email?: string;
-    [key: string]: string | undefined;
-  };
-}
+import { Auth } from 'aws-amplify';
 
 const App: React.FC = () => {
-  const { signOut, user } = useAuthenticator();
+  const { signOut } = useAuthenticator();
   const [responseMessage, setResponseMessage] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [userEmail, setUserEmail] = useState('Not logged in');
 
   const apiUrl = "https://nkxcgcfsj6.execute-api.ap-south-1.amazonaws.com/P2/Production_Uploadlink";
+
+  // Fetch user email on mount
+  useEffect(() => {
+    const fetchUserEmail = async () => {
+      try {
+        const user = await Auth.currentAuthenticatedUser();
+        setUserEmail(user.attributes.email || 'Email not set');
+      } catch (error) {
+        console.error('Error fetching user:', error);
+        setUserEmail('Not logged in');
+      }
+    };
+    fetchUserEmail();
+  }, []);
 
   // Handle file selection
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,10 +79,6 @@ const App: React.FC = () => {
       setResponseMessage('An error occurred while contacting the API.');
     }
   };
-
-  // Safely access user's email with type assertion
-  const typedUser = user as ExtendedAuthUser;
-  const userEmail = typedUser?.attributes?.email || 'Not logged in';
 
   return (
     <div style={{ padding: '2rem', position: 'relative' }}>
