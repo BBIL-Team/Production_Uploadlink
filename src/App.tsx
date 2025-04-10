@@ -63,21 +63,6 @@ const App: React.FC = () => {
   };
 
   return (
-
-    <main style={{ width: '100vw', minHeight: '100vh', backgroundColor: '#f8f8ff', overflowX: 'auto' }}>
-      <header style={{ width: '100%', backgroundColor: '#008080', display: 'flex', alignItems: 'center', padding: '10px' }}>
-        <div style={{ width: '130px', height: '90px', overflow: 'hidden', borderRadius: '8px' }}>
-          <img
-            style={{ padding: '10px', width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 50%' }}
-            src="https://www.bharatbiotech.com/images/bharat-biotech-logo.jpg"
-            alt="Company Logo"
-            className="logo"
-          />
-        </div>
-        <button style={{ marginLeft: 'auto', marginRight: '20px', padding: '10px 16px', fontSize: '16px' }} onClick={signOut}>
-          Sign out
-        </button>
-      </header>
     <div style={{ padding: '2rem' }}>
       <h1>Upload CSV to API Gateway</h1>
       <input
@@ -96,6 +81,9 @@ const App: React.FC = () => {
           <h3>API Response:</h3>
           <p>{responseMessage}</p>
         </div>
+      <button style={{ marginLeft: 'auto', marginRight: '20px', padding: '10px 16px', fontSize: '16px' }} onClick={signOut}>
+          Sign out
+        </button>
       )}
     </div>
   );
