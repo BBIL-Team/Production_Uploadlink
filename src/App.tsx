@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { auth } from '@aws-amplify/auth'; // Correct import
+import { Auth } from '@aws-amplify/auth'; // Correct import
 
 const App: React.FC = () => {
   const { signOut } = useAuthenticator();
@@ -15,7 +15,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const fetchUserEmail = async () => {
       try {
-        const user = await auth.currentAuthenticatedUser();
+        const user = await Auth.currentAuthenticatedUser();
         setUserEmail(user.attributes.email || 'Email not set');
       } catch (error) {
         console.error('Error fetching user:', error);
