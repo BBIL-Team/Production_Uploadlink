@@ -15,7 +15,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const fetchUserEmail = async () => {
       try {
-        const user = await Authenticator.currentAuthenticatedUser();
+        const user = await Auth.currentAuthenticatedUser();
         setUserEmail(user.attributes.email || 'Email not set');
       } catch (error) {
         console.error('Error fetching user:', error);
