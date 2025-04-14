@@ -7,7 +7,7 @@ import App from './App';
 import './index.css'; // Optional, if you have global styles
 
 // Configure Amplify with your AWS settings
-Amplify.configure(awsconfig);
+//Amplify.configure(awsconfig);
 
 const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
 root.render(
