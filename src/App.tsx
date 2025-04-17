@@ -15,46 +15,63 @@ const App: React.FC = () => {
   const [displayedMonth, setDisplayedMonth] = useState<string>(""); // For calendar selection
   const [year, setYear] = useState<number>(2025); // Initial year
 
-  const validateFile = (file: File | null): boolean => {
-    if (file && file.name.endsWith(".csv")) {
-      return true;
+  const apiUrl = "https://nkxcgcfsj6.execute-api.ap-south-1.amazonaws.com/P2/Production_Uploadlink";
+
+  // Handle file selection
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+    if (selectedFile && selectedFile.type === 'text/csv') {
+      setFile(selectedFile);
+      setResponseMessage('');
+    } else {
+      setFile(null);
+      setResponseMessage('Please select a valid .csv file.');
     }
-    alert("Please upload a valid CSV file.");
-    return false;
   };
 
-  const uploadFile = async (file: File | null, apiUrl: string) => {
+  // Handle file upload
+  const sendData = async () => {
     if (!file) {
-      alert("Please select a CSV file to upload.");
+      setResponseMessage('No file selected. Please choose a .csv file first.');
       return;
     }
-    if (!selectedMonth) {
-      alert("Please select the correct month.");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('month', selectedMonth);
 
     try {
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        body: formData,
-      });
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = async () => {
+        const base64String = (reader.result as string).split(',')[1];
 
-      if (response.ok) {
-        const data = await response.json();
-        setResponseMessage(data.message || "File uploaded successfully!");
-      } else {
-        const errorText = await response.text();
-        setResponseMessage(`Failed to upload file: ${errorText}`);
-      }
+        const payload = {
+          body: base64String,
+          isBase64Encoded: true,
+        };
+
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-filename': file.name,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const responseText = await response.text();
+        let data = responseText ? JSON.parse(responseText) : {};
+        setResponseMessage(
+          data.message ||
+            (response.ok ? 'Request succeeded but no message returned' : `Request failed: ${response.statusText}`)
+        );
+      };
+      reader.onerror = () => {
+        setResponseMessage('Error reading the file.');
+      };
     } catch (error) {
-      console.error("Error:", error);
-      setResponseMessage("An error occurred while uploading the file.");
+      console.error('Fetch Error:', error);
+      setResponseMessage('An error occurred while contacting the API.');
     }
   };
+
 
   // Functions to change the year
   const handlePreviousYear = () => setYear((prevYear) => prevYear - 1);
