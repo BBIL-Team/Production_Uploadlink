@@ -77,7 +77,7 @@ const App: React.FC = () => {
           gap: '10px',
         }}
       >
-        <span>{userEmail}</span>
+    
         <button
           style={{ padding: '5px 10px', fontSize: '14px' }}
           onClick={signOut}
