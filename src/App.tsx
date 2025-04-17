@@ -1,10 +1,6 @@
-Working frontend code to send file name as header to the lambda 
-
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { Auth } from '@aws-amplify/auth'; // Correct import
-// import { Auth } from 'aws-amplify';
 
 const App: React.FC = () => {
   const { signOut } = useAuthenticator();
@@ -13,20 +9,6 @@ const App: React.FC = () => {
   const [userEmail, setUserEmail] = useState('Not logged in');
 
   const apiUrl = "https://nkxcgcfsj6.execute-api.ap-south-1.amazonaws.com/P2/Production_Uploadlink";
-
-  // Fetch user email on mount
-  useEffect(() => {
-    const fetchUserEmail = async () => {
-      try {
-        const user = await Auth.currentAuthenticatedUser();
-        setUserEmail(user.attributes.email || 'Email not set');
-      } catch (error) {
-        console.error('Error fetching user:', error);
-        setUserEmail('Not logged in');
-      }
-    };
-    fetchUserEmail();
-  }, []);
 
   // Handle file selection
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
