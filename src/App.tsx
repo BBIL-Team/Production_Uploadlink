@@ -24,37 +24,48 @@ const App: React.FC = () => {
   };
 
   const uploadFile = async (file: File | null, apiUrl: string) => {
-    if (!file) {
-      alert("Please select a CSV file to upload.");
-      return;
-    }
-    if (!selectedMonth) {
-      alert("Please select the correct month.");
-      return;
-    }
+  if (!file) {
+    alert("Please select a CSV file to upload.");
+    return;
+  }
+  if (!selectedMonth) {
+    alert("Please select the correct month.");
+    return;
+  }
 
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('month', selectedMonth);
+  try {
+    const fileData = await file.arrayBuffer(); // Get binary data
+    const base64File = btoa(
+      new Uint8Array(fileData)
+        .reduce((data, byte) => data + String.fromCharCode(byte), "")
+    );
 
-    try {
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        body: formData,
-      });
+    const payload = {
+      fileData: base64File,
+      filename: file.name,
+      month: selectedMonth
+    };
 
-      if (response.ok) {
-        const data = await response.json();
-        setResponseMessage(data.message || "File uploaded successfully!");
-      } else {
-        const errorText = await response.text();
-        setResponseMessage(`Failed to upload file: ${errorText}`);
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      setResponseMessage("An error occurred while uploading the file.");
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      setResponseMessage(data.message || "File uploaded successfully!");
+    } else {
+      const errorText = await response.text();
+      setResponseMessage(`Failed to upload file: ${errorText}`);
     }
-  };
+  } catch (error) {
+    console.error("Error:", error);
+    setResponseMessage("An error occurred while uploading the file.");
+  }
+};
 
   // Functions to change the year
   const handlePreviousYear = () => setYear((prevYear) => prevYear - 1);
@@ -131,7 +142,7 @@ const App: React.FC = () => {
               style={{ fontSize: '16px', padding: '10px' }}
               onClick={() => {
                 if (validateFile(file)) {
-                  uploadFile(file, "https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink");
+                  uploadFile(file, "https://nkxcgcfsj6.execute-api.ap-south-1.amazonaws.com/P2/Production_Uploadlink");
                 }
               }}
             >
