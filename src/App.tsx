@@ -7,7 +7,7 @@ const months = [
   "July", "August", "September", "October", "November", "December"
 ];
 
-const downloadFile = async (month) => {
+const downloadFile = async (month: string) => {
   try {
     const response = await fetch("https://e3blv3dko6.execute-api.ap-south-1.amazonaws.com/P1/presigned_urls", {
       method: "POST",
