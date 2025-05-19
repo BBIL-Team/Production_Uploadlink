@@ -60,14 +60,10 @@ const App: React.FC = () => {
   
   const downloadFile = async (month: string) => {
     try {
-      const session = await Auth.currentSession();
-      const token = session.getIdToken().getJwtToken();
-      console.log("JWT Token:", token);
       const response = await fetch("https://e3blv3dko6.execute-api.ap-south-1.amazonaws.com/P1/presigned_urls", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ file_key: `${month}_Sample_File.csv` }),
       });
