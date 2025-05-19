@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import './App.css';
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { Auth } from "aws-amplify";
 
 const months = [
   "January", "February", "March", "April", "May", "June",
