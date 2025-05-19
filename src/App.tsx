@@ -1,42 +1,13 @@
 import React, { useState } from 'react';
 import './App.css';
 import { useAuthenticator } from '@aws-amplify/ui-react';
+import { Auth } from "aws-amplify";
 
 const months = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"
 ];
 
-const downloadFile = async (month: string) => {
-  try {
-    const session = await Auth.currentSession();
-    const token = session.getIdToken().getJwtToken();
-    console.log("JWT Token:", token); // Debug
-    const response = await fetch("https://e3blv3dko6.execute-api.ap-south-1.amazonaws.com/P1/presigned_urls", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ file_key: `${month}_Sample_File.csv` }),
-    });
-    const data = await response.json();
-    if (response.ok && data.presigned_url) {
-      const link = document.createElement("a");
-      link.href = data.presigned_url;
-      link.download = `${month}_Sample_File.csv`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setResponseMessage(`Downloaded ${month}_Sample_File.csv successfully!`);
-    } else {
-      setResponseMessage(`Error: ${data.error || "Failed to fetch download link"}`);
-    }
-  } catch (error) {
-    console.error("Download error:", error);
-    setResponseMessage(`An error occurred while fetching the download link: ${error.message}`);
-  }
-};
 
 const App: React.FC = () => {
   const { signOut } = useAuthenticator();
@@ -86,7 +57,39 @@ const App: React.FC = () => {
       setResponseMessage("An error occurred while uploading the file.");
     }
   };
-
+  
+  const downloadFile = async (month: string) => {
+    try {
+      const session = await Auth.currentSession();
+      const token = session.getIdToken().getJwtToken();
+      console.log("JWT Token:", token);
+      const response = await fetch("https://e3blv3dko6.execute-api.ap-south-1.amazonaws.com/P1/presigned_urls", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ file_key: `${month}_Sample_File.csv` }),
+      });
+      console.log("Response status:", response.status, "OK:", response.ok);
+      const data = await response.json();
+      console.log("Response data:", data);
+      if (response.ok && data.presigned_url) {
+        const link = document.createElement("a");
+        link.href = data.presigned_url;
+        link.download = `${month}_Sample_File.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setResponseMessage(`Downloaded ${month}_Sample_File.csv successfully!`);
+      } else {
+        setResponseMessage(`Error: ${data.error || "Failed to fetch download link"} (Status: ${response.status})`);
+      }
+    } catch (error: any) {
+      console.error("Download error:", error);
+      setResponseMessage(`An error occurred while fetching the download link: ${error.message}`);
+    }
+  };
   // Functions to change the year
   const handlePreviousYear = () => setYear((prevYear) => prevYear - 1);
   const handleNextYear = () => setYear((prevYear) => prevYear + 1);
