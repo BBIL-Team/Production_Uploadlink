@@ -229,7 +229,7 @@ const App: React.FC = () => {
                   fontSize: "16px",
                 }}
               >
-                Download {displayedMonth} Sample Excel
+                Download {displayedMonth} Sample CSV
               </button>
             </div>
           )}
