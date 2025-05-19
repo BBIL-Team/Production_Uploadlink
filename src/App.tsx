@@ -12,13 +12,13 @@ const downloadFile = async (month: string) => {
     const response = await fetch("https://e3blv3dko6.execute-api.ap-south-1.amazonaws.com/P1/presigned_urls", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ file_key: `${month}.xlsx` }),
+      body: JSON.stringify({ file_key: `${month}_Sample_File.csv` }),
     });
     const data = await response.json();
     if (data.presigned_url) {
       const link = document.createElement("a");
       link.href = data.presigned_url;
-      link.download = `${month}.xlsx`;
+      link.download = `${month}_Sample_File.csv`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
