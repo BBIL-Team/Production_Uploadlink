@@ -7,6 +7,30 @@ const months = [
   "July", "August", "September", "October", "November", "December"
 ];
 
+const downloadFile = async (month) => {
+  try {
+    const response = await fetch("https://e3blv3dko6.execute-api.ap-south-1.amazonaws.com/P1/presigned_urls", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ file_key: `${month}.xlsx` }),
+    });
+    const data = await response.json();
+    if (data.presigned_url) {
+      const link = document.createElement("a");
+      link.href = data.presigned_url;
+      link.download = `${month}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      alert(`Error: ${data.error || "Failed to fetch download link"}`);
+    }
+  } catch (error) {
+    console.error("Download error:", error);
+    alert("An error occurred while fetching the download link.");
+  }
+};
+
 const App: React.FC = () => {
   const { signOut } = useAuthenticator();
   const [file, setFile] = useState<File | null>(null);
@@ -192,23 +216,21 @@ const App: React.FC = () => {
           {/* Display sample file link for selected month */}
           {displayedMonth && (
             <div style={{ marginTop: '20px' }}>
-              <a
-                href={`https://your-bucket-name.s3.amazonaws.com/sample-files/${displayedMonth}.xlsx`}
-                download
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={() => downloadFile(displayedMonth)}
                 style={{
-                  textDecoration: 'none',
-                  color: '#007BFF',
-                  backgroundColor: '#e6f2ff',
-                  padding: '10px 14px',
-                  borderRadius: '6px',
-                  display: 'inline-block',
-                  fontSize: '16px'
+                  textDecoration: "none",
+                  color: "#fff",
+                  backgroundColor: "#007BFF",
+                  padding: "10px 14px",
+                  borderRadius: "6px",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: "16px",
                 }}
               >
-                {displayedMonth} Sample Excel
-              </a>
+                Download {displayedMonth} Sample Excel
+              </button>
             </div>
           )}
         </div>
