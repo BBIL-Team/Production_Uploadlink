@@ -259,7 +259,7 @@ const App: React.FC = () => {
           borderRadius: '12px',
           fontSize: '16px'
         }}>
-          <h2 style={{ fontSize: '22px' }}>📋 Uploaded Files</h2>
+          <h2 style={{ fontSize: '22px' }}>📋 List of files Uploaded</h2>
           <div style={{ overflowX: 'auto' }}>
             <table style={{
               width: '100%',
