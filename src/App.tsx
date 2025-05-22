@@ -7,6 +7,12 @@ const months = [
   "July", "August", "September", "October", "November", "December"
 ];
 
+// Sample data for the table
+const sampleFiles = [
+  { id: 1, fileName: "January_Sample_File.csv", dateUploaded: "2025-01-15", uploadedBy: "John Doe", downloadLink: "#" },
+  { id: 2, fileName: "February_Sample_File.csv", dateUploaded: "2025-02-10", uploadedBy: "Jane Smith", downloadLink: "#" },
+  { id: 3, fileName: "March_Sample_File.csv", dateUploaded: "2025-03-20", uploadedBy: "Alice Johnson", downloadLink: "#" },
+];
 
 const App: React.FC = () => {
   const { signOut } = useAuthenticator();
@@ -240,6 +246,94 @@ const App: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* File List Table Section */}
+      <div style={{
+        width: '100%',
+        padding: '20px',
+        boxSizing: 'border-box'
+      }}>
+        <div style={{
+          backgroundColor: '#f0f0f0',
+          padding: '24px',
+          borderRadius: '12px',
+          fontSize: '16px'
+        }}>
+          <h2 style={{ fontSize: '22px' }}>📋 Uploaded Files</h2>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              backgroundColor: '#e6e6e6',
+              borderRadius: '8px',
+              fontSize: '16px'
+            }}>
+              <thead>
+                <tr>
+                  <th style={{
+                    padding: '12px',
+                    borderBottom: '2px solid #ccc',
+                    textAlign: 'left',
+                    backgroundColor: '#d9d9d9'
+                  }}>S.No.</th>
+                  <th style={{
+                    padding: '12px',
+                    borderBottom: '2px solid #ccc',
+                    textAlign: 'left',
+                    backgroundColor: '#d9d9d9'
+                  }}>File Name</th>
+                  <th style={{
+                    padding: '12px',
+                    borderBottom: '2px solid #ccc',
+                    textAlign: 'left',
+                    backgroundColor: '#d9d9d9'
+                  }}>Date Uploaded</th>
+                  <th style={{
+                    padding: '12px',
+                    borderBottom: '2px solid #ccc',
+                    textAlign: 'left',
+                    backgroundColor: '#d9d9d9'
+                  }}>Uploaded By</th>
+                  <th style={{
+                    padding: '12px',
+                    borderBottom: '2px solid #ccc',
+                    textAlign: 'left',
+                    backgroundColor: '#d9d9d9'
+                  }}>Download Link</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sampleFiles.map((file) => (
+                  <tr key={file.id}>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc' }}>{file.id}</td>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc' }}>{file.fileName}</td>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc' }}>{file.dateUploaded}</td>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc' }}>{file.uploadedBy}</td>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc' }}>
+                      <a
+                        href={file.downloadLink}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          downloadFile(file.fileName.split('_')[0]);
+                        }}
+                        style={{
+                          textDecoration: 'none',
+                          color: '#007BFF',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Download
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      
+      
     </main>
   );
 };
