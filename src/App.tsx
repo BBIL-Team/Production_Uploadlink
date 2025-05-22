@@ -96,8 +96,8 @@ const App: React.FC = () => {
   const handleNextYear = () => setYear((prevYear) => prevYear + 1);
 
   return (
-    <main style={{ width: '100vw', minHeight: '100vh', backgroundColor: '#f8f8ff', overflowX: 'auto' }}>
-      <header style={{ width: '100%', backgroundColor: '#008080', display: 'flex', alignItems: 'center', padding: '10px' }}>
+    <main style={{ width: '100vw', height: 'auto', backgroundColor: '#f8f8ff' }}>
+      <header style={{ width: '100%', backgroundColor: '#008080', display: 'flex', alignItems: 'center', padding: '10px', position: 'sticky', top: 0, zIndex: 1000 }}>
         <div style={{ width: '130px', height: '90px', overflow: 'hidden', borderRadius: '8px' }}>
           <img
             style={{ padding: '10px', width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 50%' }}
