@@ -250,7 +250,7 @@ const App: React.FC = () => {
       {/* File List Table Section */}
       <div style={{
         width: '100%',
-        padding: '20px',
+        padding: '0px',
         boxSizing: 'border-box'
       }}>
         <div style={{
