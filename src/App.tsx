@@ -273,7 +273,7 @@ const App: React.FC = () => {
                   <th style={{
                     padding: '12px',
                     borderBottom: '2px solid #ccc',
-                    textAlign: 'center',
+                    textAlign: 'left',
                     backgroundColor: '#d9d9d9'
                   }}>S.No.</th>
                   <th style={{
