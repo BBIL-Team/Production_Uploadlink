@@ -273,7 +273,7 @@ const App: React.FC = () => {
                   <th style={{
                     padding: '12px',
                     borderBottom: '2px solid #ccc',
-                    textAlign: 'left',
+                    textAlign: 'center',
                     backgroundColor: '#d9d9d9'
                   }}>S.No.</th>
                   <th style={{
@@ -312,12 +312,12 @@ const App: React.FC = () => {
               <tbody>
                 {sampleFiles.map((file) => (
                   <tr key={file.id}>
-                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc' }}>{file.id}</td>
-                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc' }}>{file.fileName}</td>
-                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc' }}>{file.filesize}</td>
-                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc' }}>{file.dateUploaded}</td>
-                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc' }}>{file.uploadedBy}</td>
-                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc' }}>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', textAlign: 'center' }}>{file.id}</td>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', textAlign: 'center' }}>{file.fileName}</td>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', textAlign: 'center' }}>{file.filesize}</td>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', textAlign: 'center' }}>{file.dateUploaded}</td>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', textAlign: 'center' }}>{file.uploadedBy}</td>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', textAlign: 'center' }}>
                       <a
                         href={file.downloadLink}
                         onClick={(e) => {
