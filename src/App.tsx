@@ -273,38 +273,38 @@ const App: React.FC = () => {
                   <th style={{
                     padding: '12px',
                     borderBottom: '2px solid #ccc',
-                    textAlign: 'left',
+                    textAlign: 'center',
                     backgroundColor: '#d9d9d9'
                   }}>S.No.</th>
                   <th style={{
                     padding: '12px',
                     borderBottom: '2px solid #ccc',
-                    textAlign: 'left',
+                    textAlign: 'center',
                     backgroundColor: '#d9d9d9'
                   }}>File Name</th>
                   
                   <th style={{
                     padding: '12px',
                     borderBottom: '2px solid #ccc',
-                    textAlign: 'left',
+                    textAlign: 'center',
                     backgroundColor: '#d9d9d9'
                   }}>filesize</th>
                   <th style={{
                     padding: '12px',
                     borderBottom: '2px solid #ccc',
-                    textAlign: 'left',
+                    textAlign: 'center',
                     backgroundColor: '#d9d9d9'
                   }}>Date Uploaded</th>
                   <th style={{
                     padding: '12px',
                     borderBottom: '2px solid #ccc',
-                    textAlign: 'left',
+                    textAlign: 'center',
                     backgroundColor: '#d9d9d9'
                   }}>Uploaded By</th>
                   <th style={{
                     padding: '12px',
                     borderBottom: '2px solid #ccc',
-                    textAlign: 'left',
+                    textAlign: 'center',
                     backgroundColor: '#d9d9d9'
                   }}>Download Link</th>
                 </tr>
