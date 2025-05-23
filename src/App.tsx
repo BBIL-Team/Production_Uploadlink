@@ -9,9 +9,9 @@ const months = [
 
 // Sample data for the table
 const sampleFiles = [
-  { id: 1, fileName: "January_Sample_File.csv", dateUploaded: "2025-01-15", uploadedBy: "John Doe", downloadLink: "#" },
-  { id: 2, fileName: "February_Sample_File.csv", dateUploaded: "2025-02-10", uploadedBy: "Jane Smith", downloadLink: "#" },
-  { id: 3, fileName: "March_Sample_File.csv", dateUploaded: "2025-03-20", uploadedBy: "Alice Johnson", downloadLink: "#" },
+  { id: 1, fileName: "January_Sample_File.csv", dateUploaded: "2025-01-15", uploadedBy: "John Doe", downloadLink: "#", filesize : "12.5 kb" },
+  { id: 2, fileName: "February_Sample_File.csv", dateUploaded: "2025-02-10", uploadedBy: "Jane Smith", downloadLink: "#", filesize : "57.5 kb" },
+  { id: 3, fileName: "March_Sample_File.csv", dateUploaded: "2025-03-20", uploadedBy: "Alice Johnson", downloadLink: "#", filesize : "62.8 kb" },
 ];
 
 const App: React.FC = () => {
@@ -282,6 +282,13 @@ const App: React.FC = () => {
                     textAlign: 'left',
                     backgroundColor: '#d9d9d9'
                   }}>File Name</th>
+                  
+                  <th style={{
+                    padding: '12px',
+                    borderBottom: '2px solid #ccc',
+                    textAlign: 'left',
+                    backgroundColor: '#d9d9d9'
+                  }}>filesize</th>
                   <th style={{
                     padding: '12px',
                     borderBottom: '2px solid #ccc',
@@ -307,6 +314,7 @@ const App: React.FC = () => {
                   <tr key={file.id}>
                     <td style={{ padding: '12px', borderBottom: '1px solid #ccc' }}>{file.id}</td>
                     <td style={{ padding: '12px', borderBottom: '1px solid #ccc' }}>{file.fileName}</td>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc' }}>{file.filesize}</td>
                     <td style={{ padding: '12px', borderBottom: '1px solid #ccc' }}>{file.dateUploaded}</td>
                     <td style={{ padding: '12px', borderBottom: '1px solid #ccc' }}>{file.uploadedBy}</td>
                     <td style={{ padding: '12px', borderBottom: '1px solid #ccc' }}>
