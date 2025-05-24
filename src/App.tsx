@@ -145,7 +145,7 @@ const App: React.FC = () => {
             fontSize: '16px',
             boxSizing: 'border-box',
           }}>
-            <h2 style={{ fontSize: '22px', margin: '0 0 16px 0', alignItems: 'center' }}>Sample File Download Segment</h2>
+            <h2 style={{ fontSize: '22px', margin: '0 0 16px 0', textAlign: 'center' }}>Sample File Download Segment</h2>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <button onClick={handlePreviousYear}>{'\u003C'}</button>
               <h2 style={{ fontSize: '22px', margin: '0', textAlign: 'center' }}>{year}</h2>
