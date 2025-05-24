@@ -9,18 +9,18 @@ const months = [
 
 // Sample data for the table
 const sampleFiles = [
-  { id: 1, fileName: "January_Sample_File.csv", dateUploaded: "2025-01-15", uploadedBy: "John Doe", downloadLink: "#", filesize : "12.5 kb" },
-  { id: 2, fileName: "February_Sample_File.csv", dateUploaded: "2025-02-10", uploadedBy: "Jane Smith", downloadLink: "#", filesize : "57.5 kb" },
-  { id: 3, fileName: "March_Sample_File.csv", dateUploaded: "2025-03-20", uploadedBy: "Alice Johnson", downloadLink: "#", filesize : "62.8 kb" },
+  { id: 1, fileName: "January_Sample_File.csv", dateUploaded: "2025-01-15", uploadedBy: "John Doe", downloadLink: "#", filesize: "12.5 kb" },
+  { id: 2, fileName: "February_Sample_File.csv", dateUploaded: "2025-02-10", uploadedBy: "Jane Smith", downloadLink: "#", filesize: "57.5 kb" },
+  { id: 3, fileName: "March_Sample_File.csv", dateUploaded: "2025-03-20", uploadedBy: "Alice Johnson", downloadLink: "#", filesize: "62.8 kb" },
 ];
 
 const App: React.FC = () => {
   const { signOut } = useAuthenticator();
   const [file, setFile] = useState<File | null>(null);
   const [responseMessage, setResponseMessage] = useState<string>("");
-  const [selectedMonth, setSelectedMonth] = useState<string>(""); // For upload selection
-  const [displayedMonth, setDisplayedMonth] = useState<string>(""); // For calendar selection
-  const [year, setYear] = useState<number>(2025); // Initial year
+  const [selectedMonth, setSelectedMonth] = useState<string>("");
+  const [displayedMonth, setDisplayedMonth] = useState<string>("");
+  const [year, setYear] = useState<number>(2025);
 
   const validateFile = (file: File | null): boolean => {
     if (file && file.name.endsWith(".csv")) {
@@ -62,7 +62,7 @@ const App: React.FC = () => {
       setResponseMessage("An error occurred while uploading the file.");
     }
   };
-  
+
   const downloadFile = async (month: string) => {
     try {
       const response = await fetch("https://e3blv3dko6.execute-api.ap-south-1.amazonaws.com/P1/presigned_urls", {
@@ -91,7 +91,7 @@ const App: React.FC = () => {
       setResponseMessage(`An error occurred while fetching the download link: ${error.message}`);
     }
   };
-  // Functions to change the year
+
   const handlePreviousYear = () => setYear((prevYear) => prevYear - 1);
   const handleNextYear = () => setYear((prevYear) => prevYear + 1);
 
@@ -118,155 +118,154 @@ const App: React.FC = () => {
       <div
         style={{
           display: 'flex',
-          flexWrap: 'wrap',
-          justifyContent: 'space-between',
+          flexDirection: 'row',
           gap: '20px',
           width: '100%',
           padding: '20px',
-          boxSizing: 'border-box'
+          boxSizing: 'border-box',
         }}
       >
-        {/* Upload Section */}
+        {/* Left Column: Calendar and Upload File */}
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '20px',
+            minWidth: '400px',
+          }}
+        >
+          {/* Calendar Section */}
+          <div style={{
+            backgroundColor: '#f0f0f0',
+            padding: '24px',
+            borderRadius: '12px',
+            fontSize: '16px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <button onClick={handlePreviousYear}>&lt;</button>
+              <h2 style={{ fontSize: '22px', margin: '0', textAlign: 'center' }}>{year}</h2>
+              <button onClick={handleNextYear}>&gt;</button>
+            </div>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: '10px',
+                padding: '10px',
+                backgroundColor: '#e6e6e6',
+                borderRadius: '8px',
+              }}
+            >
+              {months.map((month) => (
+                <button
+                  key={month}
+                  onClick={() => setDisplayedMonth(month === displayedMonth ? "" : month)}
+                  style={{
+                    padding: '10px',
+                    fontSize: '16px',
+                    backgroundColor: displayedMonth === month ? '#007BFF' : '#fff',
+                    color: displayedMonth === month ? '#fff' : '#000',
+                    border: '1px solid #ccc',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                  }}
+                >
+                  {month}
+                </button>
+              ))}
+            </div>
+            {displayedMonth && (
+              <div style={{ marginTop: '20px' }}>
+                <button
+                  onClick={() => downloadFile(displayedMonth)}
+                  style={{
+                    textDecoration: 'none',
+                    color: '#fff',
+                    backgroundColor: '#007BFF',
+                    padding: '10px 14px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                  }}
+                >
+                  Download {displayedMonth} Sample CSV
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Upload Section */}
+          <div style={{
+            backgroundColor: '#f0f0f0',
+            padding: '24px',
+            borderRadius: '12px',
+            fontSize: '16px',
+          }}>
+            <h2 style={{ fontSize: '22px' }}>📤 Upload File</h2>
+            <div
+              style={{
+                backgroundColor: '#e6e6e6',
+                borderRadius: '8px',
+                padding: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+              }}
+            >
+              <input
+                type="file"
+                accept=".csv"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                style={{ fontSize: '16px' }}
+              />
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                style={{ fontSize: '16px', padding: '8px', borderRadius: '6px' }}
+              >
+                <option value="">Select Month</option>
+                {months.map((month) => (
+                  <option key={month} value={month}>{month}</option>
+                ))}
+              </select>
+              <button
+                style={{ fontSize: '16px', padding: '10px' }}
+                onClick={() => {
+                  if (validateFile(file)) {
+                    uploadFile(file, "https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink");
+                  }
+                }}
+              >
+                Submit File
+              </button>
+            </div>
+            {responseMessage && (
+              <p style={{ marginTop: '12px', color: 'green', fontSize: '16px' }}>{responseMessage}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Right Column: File List Table */}
         <div style={{
           flex: 2,
           minWidth: '400px',
           backgroundColor: '#f0f0f0',
           padding: '24px',
           borderRadius: '12px',
-          fontSize: '16px'
+          fontSize: '16px',
+          alignSelf: 'stretch', // Ensures it stretches to match the left column height
         }}>
-          <h2 style={{ fontSize: '22px' }}>📤 Upload File</h2>
-          <div
-            style={{
-              backgroundColor: '#e6e6e6',
-              borderRadius: '8px',
-              padding: '16px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px'
-            }}
-          >
-            <input
-              type="file"
-              accept=".csv"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
-              style={{ fontSize: '16px' }}
-            />
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              style={{ fontSize: '16px', padding: '8px', borderRadius: '6px' }}
-            >
-              <option value="">Select Month</option>
-              {months.map((month) => (
-                <option key={month} value={month}>{month}</option>
-              ))}
-            </select>
-            <button
-              style={{ fontSize: '16px', padding: '10px' }}
-              onClick={() => {
-                if (validateFile(file)) {
-                  uploadFile(file, "https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink");
-                }
-              }}
-            >
-              Submit File
-            </button>
-          </div>
-          {responseMessage && (
-            <p style={{ marginTop: '12px', color: 'green', fontSize: '16px' }}>{responseMessage}</p>
-          )}
-        </div>
-
-        {/* Calendar Section */}
-        <div style={{
-          flex: 1,
-          minWidth: '400px',
-          backgroundColor: '#f0f0f0',
-          padding: '24px',
-          borderRadius: '12px',
-          fontSize: '16px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <button
-              onClick={handlePreviousYear}>&lt;</button>
-            <h2 style={{ fontSize: '22px', margin: '0',textAlign: 'center' }}> {year}</h2>
-            <button
-              onClick={handleNextYear}>&gt;
-            </button>
-          </div>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)', // 4 columns for 12 months
-              gap: '10px',
-              padding: '10px',
-              backgroundColor: '#e6e6e6',
-              borderRadius: '8px'
-            }}
-          >
-            {months.map((month) => (
-              <button
-                key={month}
-                onClick={() => setDisplayedMonth(month === displayedMonth ? "" : month)} // Toggle selection
-                style={{
-                  padding: '10px',
-                  fontSize: '16px',
-                  backgroundColor: displayedMonth === month ? '#007BFF' : '#fff',
-                  color: displayedMonth === month ? '#fff' : '#000',
-                  border: '1px solid #ccc',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  textAlign: 'center'
-                }}
-              >
-                {month}
-              </button>
-            ))}
-          </div>
-          {/* Display sample file link for selected month */}
-          {displayedMonth && (
-            <div style={{ marginTop: '20px' }}>
-              <button
-                onClick={() => downloadFile(displayedMonth)}
-                style={{
-                  textDecoration: "none",
-                  color: "#fff",
-                  backgroundColor: "#007BFF",
-                  padding: "10px 14px",
-                  borderRadius: "6px",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: "16px",
-                }}
-              >
-                Download {displayedMonth} Sample CSV
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* File List Table Section */}
-      <div style={{
-        width: '100%',
-        padding: '0px',
-        boxSizing: 'border-box'
-      }}>
-        <div style={{
-          backgroundColor: '#f0f0f0',
-          padding: '24px',
-          borderRadius: '12px',
-          fontSize: '16px'
-        }}>
-          <h2 style={{ fontSize: '22px' }}>📋 List of files Uploaded</h2>
+          <h2 style={{ fontSize: '22px' }}>📋 List of Files Uploaded</h2>
           <div style={{ overflowX: 'auto' }}>
             <table style={{
               width: '100%',
               borderCollapse: 'collapse',
               backgroundColor: '#e6e6e6',
               borderRadius: '8px',
-              fontSize: '16px'
+              fontSize: '16px',
             }}>
               <thead>
                 <tr>
@@ -274,38 +273,37 @@ const App: React.FC = () => {
                     padding: '12px',
                     borderBottom: '2px solid #ccc',
                     textAlign: 'center',
-                    backgroundColor: '#d9d9d9'
+                    backgroundColor: '#d9d9d9',
                   }}>S.No.</th>
                   <th style={{
                     padding: '12px',
                     borderBottom: '2px solid #ccc',
                     textAlign: 'center',
-                    backgroundColor: '#d9d9d9'
+                    backgroundColor: '#d9d9d9',
                   }}>File Name</th>
-                  
                   <th style={{
                     padding: '12px',
                     borderBottom: '2px solid #ccc',
                     textAlign: 'center',
-                    backgroundColor: '#d9d9d9'
-                  }}>filesize</th>
+                    backgroundColor: '#d9d9d9',
+                  }}>Filesize</th>
                   <th style={{
                     padding: '12px',
                     borderBottom: '2px solid #ccc',
                     textAlign: 'center',
-                    backgroundColor: '#d9d9d9'
+                    backgroundColor: '#d9d9d9',
                   }}>Date Uploaded</th>
                   <th style={{
                     padding: '12px',
                     borderBottom: '2px solid #ccc',
                     textAlign: 'center',
-                    backgroundColor: '#d9d9d9'
+                    backgroundColor: '#d9d9d9',
                   }}>Uploaded By</th>
                   <th style={{
                     padding: '12px',
                     borderBottom: '2px solid #ccc',
                     textAlign: 'center',
-                    backgroundColor: '#d9d9d9'
+                    backgroundColor: '#d9d9d9',
                   }}>Download Link</th>
                 </tr>
               </thead>
@@ -327,7 +325,7 @@ const App: React.FC = () => {
                         style={{
                           textDecoration: 'none',
                           color: '#007BFF',
-                          cursor: 'pointer'
+                          cursor: 'pointer',
                         }}
                       >
                         Download
@@ -340,8 +338,6 @@ const App: React.FC = () => {
           </div>
         </div>
       </div>
-      
-      
     </main>
   );
 };
