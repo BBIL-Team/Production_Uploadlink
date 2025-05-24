@@ -317,7 +317,7 @@ const App: React.FC = () => {
                 {sampleFiles.map((file) => (
                   <tr key={file.id}>
                     <td style={{ padding: '12px', borderBottom: '1px solid #ccc', textAlign: 'center' }}>{file.id}</td>
-                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', textAlign: 'center' }}>{file.fileName}</td>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', textAlign: 'left' }}>{file.fileName}</td>
                     <td style={{ padding: '12px', borderBottom: '1px solid #ccc', textAlign: 'center' }}>{file.filesize}</td>
                     <td style={{ padding: '12px', borderBottom: '1px solid #ccc', textAlign: 'center' }}>{file.dateUploaded}</td>
                     <td style={{ padding: '12px', borderBottom: '1px solid #ccc', textAlign: 'center' }}>{file.uploadedBy}</td>
