@@ -96,9 +96,9 @@ const App: React.FC = () => {
   const handleNextYear = () => setYear((prevYear) => prevYear + 1);
 
   return (
-    <main style={{ maxWidth: '100%', height: 'auto', backgroundColor: '#f8f8ff', paddingTop: '211px', boxSizing: 'border-box' }}>
-      <header style={{ width: '100%', backgroundColor: '#008080', display: 'flex', alignItems: 'center', padding: '10px', position: 'sticky', top: 0, zIndex: 1000 }}>
-        <div style={{ width: '130px', height: '90px', overflow: 'hidden', borderRadius: '8px' }}>
+    <main style={{ maxWidth: '100%', height: 'auto', backgroundColor: '#f8f8ff', paddingTop: '140px', boxSizing: 'border-box', overflowX: 'hidden' }}>
+      <header style={{ maxWidth: '100%', backgroundColor: '#483d8b', display: 'flex', alignItems: 'center', padding: '10px', position: 'sticky', top: 0, zIndex: 1000, boxSizing: 'border-box' }}>
+        <div style={{ width: '130px', height: '120px', overflow: 'hidden', borderRadius: '8px' }}>
           <img
             style={{ padding: '10px', width: '100%', height: '100%', objectFit: 'cover', objectPosition: '50% 50%' }}
             src="https://www.bharatbiotech.com/images/bharat-biotech-logo.jpg"
@@ -106,16 +106,17 @@ const App: React.FC = () => {
             className="logo"
           />
         </div>
-        <button style={{ marginLeft: 'auto', marginRight: '20px', padding: '10px 16px', fontSize: '16px' }} onClick={signOut}>
+        <button style={{ marginLeft: 'auto', marginRight: '20px', padding: '10px 16px', fontSize: '16px', color: 'white' }} onClick={signOut}>
           Sign out
         </button>
       </header>
 
-      <h1 style={{ padding: '10px', textAlign: 'center', width: '100%', fontSize: '28px' }}>
+      <h1 style={{ padding: '10px', textAlign: 'center', width: '100%', fontSize: '28px', margin: '0', boxSizing: 'border-box' }}>
         <u>BBIL Production-Upload Interface</u>
       </h1>
 
       <div
+        className="container"
         style={{
           display: 'flex',
           flexDirection: 'row',
@@ -123,6 +124,7 @@ const App: React.FC = () => {
           maxWidth: '100%',
           padding: '20px',
           boxSizing: 'border-box',
+          overflowX: 'hidden',
         }}
       >
         {/* Left Column: Calendar and Upload File */}
@@ -132,7 +134,7 @@ const App: React.FC = () => {
             display: 'flex',
             flexDirection: 'column',
             gap: '20px',
-            minWidth: '400px',
+            minWidth: '250px',
           }}
         >
           {/* Calendar Section */}
@@ -141,6 +143,7 @@ const App: React.FC = () => {
             padding: '24px',
             borderRadius: '12px',
             fontSize: '16px',
+            boxSizing: 'border-box',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <button onClick={handlePreviousYear}>&lt;</button>
@@ -203,8 +206,9 @@ const App: React.FC = () => {
             padding: '24px',
             borderRadius: '12px',
             fontSize: '16px',
+            boxSizing: 'border-box',
           }}>
-            <h2 style={{ fontSize: '22px' }}>📤 Upload File</h2>
+            <h2 style={{ fontSize: '22px', margin: '0' }}>📤 Upload File</h2>
             <div
               style={{
                 backgroundColor: '#e6e6e6',
@@ -251,14 +255,15 @@ const App: React.FC = () => {
         {/* Right Column: File List Table */}
         <div style={{
           flex: 1.6,
-          minWidth: '320px',
+          minWidth: '200px',
           backgroundColor: '#f0f0f0',
           padding: '24px',
           borderRadius: '12px',
           fontSize: '16px',
           alignSelf: 'stretch',
+          boxSizing: 'border-box',
         }}>
-          <h2 style={{ fontSize: '22px' }}>📋 List of Files Uploaded</h2>
+          <h2 style={{ fontSize: '22px', margin: '0' }}>📋 List of Files Uploaded</h2>
           <div style={{ overflowX: 'auto' }}>
             <table style={{
               width: '100%',
