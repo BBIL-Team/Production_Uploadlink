@@ -24,4 +24,7 @@ header {
   .container {
     flex-direction: column;
   }
+  main {
+    padding-top: 140px; /* Reduced padding for smaller screens */
+  }
 }
