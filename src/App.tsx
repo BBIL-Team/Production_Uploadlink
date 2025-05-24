@@ -96,7 +96,7 @@ const App: React.FC = () => {
   const handleNextYear = () => setYear((prevYear) => prevYear + 1);
 
   return (
-    <main style={{ width: '100vw', height: 'auto', backgroundColor: '#f8f8ff', paddingTop: '211px' }}>
+    <main style={{ maxWidth: '100%', height: 'auto', backgroundColor: '#f8f8ff', paddingTop: '211px', boxSizing: 'border-box' }}>
       <header style={{ width: '100%', backgroundColor: '#008080', display: 'flex', alignItems: 'center', padding: '10px', position: 'sticky', top: 0, zIndex: 1000 }}>
         <div style={{ width: '130px', height: '90px', overflow: 'hidden', borderRadius: '8px' }}>
           <img
@@ -120,7 +120,7 @@ const App: React.FC = () => {
           display: 'flex',
           flexDirection: 'row',
           gap: '20px',
-          width: '100%',
+          maxWidth: '100%',
           padding: '20px',
           boxSizing: 'border-box',
         }}
@@ -128,7 +128,7 @@ const App: React.FC = () => {
         {/* Left Column: Calendar and Upload File */}
         <div
           style={{
-            flex: 1,
+            flex: 1.25, // Increased from 1 to fill space (proportional to right column's reduction)
             display: 'flex',
             flexDirection: 'column',
             gap: '20px',
@@ -143,9 +143,9 @@ const App: React.FC = () => {
             fontSize: '16px',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <button onClick={handlePreviousYear}>&lt;</button>
+              <button onClick={handle previousYear}><</button>
               <h2 style={{ fontSize: '22px', margin: '0', textAlign: 'center' }}>{year}</h2>
-              <button onClick={handleNextYear}>&gt;</button>
+              <button onClick={handleNextYear}>></button>
             </div>
             <div
               style={{
@@ -250,13 +250,13 @@ const App: React.FC = () => {
 
         {/* Right Column: File List Table */}
         <div style={{
-          flex: 2,
-          minWidth: '400px',
+          flex: 1.6, // Reduced from 2 to 1.6 (80% of original width)
+          minWidth: '320px', // Reduced from 400px to maintain proportionality
           backgroundColor: '#f0f0f0',
           padding: '24px',
           borderRadius: '12px',
           fontSize: '16px',
-          alignSelf: 'stretch', // Ensures it stretches to match the left column height
+          alignSelf: 'stretch',
         }}>
           <h2 style={{ fontSize: '22px' }}>📋 List of Files Uploaded</h2>
           <div style={{ overflowX: 'auto' }}>
