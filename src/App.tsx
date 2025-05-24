@@ -96,17 +96,17 @@ const App: React.FC = () => {
   const handleNextYear = () => setYear((prevYear) => prevYear + 1);
 
   return (
-    <main style={{ maxWidth: '100%', minHeight: '100vh', backgroundColor: '#f8f8ff', paddingTop: '140px', boxSizing: 'border-box', overflowX: 'hidden' }}>
-      <header style={{ maxWidth: '100%', backgroundColor: '#008080', display: 'flex', alignItems: 'center', padding: '10px', position: 'fixed', top: 0, left: 0, width: '100%', zIndex: 1000, boxSizing: 'border-box' }}>
+    <main style={{ maxWidth: '100%', minHeight: '100vh', backgroundColor: '#f8f8ff', paddingTop: '128px', boxSizing: 'border-box', overflowX: 'hidden' }}>
+      <header style={{ maxWidth: '100%', backgroundColor: '#008080', display: 'flex', alignItems: 'center', padding: '4px', position: 'fixed', top: 0, left: 0, width: '100%', zIndex: 1000, boxSizing: 'border-box' }}>
         <div style={{ width: '130px', height: '120px', overflow: 'hidden', borderRadius: '8px' }}>
           <img
-            style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '10px', boxSizing: 'border-box' }}
+            style={{ width: '100%', height: '100%', objectFit: 'contain', boxSizing: 'border-box' }}
             src="https://www.bharatbiotech.com/images/bharat-biotech-logo.jpg"
             alt="Company Logo"
             className="logo"
           />
         </div>
-        <button style={{ marginLeft: 'auto', marginRight: '20px', padding: '10px 16px', fontSize: '16px', color: 'white' }} onClick={signOut}>
+        <button style={{ marginLeft: 'auto', marginRight: '16px', padding: '8px 12px', fontSize: '14px', color: 'white' }} onClick={signOut}>
           Sign out
         </button>
       </header>
@@ -145,10 +145,11 @@ const App: React.FC = () => {
             fontSize: '16px',
             boxSizing: 'border-box',
           }}>
+            <h2 style={{ fontSize: '22px', margin: '0 0 16px 0' }}>Sample File Download Segment</h2>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <button onClick={handlePreviousYear}>&lt;</button>
+              <button onClick={handlePreviousYear}><</button>
               <h2 style={{ fontSize: '22px', margin: '0', textAlign: 'center' }}>{year}</h2>
-              <button onClick={handleNextYear}>&gt;</button>
+              <button onClick={handleNextYear}>></button>
             </div>
             <div
               style={{
