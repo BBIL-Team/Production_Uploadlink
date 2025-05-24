@@ -229,8 +229,7 @@ const App: React.FC = () => {
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
-                style={{ fontSize: '16px', padding: '8px', borderRadius: '6px' }}
-              >
+                style={{ fontSize: '16px', padding: '8px', borderRadius: '6px' }}>
                 <option value="">Select Month</option>
                 {months.map((month) => (
                   <option key={month) value={month}>{month}</option>
