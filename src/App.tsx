@@ -128,7 +128,7 @@ const App: React.FC = () => {
         {/* Left Column: Calendar and Upload File */}
         <div
           style={{
-            flex: 1.25, // Increased from 1 to fill space (proportional to right column's reduction)
+            flex: 1.25,
             display: 'flex',
             flexDirection: 'column',
             gap: '20px',
@@ -143,9 +143,9 @@ const App: React.FC = () => {
             fontSize: '16px',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <button onClick={handlePreviousYear}><</button>
+              <button onClick={handlePreviousYear}>&lt;</button>
               <h2 style={{ fontSize: '22px', margin: '0', textAlign: 'center' }}>{year}</h2>
-              <button onClick={handleNextYear}>></button>
+              <button onClick={handleNextYear}>&gt;</button>
             </div>
             <div
               style={{
@@ -250,8 +250,8 @@ const App: React.FC = () => {
 
         {/* Right Column: File List Table */}
         <div style={{
-          flex: 1.6, // Reduced from 2 to 1.6 (80% of original width)
-          minWidth: '320px', // Reduced from 400px to maintain proportionality
+          flex: 1.6,
+          minWidth: '320px',
           backgroundColor: '#f0f0f0',
           padding: '24px',
           borderRadius: '12px',
