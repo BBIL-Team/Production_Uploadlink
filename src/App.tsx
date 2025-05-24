@@ -232,8 +232,7 @@ const App: React.FC = () => {
                 style={{ fontSize: '16px', padding: '8px', borderRadius: '6px' }}>
                 <option value="">Select Month</option>
                 {months.map((month) => (
-                  <option key={month) value={month}>{month}</option>
-                ))}
+                  <option key={month) value={month}>{month}</option>))}
               </select>
               <button
                 style={{ fontSize: '16px', padding: '10px' }}
