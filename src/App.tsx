@@ -143,7 +143,7 @@ const App: React.FC = () => {
             fontSize: '16px',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <button onClick={handle previousYear}><</button>
+              <button onClick={handlePreviousYear}><</button>
               <h2 style={{ fontSize: '22px', margin: '0', textAlign: 'center' }}>{year}</h2>
               <button onClick={handleNextYear}>></button>
             </div>
