@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 import { useAuthenticator } from '@aws-amplify/ui-react';
+import { Auth } from 'aws-amplify';
+import { Link } from 'react-router-dom'; // If using React Router for the update link
 
 const months = [
   "January", "February", "March", "April", "May", "June",
@@ -15,12 +17,38 @@ const sampleFiles = [
 ];
 
 const App: React.FC = () => {
-  const { signOut } = useAuthenticator();
+  const { signOut, user } = useAuthenticator();
   const [file, setFile] = useState<File | null>(null);
   const [responseMessage, setResponseMessage] = useState<string>("");
   const [selectedMonth, setSelectedMonth] = useState<string>("");
   const [displayedMonth, setDisplayedMonth] = useState<string>("");
   const [year, setYear] = useState<number>(2025);
+  const [userAttributes, setUserAttributes] = useState<{ username: string; phoneNumber: string }>({
+    username: '',
+    phoneNumber: '',
+  });
+
+  // Fetch user attributes on mount
+  useEffect(() => {
+    const fetchUserAttributes = async () => {
+      try {
+        const currentUser = await Auth.currentAuthenticatedUser();
+        const attributes = currentUser.attributes || {};
+        const username = attributes.preferred_username || attributes.email || currentUser.username || '';
+        const phoneNumber = attributes.phone_number || '';
+        // Mask phone number to show only last two digits
+        const maskedPhoneNumber =
+          phoneNumber && phoneNumber.length >= 2
+            ? `91${'x'.repeat(phoneNumber.length - 4)}${phoneNumber.slice(-2)}`
+            : '';
+        setUserAttributes({ username, phoneNumber: maskedPhoneNumber });
+      } catch (error) {
+        console.error('Error fetching user attributes:', error);
+        setUserAttributes({ username: '', phoneNumber: '' });
+      }
+    };
+    fetchUserAttributes();
+  }, []);
 
   const validateFile = (file: File | null): boolean => {
     if (file && file.name.endsWith(".csv")) {
@@ -106,9 +134,21 @@ const App: React.FC = () => {
             className="logo"
           />
         </div>
-        <button style={{ marginLeft: 'auto', marginRight: '16px', padding: '8px 12px', fontSize: '14px', color: 'white' }} onClick={signOut}>
-          Sign out
-        </button>
+        <div style={{ marginLeft: 'auto', marginRight: '16px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', color: 'white', fontSize: '14px' }}>
+          <div>
+            {userAttributes.username ? (
+              `Hi, ${userAttributes.username}`
+            ) : (
+              <Link to="/update-profile" style={{ color: 'white', textDecoration: 'underline' }}>
+                Update Username
+              </Link>
+            )}
+          </div>
+          <div>{userAttributes.phoneNumber || 'Phone: Not set'}</div>
+          <button style={{ marginTop: '8px', padding: '8px 12px', fontSize: '14px', color: 'white', backgroundColor: 'transparent', border: '1px solid white', borderRadius: '4px', cursor: 'pointer' }} onClick={signOut}>
+            Sign out
+          </button>
+        </div>
       </header>
 
       <h1 style={{ padding: '10px', textAlign: 'center', width: '100%', fontSize: '28px', margin: '0', boxSizing: 'border-box' }}>
