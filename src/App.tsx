@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { Auth } from 'aws-amplify';
-import { Link } from 'react-router-dom'; // If using React Router for the update link
+import { Auth } from '@aws-amplify/auth'; // Updated import for Auth
 
 const months = [
   "January", "February", "March", "April", "May", "June",
@@ -17,7 +16,7 @@ const sampleFiles = [
 ];
 
 const App: React.FC = () => {
-  const { signOut, user } = useAuthenticator();
+  const { signOut } = useAuthenticator(); // Removed unused 'user'
   const [file, setFile] = useState<File | null>(null);
   const [responseMessage, setResponseMessage] = useState<string>("");
   const [selectedMonth, setSelectedMonth] = useState<string>("");
@@ -27,6 +26,8 @@ const App: React.FC = () => {
     username: '',
     phoneNumber: '',
   });
+  const [showUpdateForm, setShowUpdateForm] = useState<boolean>(false);
+  const [newUsername, setNewUsername] = useState<string>("");
 
   // Fetch user attributes on mount
   useEffect(() => {
@@ -49,6 +50,28 @@ const App: React.FC = () => {
     };
     fetchUserAttributes();
   }, []);
+
+  // Handle username update
+  const handleUpdateUsername = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUsername.trim()) {
+      alert('Please enter a valid username.');
+      return;
+    }
+    try {
+      const currentUser = await Auth.currentAuthenticatedUser();
+      await Auth.updateUserAttributes(currentUser, {
+        preferred_username: newUsername.trim(),
+      });
+      setUserAttributes((prev) => ({ ...prev, username: newUsername.trim() }));
+      setShowUpdateForm(false);
+      setNewUsername('');
+      alert('Username updated successfully!');
+    } catch (error) {
+      console.error('Error updating username:', error);
+      alert('Failed to update username. Please try again.');
+    }
+  };
 
   const validateFile = (file: File | null): boolean => {
     if (file && file.name.endsWith(".csv")) {
@@ -139,9 +162,12 @@ const App: React.FC = () => {
             {userAttributes.username ? (
               `Hi, ${userAttributes.username}`
             ) : (
-              <Link to="/update-profile" style={{ color: 'white', textDecoration: 'underline' }}>
+              <button
+                style={{ color: 'white', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer' }}
+                onClick={() => setShowUpdateForm(true)}
+              >
                 Update Username
-              </Link>
+              </button>
             )}
           </div>
           <div>{userAttributes.phoneNumber || 'Phone: Not set'}</div>
@@ -150,6 +176,60 @@ const App: React.FC = () => {
           </button>
         </div>
       </header>
+
+      {/* Pop-up Form for Updating Username */}
+      {showUpdateForm && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 2000,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: '#f0f0f0',
+              padding: '24px',
+              borderRadius: '12px',
+              width: '300px',
+              textAlign: 'center',
+            }}
+          >
+            <h2 style={{ fontSize: '22px', margin: '0 0 16px 0' }}>Update Username</h2>
+            <form onSubmit={handleUpdateUsername}>
+              <input
+                type="text"
+                value={newUsername}
+                onChange={(e) => setNewUsername(e.target.value)}
+                placeholder="Enter new username"
+                style={{ width: '100%', padding: '8px', marginBottom: '12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '16px' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <button
+                  type="submit"
+                  style={{ padding: '8px 16px', backgroundColor: '#007BFF', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '16px' }}
+                >
+                  Submit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowUpdateForm(false)}
+                  style={{ padding: '8px 16px', backgroundColor: '#ccc', color: 'black', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '16px' }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <h1 style={{ padding: '10px', textAlign: 'center', width: '100%', fontSize: '28px', margin: '0', boxSizing: 'border-box' }}>
         <u>BBIL Production-Upload Interface</u>
