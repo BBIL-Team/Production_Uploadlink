@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { currentAuthenticatedUser, updateUserAttributes } from '@aws-amplify/auth'; // Updated imports
+import { currentAuthenticatedUser, updateUserAttributes } from '@aws-amplify/auth';
 
 const months = [
   "January", "February", "March", "April", "May", "June",
@@ -157,7 +157,7 @@ const App: React.FC = () => {
             className="logo"
           />
         </div>
-        <div style={{ marginLeft: 'auto', marginRight Plattform: '16px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', color: 'white', fontSize: '14px' }}>
+        <div style={{ marginLeft: 'auto', marginRight: '16px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', color: 'white', fontSize: '14px' }}>
           <div>
             {userAttributes.username ? (
               `Hi, ${userAttributes.username}`
@@ -202,4 +202,302 @@ const App: React.FC = () => {
               textAlign: 'center',
             }}
           >
-            <h2 style={{ fontSize: '22
+            <h2 style={{ fontSize: '22px', margin: '0 0 16px 0' }}>Update Username</h2>
+            <form onSubmit={handleUpdateUsername}>
+              <input
+                type="text"
+                value={newUsername}
+                onChange={(e) => setNewUsername(e.target.value)}
+                placeholder="Enter new username"
+                style={{ width: '100%', padding: '8px', marginBottom: '12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '16px' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <button
+                  type="submit"
+                  style={{ padding: '8px 16px', backgroundColor: '#007BFF', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '16px' }}
+                >
+                  Submit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowUpdateForm(false)}
+                  style={{ padding: '8px 16px', backgroundColor: '#ccc', color: 'black', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '16px' }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <h1 style={{ padding: '10px', textAlign: 'center', width: '100%', fontSize: '28px', margin: '0', boxSizing: 'border-box' }}>
+        <u>BBIL Production-Upload Interface</u>
+      </h1>
+
+      <div
+        className="container"
+        style={{
+          display: 'flex',
+          flexDirection: 'row',
+          gap: '20px',
+          maxWidth: '100%',
+          padding: '20px',
+          boxSizing: 'border-box',
+          overflowX: 'hidden',
+        }}
+      >
+        {/* Left Column: Calendar and Upload File */}
+        <div
+          style={{
+            flex: 1.25,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '20px',
+            minWidth: '250px',
+          }}
+        >
+          {/* Calendar Section */}
+          <div
+            style={{
+              backgroundColor: '#f0f0f0',
+              padding: '24px',
+              borderRadius: '12px',
+              fontSize: '16px',
+              boxSizing: 'border-box',
+            }}
+          >
+            <h2 style={{ fontSize: '22px', margin: '0 0 16px 0', textAlign: 'center' }}>Sample File Download Segment</h2>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <button onClick={handlePreviousYear}>{'\u003C'}</button>
+              <h2 style={{ fontSize: '22px', margin: '0', textAlign: 'center' }}>{year}</h2>
+              <button onClick={handleNextYear}>{'\u003E'}</button>
+            </div>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: '10px',
+                padding: '10px',
+                backgroundColor: '#e6e6e6',
+                borderRadius: '8px',
+              }}
+            >
+              {months.map((month) => (
+                <button
+                  key={month}
+                  onClick={() => setDisplayedMonth(month === displayedMonth ? "" : month)}
+                  style={{
+                    padding: '10px',
+                    fontSize: '16px',
+                    backgroundColor: displayedMonth === month ? '#007BFF' : '#fff',
+                    color: displayedMonth === month ? '#fff' : '#000',
+                    border: '1px solid #ccc',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                  }}
+                >
+                  {month}
+                </button>
+              ))}
+            </div>
+            {displayedMonth && (
+              <div style={{ marginTop: '20px' }}>
+                <button
+                  onClick={() => downloadFile(displayedMonth)}
+                  style={{
+                    textDecoration: 'none',
+                    color: '#fff',
+                    backgroundColor: '#007BFF',
+                    padding: '10px 14px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                  }}
+                >
+                  Download {displayedMonth} Sample CSV
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Upload Section */}
+          <div
+            style={{
+              backgroundColor: '#f0f0f0',
+              padding: '24px',
+              borderRadius: '12px',
+              fontSize: '16px',
+              boxSizing: 'border-box',
+            }}
+          >
+            <h2 style={{ fontSize: '22px', margin: '0' }}>📤 Upload File</h2>
+            <div
+              style={{
+                backgroundColor: '#e6e6e6',
+                borderRadius: '8px',
+                padding: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+              }}
+            >
+              <input
+                type="file"
+                accept=".csv"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                style={{ fontSize: '16px' }}
+              />
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                style={{ fontSize: '16px', padding: '8px', borderRadius: '6px' }}
+              >
+                <option value="">Select Month</option>
+                {months.map((month) => (
+                  <option key={month} value={month}>{month}</option>
+                ))}
+              </select>
+              <button
+                style={{ fontSize: '16px', padding: '10px' }}
+                onClick={() => {
+                  if (validateFile(file)) {
+                    uploadFile(file, "https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink");
+                  }
+                }}
+              >
+                Submit File
+              </button>
+            </div>
+            {responseMessage && (
+              <p style={{ marginTop: '12px', color: 'green', fontSize: '16px' }}>{responseMessage}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Right Column: File List Table */}
+        <div
+          style={{
+            flex: 1.6,
+            minWidth: '200px',
+            backgroundColor: '#f0f0f0',
+            padding: '24px',
+            borderRadius: '12px',
+            fontSize: '16px',
+            alignSelf: 'stretch',
+            boxSizing: 'border-box',
+          }}
+        >
+          <h2 style={{ fontSize: '22px', margin: '0' }}>📋 List of Files Uploaded</h2>
+          <div style={{ overflowX: 'auto' }}>
+            <table
+              style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                backgroundColor: '#e6e6e6',
+                borderRadius: '8px',
+                fontSize: '16px',
+              }}
+            >
+              <thead>
+                <tr>
+                  <th
+                    style={{
+                      padding: '12px',
+                      borderBottom: '2px solid #ccc',
+                      textAlign: 'center',
+                      backgroundColor: '#d9d9d9',
+                    }}
+                  >
+                    S.No.
+                  </th>
+                  <th
+                    style={{
+                      padding: '12px',
+                      borderBottom: '2px solid #ccc',
+                      textAlign: 'center',
+                      backgroundColor: '#d9d9d9',
+                    }}
+                  >
+                    File Name
+                  </th>
+                  <th
+                    style={{
+                      padding: '12px',
+                      borderBottom: '2px solid #ccc',
+                      textAlign: 'center',
+                      backgroundColor: '#d9d9d9',
+                    }}
+                  >
+                    Filesize
+                  </th>
+                  <th
+                    style={{
+                      padding: '12px',
+                      borderBottom: '2px solid #ccc',
+                      textAlign: 'center',
+                      backgroundColor: '#d9d9d9',
+                    }}
+                  >
+                    Date Uploaded
+                  </th>
+                  <th
+                    style={{
+                      padding: '12px',
+                      borderBottom: '2px solid #ccc',
+                      textAlign: 'center',
+                      backgroundColor: '#d9d9d9',
+                    }}
+                  >
+                    Uploaded By
+                  </th>
+                  <th
+                    style={{
+                      padding: '12px',
+                      borderBottom: '2px solid #ccc',
+                      textAlign: 'center',
+                      backgroundColor: '#d9d9d9',
+                    }}
+                  >
+                    Download Link
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {sampleFiles.map((file) => (
+                  <tr key={file.id}>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', textAlign: 'center' }}>{file.id}</td>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', textAlign: 'left' }}>{file.fileName}</td>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', textAlign: 'center' }}>{file.filesize}</td>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', textAlign: 'center' }}>{file.dateUploaded}</td>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', textAlign: 'center' }}>{file.uploadedBy}</td>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', textAlign: 'center' }}>
+                      <a
+                        href={file.downloadLink}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          downloadFile(file.fileName.split('_')[0]);
+                        }}
+                        style={{
+                          textDecoration: 'none',
+                          color: '#007BFF',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Download
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+};
+
+export default App;
