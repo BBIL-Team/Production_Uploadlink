@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { currentAuthenticatedUser, updateUserAttributes } from '@aws-amplify/auth';
+import Amplify, { Auth } from 'aws-amplify'; // Import for Amplify v5
 
 const months = [
   "January", "February", "March", "April", "May", "June",
@@ -33,7 +33,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const fetchUserAttributes = async () => {
       try {
-        const currentUser = await currentAuthenticatedUser();
+        const currentUser = await Auth.currentAuthenticatedUser();
         const attributes = currentUser.attributes || {};
         const username = attributes.preferred_username || attributes.email || currentUser.username || '';
         const phoneNumber = attributes.phone_number || '';
@@ -59,14 +59,20 @@ const App: React.FC = () => {
       return;
     }
     try {
-      const currentUser = await currentAuthenticatedUser();
-      await updateUserAttributes(currentUser, {
+      await Auth.updateUserAttributes({
         preferred_username: newUsername.trim(),
       });
       setUserAttributes((prev) => ({ ...prev, username: newUsername.trim() }));
       setShowUpdateForm(false);
       setNewUsername('');
       alert('Username updated successfully!');
+      // Refresh user attributes after update
+      const currentUser = await Auth.currentAuthenticatedUser();
+      const attributes = currentUser.attributes || {};
+      setUserAttributes((prev) => ({
+        ...prev,
+        username: attributes.preferred_username || prev.username,
+      }));
     } catch (error) {
       console.error('Error updating username:', error);
       alert('Failed to update username. Please try again.');
