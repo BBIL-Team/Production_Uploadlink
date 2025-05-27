@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import Amplify, { Auth } from 'aws-amplify'; // Import for Amplify v5
+import { Auth } from 'aws-amplify';
 
 const months = [
   "January", "February", "March", "April", "May", "June",
@@ -28,11 +28,13 @@ const App: React.FC = () => {
   });
   const [showUpdateForm, setShowUpdateForm] = useState<boolean>(false);
   const [newUsername, setNewUsername] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // Fetch user attributes on mount
   useEffect(() => {
     const fetchUserAttributes = async () => {
       try {
+        setIsLoading(true);
         const currentUser = await Auth.currentAuthenticatedUser();
         const attributes = currentUser.attributes || {};
         const username = attributes.preferred_username || attributes.email || currentUser.username || '';
@@ -46,6 +48,8 @@ const App: React.FC = () => {
       } catch (error) {
         console.error('Error fetching user attributes:', error);
         setUserAttributes({ username: '', phoneNumber: '' });
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchUserAttributes();
@@ -66,7 +70,7 @@ const App: React.FC = () => {
       setShowUpdateForm(false);
       setNewUsername('');
       alert('Username updated successfully!');
-      // Refresh user attributes after update
+      // Refresh user attributes
       const currentUser = await Auth.currentAuthenticatedUser();
       const attributes = currentUser.attributes || {};
       setUserAttributes((prev) => ({
@@ -164,19 +168,25 @@ const App: React.FC = () => {
           />
         </div>
         <div style={{ marginLeft: 'auto', marginRight: '16px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', color: 'white', fontSize: '14px' }}>
-          <div>
-            {userAttributes.username ? (
-              `Hi, ${userAttributes.username}`
-            ) : (
-              <button
-                style={{ color: 'white', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer' }}
-                onClick={() => setShowUpdateForm(true)}
-              >
-                Update Username
-              </button>
-            )}
-          </div>
-          <div>{userAttributes.phoneNumber || 'Phone: Not set'}</div>
+          {isLoading ? (
+            <div>Loading...</div>
+          ) : (
+            <>
+              <div>
+                {userAttributes.username ? (
+                  `Hi, ${userAttributes.username}`
+                ) : (
+                  <button
+                    style={{ color: 'white', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer' }}
+                    onClick={() => setShowUpdateForm(true)}
+                  >
+                    Update Username
+                  </button>
+                )}
+              </div>
+              <div>{userAttributes.phoneNumber || 'Phone: Not set'}</div>
+            </>
+          )}
           <button style={{ marginTop: '8px', padding: '8px 12px', fontSize: '14px', color: 'white', backgroundColor: 'transparent', border: '1px solid white', borderRadius: '4px', cursor: 'pointer' }} onClick={signOut}>
             Sign out
           </button>
