@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { currentAuthenticatedUser, updateUserAttributes } from '@aws-amplify/auth';
+import { getCurrentUser, fetchUserAttributes, updateUserAttributes } from '@aws-amplify/auth';
 
 // Debug logging to confirm imports
-console.log('currentAuthenticatedUser:', currentAuthenticatedUser);
+console.log('getCurrentUser:', getCurrentUser);
+console.log('fetchUserAttributes:', fetchUserAttributes);
 console.log('updateUserAttributes:', updateUserAttributes);
 
 const months = [
@@ -36,13 +37,13 @@ const App: React.FC = () => {
 
   // Fetch user attributes on mount
   useEffect(() => {
-    const fetchUserAttributes = async () => {
+    const fetchUserData = async () => {
       try {
         setIsLoading(true);
-        const currentUser = await currentAuthenticatedUser();
-        const attributes = currentUser.attributes || currentUser.userAttributes || {};
+        await getCurrentUser(); // Verify user is authenticated
+        const attributes = await fetchUserAttributes();
         console.log('User attributes:', attributes); // Debug logging
-        const username = attributes.preferred_username || attributes.email || currentUser.username || '';
+        const username = attributes.preferred_username || attributes.email || '';
         const phoneNumber = attributes.phone_number || '';
         // Mask phone number to show only last two digits
         const maskedPhoneNumber =
@@ -51,13 +52,13 @@ const App: React.FC = () => {
             : '';
         setUserAttributes({ username, phoneNumber: maskedPhoneNumber });
       } catch (error) {
-        console.error('Error fetching user attributes:', error);
+        console.error('Error fetching user data:', error);
         setUserAttributes({ username: '', phoneNumber: '' });
       } finally {
         setIsLoading(false);
       }
     };
-    fetchUserAttributes();
+    fetchUserData();
   }, []);
 
   // Handle username update
@@ -77,9 +78,8 @@ const App: React.FC = () => {
       setShowUpdateForm(false);
       setNewUsername('');
       alert('Username updated successfully!');
-      // Refresh user attributes
-      const currentUser = await currentAuthenticatedUser();
-      const attributes = currentUser.attributes || currentUser.userAttributes || {};
+      // Refresh attributes
+      const attributes = await fetchUserAttributes();
       setUserAttributes((prev) => ({
         ...prev,
         username: attributes.preferred_username || prev.username,
