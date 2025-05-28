@@ -1,7 +1,6 @@
-```tsx
 import React, { useState, useEffect } from 'react';
 import './App.css';
-import '@aws-amplify/ui-react';
+import { useAuthenticator } from '@aws-amplify/ui-react';
 import { getCurrentUser, fetchUserAttributes, updateUserAttributes } from '@aws-amplify/auth';
 
 // Debug logging to confirm imports
@@ -174,11 +173,11 @@ const App: React.FC = () => {
             alt="Company Logo"
           />
         </div>
-        <div style={{ marginLeft: 'auto', marginRight: '16px', display: 'flex', alignItems: 'center', gap: '16px', color: 'white', fontSize: '14px' }}>
+        <div style={{ marginLeft: 'auto', marginRight: '16px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', color: 'white', fontSize: '14px' }}>
           {isLoading ? (
             <div>Loading...</div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <>
               <div>
                 {userAttributes.username ? (
                   `Hi, ${userAttributes.username}`
@@ -192,9 +191,9 @@ const App: React.FC = () => {
                 )}
               </div>
               <div>{userAttributes.phoneNumber || 'Phone: Not set'}</div>
-            </div>
+            </>
           )}
-          <button style={{ padding: '8px 12px', fontSize: '14px', color: 'white', backgroundColor: 'transparent', border: '1px solid white', borderRadius: '4px', cursor: 'pointer' }} onClick={signOut}>
+          <button style={{ marginTop: '8px', padding: '8px 12px', fontSize: '14px', color: 'white', backgroundColor: 'transparent', border: '1px solid white', borderRadius: '4px', cursor: 'pointer' }} onClick={signOut}>
             Sign out
           </button>
         </div>
@@ -524,4 +523,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-```
