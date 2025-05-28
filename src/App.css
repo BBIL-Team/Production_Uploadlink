@@ -1,3 +1,4 @@
+```css
 /* App.css */
 html, body {
   margin: 0;
@@ -41,9 +42,9 @@ html, body {
 
 .user-info-inner {
   display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  gap: 12px !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 4px !important;
 }
 
 .username, .phone-number {
@@ -318,7 +319,8 @@ html, body {
     gap: 8px !important;
   }
   .user-info-inner {
-    flex-wrap: wrap;
-    gap: 8px !important;
+    align-items: flex-start !important;
+    gap: 4px !important;
   }
 }
+```
