@@ -165,7 +165,7 @@ const App: React.FC = () => {
 
   return (
     <main style={{ maxWidth: '100%', minHeight: '100vh', backgroundColor: '#81d7ea', paddingTop: '360px', boxSizing: 'border-box', overflowX: 'hidden' }}>
-      <header style={{ maxWidth: '100%', backgroundColor: '#008080', display: 'flex', alignItems: 'center', padding: '4px', position: 'fixed', top: 0, left: 0, width: '100%', zIndex: 1000, boxSizing: 'border-box' }}>
+      <header className="app-header">
         <div style={{ width: '130px', height: '120px', overflow: 'hidden', borderRadius: '8px', marginLeft: '20px' }}>
           <img
             style={{ width: '100%', height: '100%', objectFit: 'contain', boxSizing: 'border-box' }}
@@ -173,27 +173,27 @@ const App: React.FC = () => {
             alt="Company Logo"
           />
         </div>
-        <div style={{ marginLeft: 'auto', marginRight: '16px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', color: 'white', fontSize: '14px' }}>
+        <div className="header-user-info">
           {isLoading ? (
-            <div>Loading...</div>
+            <span>Loading...</span>
           ) : (
-            <>
-              <div>
+            <div className="user-info-inner">
+              <span className="username">
                 {userAttributes.username ? (
                   `Hi, ${userAttributes.username}`
                 ) : (
                   <button
-                    style={{ color: 'white', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer' }}
+                    className="update-username-btn"
                     onClick={() => setShowUpdateForm(true)}
                   >
                     Update Username
                   </button>
                 )}
-              </div>
-              <div>{userAttributes.phoneNumber || 'Phone: Not set'}</div>
-            </>
+              </span>
+              <span className="phone-number">{userAttributes.phoneNumber || 'Phone: Not set'}</span>
+            </div>
           )}
-          <button style={{ marginTop: '8px', padding: '8px 12px', fontSize: '14px', color: 'white', backgroundColor: 'transparent', border: '1px solid white', borderRadius: '4px', cursor: 'pointer' }} onClick={signOut}>
+          <button className="sign-out-btn" onClick={signOut}>
             Sign out
           </button>
         </div>
@@ -201,29 +201,8 @@ const App: React.FC = () => {
 
       {/* Pop-up Form for Updating Username */}
       {showUpdateForm && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 2000,
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: '#f0f0f0',
-              padding: '24px',
-              borderRadius: '12px',
-              width: '300px',
-              textAlign: 'center',
-            }}
-          >
+        <div className="modal-overlay">
+          <div className="modal-content">
             <h2 style={{ fontSize: '22px', margin: '0 0 16px 0' }}>Update Username</h2>
             <form onSubmit={handleUpdateUsername}>
               <input
@@ -231,20 +210,11 @@ const App: React.FC = () => {
                 value={newUsername}
                 onChange={(e) => setNewUsername(e.target.value)}
                 placeholder="Enter new username"
-                style={{ width: '100%', padding: '8px', marginBottom: '12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '16px' }}
+                className="username-input"
               />
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <button
-                  type="submit"
-                  style={{ padding: '8px 16px', backgroundColor: '#007BFF', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '16px' }}
-                >
-                  Submit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowUpdateForm(false)}
-                  style={{ padding: '8px 16px', backgroundColor: '#ccc', color: 'black', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '16px' }}
-                >
+              <div className="modal-buttons">
+                <button type="submit" className="submit-btn">Submit</button>
+                <button type="button" className="cancel-btn" onClick={() => setShowUpdateForm(false)}>
                   Cancel
                 </button>
               </div>
