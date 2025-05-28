@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { Auth } from 'aws-amplify';
+import { currentAuthenticatedUser, updateUserAttributes } from '@aws-amplify/auth';
+
+// Debug logging to confirm imports
+console.log('currentAuthenticatedUser:', currentAuthenticatedUser);
+console.log('updateUserAttributes:', updateUserAttributes);
 
 const months = [
   "January", "February", "March", "April", "May", "June",
@@ -35,8 +39,9 @@ const App: React.FC = () => {
     const fetchUserAttributes = async () => {
       try {
         setIsLoading(true);
-        const currentUser = await Auth.currentAuthenticatedUser();
-        const attributes = currentUser.attributes || {};
+        const currentUser = await currentAuthenticatedUser();
+        const attributes = currentUser.attributes || currentUser.userAttributes || {};
+        console.log('User attributes:', attributes); // Debug logging
         const username = attributes.preferred_username || attributes.email || currentUser.username || '';
         const phoneNumber = attributes.phone_number || '';
         // Mask phone number to show only last two digits
@@ -63,16 +68,18 @@ const App: React.FC = () => {
       return;
     }
     try {
-      await Auth.updateUserAttributes({
-        preferred_username: newUsername.trim(),
+      await updateUserAttributes({
+        userAttributes: {
+          preferred_username: newUsername.trim(),
+        },
       });
       setUserAttributes((prev) => ({ ...prev, username: newUsername.trim() }));
       setShowUpdateForm(false);
       setNewUsername('');
       alert('Username updated successfully!');
       // Refresh user attributes
-      const currentUser = await Auth.currentAuthenticatedUser();
-      const attributes = currentUser.attributes || {};
+      const currentUser = await currentAuthenticatedUser();
+      const attributes = currentUser.attributes || currentUser.userAttributes || {};
       setUserAttributes((prev) => ({
         ...prev,
         username: attributes.preferred_username || prev.username,
@@ -164,7 +171,6 @@ const App: React.FC = () => {
             style={{ width: '100%', height: '100%', objectFit: 'contain', boxSizing: 'border-box' }}
             src="https://www.bharatbiotech.com/images/bharat-biotech-logo.jpg"
             alt="Company Logo"
-            className="logo"
           />
         </div>
         <div style={{ marginLeft: 'auto', marginRight: '16px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', color: 'white', fontSize: '14px' }}>
