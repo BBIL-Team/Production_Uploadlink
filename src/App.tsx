@@ -77,9 +77,9 @@ const App: React.FC = () => {
         ...prev,
         username: attributes.preferred_username || prev.username,
       }));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating username:', error);
-      alert('Failed to update username. Please try again.');
+      alert(`Failed to update username: ${error.message || 'Unknown error'}`);
     }
   };
 
