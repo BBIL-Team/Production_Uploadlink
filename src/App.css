@@ -7,12 +7,12 @@ html, body {
 }
 
 .app-main {
-   maxWidth: '100%';
-   minHeight: '100vh';
-   backgroundColor: '#81d7ea'; 
-   paddingTop: '360px';
-   boxSizing: 'border-box'; 
-   overflowX: 'hidden'; 
+  max-width: 100%;
+  min-height: 100vh;
+  background-color: #81d7ea;
+  padding-top: 360px;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .app-header {
@@ -319,7 +319,7 @@ html, body {
   .container {
     flex-direction: column;
   }
-  main {
+  .app-main {
     padding-top: 140px;
   }
   .header-user-info {
