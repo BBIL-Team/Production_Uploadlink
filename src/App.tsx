@@ -24,7 +24,7 @@ const sampleFiles = [
 const getFinancialYearMonths = (currentDate: Date) => {
   const currentMonth = currentDate.getMonth(); // 0-based (May 2025 = 4)
   const currentYear = currentDate.getFullYear(); // 2025
-  const currentDay = currentDate.getDate(); // 28
+  const currentDay = currentDate.getDate(); // 29
 
   // Financial year: April (currentYear) to March (currentYear + 1)
   const financialYearStartYear = currentMonth >= 3 ? currentYear : currentYear - 1; // April 2025
