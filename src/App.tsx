@@ -20,6 +20,41 @@ const sampleFiles = [
   { id: 3, fileName: "March_Sample_File.csv", dateUploaded: "2025-03-20", uploadedBy: "Alice Johnson", downloadLink: "#", filesize: "62.8 kb" },
 ];
 
+// Function to get financial year months (previous month if <= 6th, current month, remaining months)
+const getFinancialYearMonths = (currentDate: Date) => {
+  const currentMonth = currentDate.getMonth(); // 0-based (May 2025 = 4)
+  const currentYear = currentDate.getFullYear(); // 2025
+  const currentDay = currentDate.getDate(); // 28
+
+  // Financial year: April (currentYear) to March (currentYear + 1)
+  const financialYearStartYear = currentMonth >= 3 ? currentYear : currentYear - 1; // April 2025
+  const financialYearEndYear = financialYearStartYear + 1; // March 2026
+
+  const result: string[] = [];
+
+  // Previous month (only if day <= 6)
+  if (currentDay <= 6) {
+    const prevMonthDate = new Date(currentDate);
+    prevMonthDate.setMonth(currentMonth - 1);
+    const prevMonth = prevMonthDate.getMonth();
+    const prevMonthYear = prevMonthDate.getFullYear();
+    result.push(`${months[prevMonth]} ${prevMonthYear}`);
+  }
+
+  // Current month
+  result.push(`${months[currentMonth]} ${currentYear}`);
+
+  // Remaining months: from currentMonth + 1 to March
+  for (let month = currentMonth + 1; month <= 11; month++) {
+    result.push(`${months[month]} ${financialYearStartYear}`);
+  }
+  for (let month = 0; month <= 2; month++) {
+    result.push(`${months[month]} ${financialYearEndYear}`);
+  }
+
+  return result;
+};
+
 const App: React.FC = () => {
   const { signOut } = useAuthenticator();
   const [file, setFile] = useState<File | null>(null);
@@ -40,12 +75,11 @@ const App: React.FC = () => {
     const fetchUserData = async () => {
       try {
         setIsLoading(true);
-        await getCurrentUser(); // Verify user is authenticated
+        await getCurrentUser();
         const attributes = await fetchUserAttributes();
-        console.log('User attributes:', attributes); // Debug logging
+        console.log('User attributes:', attributes);
         const username = attributes.preferred_username || attributes.email || '';
         const phoneNumber = attributes.phone_number || '';
-        // Mask phone number to show only last two digits
         const maskedPhoneNumber =
           phoneNumber && phoneNumber.length >= 2
             ? `91${'x'.repeat(phoneNumber.length - 4)}${phoneNumber.slice(-2)}`
@@ -78,7 +112,6 @@ const App: React.FC = () => {
       setShowUpdateForm(false);
       setNewUsername('');
       alert('Username updated successfully!');
-      // Refresh attributes
       const attributes = await fetchUserAttributes();
       setUserAttributes((prev) => ({
         ...prev,
@@ -108,9 +141,12 @@ const App: React.FC = () => {
       return;
     }
 
+    // Extract month name from "Month Year" (e.g., "May 2025" -> "May")
+    const monthName = selectedMonth.split(' ')[0];
+
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('month', selectedMonth);
+    formData.append('month', monthName);
 
     try {
       const response = await fetch(apiUrl, {
@@ -163,8 +199,11 @@ const App: React.FC = () => {
   const handlePreviousYear = () => setYear((prevYear) => prevYear - 1);
   const handleNextYear = () => setYear((prevYear) => prevYear + 1);
 
+  // Get financial year months for dropdown
+  const financialYearMonths = getFinancialYearMonths(new Date());
+
   return (
-    <main style={{ maxWidth: '100%', minHeight: '100vh', backgroundColor: '#81d7ea', paddingTop: '360px', boxSizing: 'border-box', overflowX: 'hidden' }}>
+    <main className="app-main">
       <header className="app-header">
         <div style={{ width: '130px', height: '120px', overflow: 'hidden', borderRadius: '8px', marginLeft: '20px' }}>
           <img
@@ -348,8 +387,8 @@ const App: React.FC = () => {
                 style={{ fontSize: '16px', padding: '8px', borderRadius: '6px' }}
               >
                 <option value="">Select Month</option>
-                {months.map((month) => (
-                  <option key={month} value={month}>{month}</option>
+                {financialYearMonths.map((monthYear) => (
+                  <option key={monthYear} value={monthYear}>{monthYear}</option>
                 ))}
               </select>
               <button
