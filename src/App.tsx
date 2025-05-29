@@ -212,9 +212,6 @@ const App: React.FC = () => {
   const handlePreviousYear = () => setYear((prevYear) => prevYear - 1);
   const handleNextYear = () => setYear((prevYear) => prevYear + 1);
 
-  // Get financial year months for dropdown
-  const financialYearMonths = getFinancialYearMonths(new Date());
-
   // Toggle dropdown
   const toggleDropdown = () => setIsDropdownOpen((prev) => !prev);
 
@@ -224,8 +221,12 @@ const App: React.FC = () => {
     setIsDropdownOpen(false);
   };
 
+  // Get financial year months for dropdown
+  const financialYearMonths = getFinancialYearMonths(new Date());
+
   return (
     <main className="app-main">
+      {/* Header */}
       <header className="app-header">
         <div style={{ width: '130px', height: '120px', overflow: 'hidden', borderRadius: '8px', marginLeft: '20px' }}>
           <img
@@ -260,7 +261,7 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Pop-up Form for Updating Username */}
+      {/* Username Update Modal */}
       {showUpdateForm && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -284,124 +285,55 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <h1 style={{ padding: '10px', textAlign: 'center', width: '100%', fontSize: '28px', margin: '0', boxSizing: 'border-box' }}>
+      {/* Title */}
+      <h1 className="app-title">
         <u>BBIL Production-Upload Interface</u>
       </h1>
 
-      <div
-        className="container"
-        style={{
-          display: 'flex',
-          flexDirection: 'row',
-          gap: '20px',
-          maxWidth: '100%',
-          padding: '20px',
-          boxSizing: 'border-box',
-          overflowX: 'hidden',
-        }}
-      >
-        {/* Left Column: Calendar and Upload File */}
-        <div
-          style={{
-            flex: 1.25,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '20px',
-            minWidth: '250px',
-          }}
-        >
+      {/* Main Container */}
+      <div className="container">
+        {/* Left Column: Calendar and Upload */}
+        <div className="left-column">
           {/* Calendar Section */}
-          <div
-            style={{
-              backgroundColor: '#f0f0f0',
-              padding: '24px',
-              borderRadius: '12px',
-              fontSize: '16px',
-              boxSizing: 'border-box',
-            }}
-          >
-            <h2 style={{ fontSize: '22px', margin: '0 0 16px 0', textAlign: 'center' }}>Sample File Download Segment</h2>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div className="calendar-section">
+            <h2>Sample File Download Segment</h2>
+            <div className="year-navigation">
               <button onClick={handlePreviousYear}>{'\u003C'}</button>
-              <h2 style={{ fontSize: '22px', margin: '0', textAlign: 'center' }}>{year}</h2>
+              <h2>{year}</h2>
               <button onClick={handleNextYear}>{'\u003E'}</button>
             </div>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
-                gap: '10px',
-                padding: '10px',
-                backgroundColor: '#e6e6e6',
-                borderRadius: '8px',
-              }}
-            >
+            <div className="months-grid">
               {months.map((month) => (
                 <button
                   key={month}
                   onClick={() => setDisplayedMonth(month === displayedMonth ? '' : month)}
-                  style={{
-                    padding: '10px',
-                    fontSize: '16px',
-                    backgroundColor: displayedMonth === month ? '#007BFF' : '#fff',
-                    color: displayedMonth === month ? '#fff' : '#000',
-                    border: '1px solid #ccc',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    textAlign: 'center',
-                  }}
+                  className={`month-button ${displayedMonth === month ? 'active-month' : ''}`}
                 >
                   {month}
                 </button>
               ))}
             </div>
             {displayedMonth && (
-              <div style={{ marginTop: '20px' }}>
+              <div className="download-button">
                 <button
                   onClick={() => downloadFile(displayedMonth)}
-                  style={{
-                    textDecoration: 'none',
-                    color: '#fff',
-                    backgroundColor: '#007BFF',
-                    padding: '10px 14px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '16px',
-                  }}
+                  className="download-btn"
                 >
-                  Download {month: displayedMonth} Sample CSV
+                  Download {displayedMonth} Sample CSV
                 </button>
               </div>
             )}
           </div>
 
           {/* Upload Section */}
-          <div
-            style={{
-              backgroundColor: '#f0f0f0',
-              padding: '24px',
-              borderRadius: '12px',
-              fontSize: '16px',
-              boxSizing: 'border-box',
-            }}
-          >
-            <h2 style={{ fontSize: '22px', margin: '0' }}>📤 Upload File</h2>
-            <div
-              style={{
-                backgroundColor: '#e6e6e6',
-                borderRadius: '8px',
-                padding: '16px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px',
-              }}
-            >
+          <div className="upload-section">
+            <h2>📤 Upload File</h2>
+            <div className="upload-form">
               <input
                 type="file"
                 accept=".csv"
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
-                style={{ fontSize: '16px' }}
+                className="file-input"
               />
               <div className="custom-dropdown" ref={dropdownRef}>
                 <div
@@ -422,7 +354,7 @@ const App: React.FC = () => {
                   <ul className="dropdown-menu">
                     {financialYearMonths.map((monthYear, index) => (
                       <li
-                        key={indexMonth}
+                        key={monthYear}
                         className={`dropdown-item ${selectedMonth === monthYear ? 'selected' : ''}`}
                         onClick={() => selectMonth(monthYear)}
                         onKeyDown={(e) => {
@@ -442,7 +374,7 @@ const App: React.FC = () => {
                 )}
               </div>
               <button
-                style={{ fontSize: '16px', padding: '10px' }}
+                className="upload-btn"
                 onClick={() => {
                   if (validateFile(file)) {
                     uploadFile(file, "https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink");
@@ -453,119 +385,42 @@ const App: React.FC = () => {
               </button>
             </div>
             {responseMessage && (
-              <p style={{ marginTop: '12px', color: 'green', fontSize: '16px' }}>{responseMessage}</p>
+              <p className="response-message">{responseMessage}</p>
             )}
           </div>
         </div>
 
         {/* Right Column: File List Table */}
-        <div
-          style={{
-            flex: 1.6,
-            minWidth: '200px',
-            backgroundColor: '#f0f0f0',
-            padding: '24px',
-            borderRadius: '12px',
-            fontSize: '16px',
-            alignSelf: 'stretch',
-            box-sizing: border-box;
-          }}
-        >
-          <h2 style={{ fontSize: '22px', margin: '0' }}>📋 List of Files Uploaded</h2>
-          <div style={{ overflow-x: 'auto' }}>
-            <table
-              style={{
-                width: '100%',
-                borderCollapse: 'collapse',
-                backgroundColor: '#e6e6e6',
-                border-radius: '8px',
-                fontSize: '16px',
-              }}
-            >
+        <div className="file-list">
+          <h2>📋 List of Files Uploaded</h2>
+          <div className="table-container">
+            <table className="file-table">
               <thead>
                 <tr>
-                  <th
-                    style={{
-                      padding: '12px',
-                      borderBottom: '2px solid #ccc',
-                      text-align: 'center',
-                      backgroundColor: '#d9d9d9',
-                    }}
-                  >
-                    S.No.
-                  </th>
-                  <th
-                    style={{
-                      padding: '12px',
-                      borderBottom: '2px solid #ccc',
-                      text-align: 'center',
-                      backgroundColor: '#d9d9d9',
-                    }}
-                  >
-                    File Name
-                  </th>
-                  <th
-                    style={{
-                      padding: '12px',
-                      borderBottom: '2px solid #ccc',
-                      text-align: 'center',
-                      backgroundColor: '#d9d9d9',
-                    }}
-                  >
-                    Filesize
-                  </th>
-                  <th
-                    style={{
-                      padding: '12px',
-                      borderBottom: '2px solid #ccc',
-                      text-align: 'center',
-                      backgroundColor: '#d9d9d9d9',
-                    }}
-                  >
-                    Date Uploaded
-                  </th>
-                  <th
-                    style={{
-                      padding: '12px',
-                      borderBottom: '2px solid #ccc',
-                      text-align: 'center',
-                      backgroundColor: '#d9d9d9',
-                    }}
-                  >
-                    Uploaded By
-                  </th>
-                  <th
-                    style={{
-                      padding: '12px',
-                      borderBottom: '2px solid #ccc',
-                      text-align: 'center',
-                      backgroundColor: '#d9d9d9',
-                    }}
-                  >
-                    Download Link
-                  </th>
+                  <th>S.No.</th>
+                  <th>File Name</th>
+                  <th>Filesize</th>
+                  <th>Date Uploaded</th>
+                  <th>Uploaded By</th>
+                  <th>Download Link</th>
                 </tr>
               </thead>
               <tbody>
                 {sampleFiles.map((file) => (
                   <tr key={file.id}>
-                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', text-align: 'center' }}>{file.id}</td>
-                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', text-align: 'left' }}>{file.fileName}</td>
-                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', text-align: 'center' }}>{file.filesize}</td>
-                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', text-align: 'center'center' }}>{file.dateUploaded}</td>
-                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', text-align: 'center' }}>{file.uploadedBy}</td>
-                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', text-align: 'center' }}>
+                    <td>{file.id}</td>
+                    <td>{file.fileName}</td>
+                    <td>{file.filesize}</td>
+                    <td>{file.dateUploaded}</td>
+                    <td>{file.uploadedBy}</td>
+                    <td>
                       <a
                         href={file.downloadLink}
                         onClick={(e) => {
                           e.preventDefault();
                           downloadFile(file.fileName.split('_')[0]);
                         }}
-                        style={{
-                          text-decoration: 'none',
-                          color: '#007BFF',
-                          cursor: 'pointer',
-                        }}
+                        className="download-link"
                       >
                         Download
                       </a>
@@ -576,7 +431,8 @@ const App: React.FC = () => {
             </table>
           </div>
         </div>
-    </div>
+      </div>
+    </main>
   );
 };
 
