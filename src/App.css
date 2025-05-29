@@ -8,7 +8,7 @@ html, body {
 
 .app-main {
   max-width: 100%;
-  min-height: 100vh;
+  min-height: calc(100vh - 360px);
   background-color: #81d7ea;
   padding-top: 360px;
   box-sizing: border-box;
@@ -39,19 +39,20 @@ html, body {
 
 .header-user-info {
   margin-left: auto;
-  margin-right: 20px;
+  margin-right: 16px;
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
   font-size: 14px;
+  color: white;
 }
 
 .user-info-inner {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
+  gap: 4px;
 }
 
 .username, .phone-number {
@@ -59,20 +60,22 @@ html, body {
 }
 
 .update-username-btn {
-  display: none;
   color: white;
-  text-decoration: none;
-  background-color: none;
+  text-decoration: underline;
+  background: none;
   border: none;
   cursor: pointer;
+  font-size: 14px;
 }
 
 .sign-out-btn {
-  padding: 10px;
-  background-color: none;
-  border-color: none;
-  border-radius: none;
-  cursor: none;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: white;
+  background-color: transparent;
+  border: 1px solid white;
+  border-radius: 4px;
+  cursor: pointer;
 }
 
 .modal-overlay {
@@ -80,8 +83,8 @@ html, body {
   top: 0;
   left: 0;
   width: 100%;
-  height: 100vh;
-  background-color: rgba(0, 0,0.5);
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -89,59 +92,61 @@ html, body {
 }
 
 .modal-content {
-  background-color: #ffffff;
-  padding: 20px;
-  border-radius: 8px;
-  width: 320px;
-  max-width: 90vw;
+  background-color: #fff;
+  padding: 24px;
+  border-radius: 12px;
+  width: 300px;
   text-align: center;
-  box-shadow: 0 4px 12px rgba(0, 0,0,0);
-.2);
+  border: 1px solid #ccc;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   animation: fadeIn 0.3s ease-in-out;
+}
+
 .message-modal {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 12px;
   align-items: center;
 }
 
-.message-icon {
-  font-size: 20px;
-  margin-bottom: 5px;
+.modal-icon {
+  font-size: 24px;
+  margin-bottom: 8px;
 }
 
-.message-icon.success .message {
+.success-icon {
   color: #28a745;
 }
 
-.message-icon.error {
+.error-icon {
   color: #dc3545;
 }
 
-.message-text {
-  font-size: 18px;
-  font-weight: 500;
+.modal-title {
+  font-size: 20px;
+  font-weight: bold;
   margin: 0;
-  line-height: 1;
-.5;
-  word-wrap: break-word;
-  max-width: 100%;
+  color: #333;
 }
 
-.message-text.success {
+.message-text {
+  font-size: 16px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.success-text {
   color: #28a745;
 }
 
-.message-text .error {
+.error-text {
   color: #dc3545;
 }
 
 .ok-btn {
+  padding: 8px 24px;
   background-color: #007BFF;
-  padding: 10px 20px;
-  width: 20px;
   color: white;
-  background-color: none;
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -150,21 +155,32 @@ html, body {
 }
 
 .ok-btn:hover {
-  background-color: #0056b5;
+  background-color: #0056b3;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .modal-content h2 {
-  font-size: 24px;
-  margin-bottom: 0 0 20px;
+  font-size: 22px;
+  margin: 0 0 16px;
 }
 
 .username-input {
   width: 100%;
-  padding: 10px;
+  padding: 8px;
   margin-bottom: 12px;
-  border-radius: 8px;
-  border: 1px solid #cccccc;
-  font-size: 14px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 16px;
 }
 
 .modal-buttons {
@@ -173,29 +189,30 @@ html, body {
 }
 
 .submit-btn {
+  padding: 8px 16px;
   background-color: #007BFF;
-  padding: 4px 8px;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
+  font-size: 16px;
 }
 
 .cancel-btn {
-  background-color: #cccccc;
-  padding: 4px 8px;
-  color: white;
+  padding: 8px 16px;
+  background-color: #ccc;
+  color: black;
   border: none;
-  border-radius: none;
-  cursor: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
 }
 
 .app-title {
-  display: relative;
-  padding: 20px;
+  padding: 10px;
   text-align: center;
   width: 100%;
-  font-size: 36px;
+  font-size: 28px;
   margin: 0;
   box-sizing: border-box;
 }
@@ -206,30 +223,28 @@ html, body {
   gap: 20px;
   max-width: 100%;
   padding: 20px;
-  box-sizing: none;
-  overflow-x: none;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .left-column {
-  flex: 1;
-.25;
+  flex: 1.25;
   display: flex;
   flex-direction: column;
-  gap: 20;
+  gap: 20px;
   min-width: 250px;
 }
 
 .calendar-section, .upload-section {
-  width: relative;
   background-color: #f0f0f0;
   padding: 24px;
   border-radius: 12px;
-  font-size: none14px;
-  margin-bottom: 20px;
+  font-size: 16px;
+  box-sizing: border-box;
 }
 
-.calendar-section h2 {
-  font-size: 36px;
+.calendar-section h2, .upload-section h2 {
+  font-size: 22px;
   margin: 0 0 16px;
   text-align: center;
 }
@@ -241,81 +256,75 @@ html, body {
 }
 
 .year-navigation h2 {
-  font-size: 32px;
-  margin: 0 0;
+  font-size: 22px;
+  margin: 0;
   text-align: center;
 }
 
 .months-grid {
- display: grid;
-  grid-template-columns: repeat(4,1fr);
-  height: relative;
-  width: 10px;
-  padding-bottom: 10px;
-  background-color: #e6e6;
-  border-radius: 6px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding: 10px;
+  background-color: #e6e6e6;
+  border-radius: 8px;
 }
 
 .month-button {
-  display: none;
-  background-color: #ffffff;
-  color: #000000;
-  padding: 8px;
-  border: none;
-  border-radius: none;
-  cursor: none;
+  padding: 10px;
+  font-size: 16px;
+  background-color: #fff;
+  color: #000;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  cursor: pointer;
   text-align: center;
 }
 
 .active-month {
   background-color: #007BFF;
-  color: #ffffff;
+  color: #fff;
 }
 
 .download-button {
-  display: block;
   margin-top: 20px;
 }
 
 .download-btn {
   text-decoration: none;
-  color: #ffffff;
+  color: #fff;
   background-color: #007BFF;
-  padding: 2px 4px;
-  border-radius: none;
+  padding: 10px 14px;
+  border-radius: 6px;
   border: none;
-  cursor: none;
-  font-size: 14px;
+  cursor: pointer;
+  font-size: 16px;
 }
 
 .upload-form {
-  {
-  background-color: #e6e6;
+  background-color: #e6e6e6;
   border-radius: 8px;
   padding: 16px;
-  display: none;
-  flex-direction: none;
-  gap: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .file-input {
-  width: relative100;
-%;
-  height: relative;
+  font-size: 16px;
   padding: 8px;
-  border-radius: none;
-  border: none1px solid #ccc;
-  font-size: none;
+  border-radius: 6px;
+  border: 1px solid #ccc;
 }
 
 .custom-dropdown {
-  display: relative;
+  position: relative;
   width: 100%;
   font-size: 16px;
 }
 
 .dropdown-toggle {
-  background-color: white;
+  background-color: #fff;
   border: 1px solid #ccc;
   border-radius: 6px;
   padding: 8px;
@@ -327,102 +336,86 @@ html, body {
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.dropdown-toggle:hover .dropdown-toggle,
+.dropdown-toggle:hover,
 .dropdown-toggle:focus {
   border-color: #007BFF;
-  box-shadow: 0 0 0 2px rgba(0,123,255,0.2);
-  border-radius: none;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.2);
+  outline: none;
 }
 
 .dropdown-menu {
-  display: absolute;
+  position: absolute;
   top: 100%;
   left: 0;
   right: 0;
   background-color: #fff;
   border: 1px solid #ccc;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   max-height: 200px;
   overflow-y: auto;
+  z-index: 1000;
   margin-top: 4px;
   list-style: none;
   padding: 0;
-  z-index: 1000;
 }
 
 .dropdown-item {
-  padding-left: 10px;
+  padding: 8px 12px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 16px;
   transition: background-color 0.2s ease;
 }
 
 .dropdown-item:nth-child(even) {
-  background: #f9f9f9;
+  background-color: #f9f9f9;
 }
 
-.dropdown-item:hover .dropdown-item,
+.dropdown-item:hover,
 .dropdown-item:focus {
   background-color: #007BFF;
   color: #fff;
+  outline: none;
 }
 
-.dropdown-item .selected {
+.dropdown-item.selected {
   background-color: #e6f0ff;
   color: #007BFF;
-  margin: none0;
+  font-weight: 500;
 }
 
 .dropdown-arrow {
-  background: none;
   border: solid #333;
-  color: none;
-  border-radius: none;
   border-width: 0 2px 2px 0;
-}
-
- display: inline-block;
+  display: inline-block;
   padding: 3px;
-  transform: none;
-  top: rotate(45deg);
+  transform: rotate(45deg);
+  transition: transform 0.2s ease;
 }
 
- transition: transform 0.2s ease;
-}
-
-.dropdown-toggle .open .dropdown-arrow {
-  .dropdown-toggle {
-    transform: rotate(-135deg);
+.dropdown-toggle.open .dropdown-arrow {
+  transform: rotate(-135deg);
 }
 
 .upload-btn {
-  background-color: #007BFF;
-  color: 10px;
-  padding: none0;
-  background-color: none;
-  border: none;
-  border-radius: none;
-  cursor: none;
   font-size: 16px;
+  padding: 10px;
+  background-color: #007BFF;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
 }
 
 .file-list {
-  flex: none;
-  width: 1;
-  .6;
+  flex: 1.6;
   min-width: 200px;
   background-color: #f0f0f0;
   padding: 24px;
-  top: relative;
-}
-
- .file-list {
-  background-color: none;
-  border-radius: none;
-  font-size: 14px;
-  margin: none;
-  box-sizing: none;
+  border-radius: 12px;
+  font-size: 16px;
+  align-self: stretch;
+  box-sizing: border-box;
 }
 
 .file-list h2 {
@@ -431,66 +424,60 @@ html, body {
 }
 
 .table-container {
-  margin: none;
-  margin-left: none;
-  margin-right: none;
-  margin-top: none;
-  margin-bottom: none;
+  overflow-x: auto;
 }
 
 .file-table {
-  {
   width: 100%;
-  background-color: #ffffff;
-  border-radius: none8px;
-  color: none;
-  padding-bottom: none;
-  font-size: 14px;
+  border-collapse: collapse;
+  background-color: #e6e6e6;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.file-table th, .file-table td {
+  padding: 12px;
+  border-bottom: 1px solid #ccc;
+  text-align: center;
+}
+
+.file-table th {
+  background-color: #d9d9d9;
+  border-bottom: 2px solid #ccc;
+}
+
+.file-table td:first-child, .file-table th:first-child {
+  text-align: center;
+}
+
+.file-table td:nth-child(2), .file-table th:nth-child(2) {
+  text-align: left;
 }
 
 .download-link {
-  display: block;
   text-decoration: none;
+  color: #007BFF;
   cursor: pointer;
 }
 
-@media (max-width: 600px) {
-  .file-table th,
-  .file-table td {
-    padding-left: 0;
-    padding-right: none;
-    padding-bottom: none;
-    width: none;
+@media screen and (max-width: 600px) {
+  .container {
+    flex-direction: column;
   }
-
-  .file-table th {
-    background-color: none;
-    border-bottom: none;
-    border: none none;
-    padding-bottom: none0;
+  .app-main {
+    padding-top: 140px;
+    min-height: calc(100vh - 140px);
   }
-
-  .file-table td {
-    padding-left: none;
-    padding-right: none;
-    padding-top: none;
-    padding-bottom: none;
+  .header-user-info {
+    flex-wrap: wrap;
+    gap: 8px;
   }
-
-  .file-table td:first-child td,
-  .file-table td:nth-child th {
-    padding-left: none0;
-    text-align: none;
+  .user-info-inner {
+    align-items: flex-start;
+    gap: 4px;
   }
-
-  .file-table td:nth-child(2) td,
-    .file-table th:nth-child(2) {
-    text-align: left;
-  }
-
-  .download-link {
-    display: none;
-    text-decoration: none;
-    cursor: none;
+  .modal-content {
+    width: 90%;
+    max-width: 300px;
   }
 }
