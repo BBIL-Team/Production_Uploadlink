@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { getCurrentUser, fetchUserAttributes, updateUserAttributes } from '@aws-amplify/auth';
@@ -69,6 +69,8 @@ const App: React.FC = () => {
   const [showUpdateForm, setShowUpdateForm] = useState<boolean>(false);
   const [newUsername, setNewUsername] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Fetch user attributes on mount
   useEffect(() => {
@@ -93,6 +95,17 @@ const App: React.FC = () => {
       }
     };
     fetchUserData();
+  }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   // Handle username update
@@ -201,6 +214,15 @@ const App: React.FC = () => {
 
   // Get financial year months for dropdown
   const financialYearMonths = getFinancialYearMonths(new Date());
+
+  // Toggle dropdown
+  const toggleDropdown = () => setIsDropdownOpen((prev) => !prev);
+
+  // Select month
+  const selectMonth = (monthYear: string) => {
+    setSelectedMonth(monthYear);
+    setIsDropdownOpen(false);
+  };
 
   return (
     <main className="app-main">
@@ -317,7 +339,7 @@ const App: React.FC = () => {
               {months.map((month) => (
                 <button
                   key={month}
-                  onClick={() => setDisplayedMonth(month === displayedMonth ? "" : month)}
+                  onClick={() => setDisplayedMonth(month === displayedMonth ? '' : month)}
                   style={{
                     padding: '10px',
                     fontSize: '16px',
@@ -348,7 +370,7 @@ const App: React.FC = () => {
                     fontSize: '16px',
                   }}
                 >
-                  Download {displayedMonth} Sample CSV
+                  Download {month: displayedMonth} Sample CSV
                 </button>
               </div>
             )}
@@ -381,16 +403,44 @@ const App: React.FC = () => {
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
                 style={{ fontSize: '16px' }}
               />
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                style={{ fontSize: '16px', padding: '8px', borderRadius: '6px' }}
-              >
-                <option value="">Select Month</option>
-                {financialYearMonths.map((monthYear) => (
-                  <option key={monthYear} value={monthYear}>{monthYear}</option>
-                ))}
-              </select>
+              <div className="custom-dropdown" ref={dropdownRef}>
+                <div
+                  className={`dropdown-toggle ${isDropdownOpen ? 'open' : ''}`}
+                  onClick={toggleDropdown}
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      toggleDropdown();
+                    }
+                  }}
+                >
+                  <span>{selectedMonth || 'Select Month'}</span>
+                  <span className="dropdown-arrow"></span>
+                </div>
+                {isDropdownOpen && (
+                  <ul className="dropdown-menu">
+                    {financialYearMonths.map((monthYear, index) => (
+                      <li
+                        key={indexMonth}
+                        className={`dropdown-item ${selectedMonth === monthYear ? 'selected' : ''}`}
+                        onClick={() => selectMonth(monthYear)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            selectMonth(monthYear);
+                          }
+                        }}
+                        tabIndex={0}
+                        role="option"
+                        aria-selected={selectedMonth === monthYear}
+                      >
+                        {monthYear}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
               <button
                 style={{ fontSize: '16px', padding: '10px' }}
                 onClick={() => {
@@ -418,17 +468,17 @@ const App: React.FC = () => {
             borderRadius: '12px',
             fontSize: '16px',
             alignSelf: 'stretch',
-            boxSizing: 'border-box',
+            box-sizing: border-box;
           }}
         >
           <h2 style={{ fontSize: '22px', margin: '0' }}>📋 List of Files Uploaded</h2>
-          <div style={{ overflowX: 'auto' }}>
+          <div style={{ overflow-x: 'auto' }}>
             <table
               style={{
                 width: '100%',
                 borderCollapse: 'collapse',
                 backgroundColor: '#e6e6e6',
-                borderRadius: '8px',
+                border-radius: '8px',
                 fontSize: '16px',
               }}
             >
@@ -438,7 +488,7 @@ const App: React.FC = () => {
                     style={{
                       padding: '12px',
                       borderBottom: '2px solid #ccc',
-                      textAlign: 'center',
+                      text-align: 'center',
                       backgroundColor: '#d9d9d9',
                     }}
                   >
@@ -448,7 +498,7 @@ const App: React.FC = () => {
                     style={{
                       padding: '12px',
                       borderBottom: '2px solid #ccc',
-                      textAlign: 'center',
+                      text-align: 'center',
                       backgroundColor: '#d9d9d9',
                     }}
                   >
@@ -458,7 +508,7 @@ const App: React.FC = () => {
                     style={{
                       padding: '12px',
                       borderBottom: '2px solid #ccc',
-                      textAlign: 'center',
+                      text-align: 'center',
                       backgroundColor: '#d9d9d9',
                     }}
                   >
@@ -468,8 +518,8 @@ const App: React.FC = () => {
                     style={{
                       padding: '12px',
                       borderBottom: '2px solid #ccc',
-                      textAlign: 'center',
-                      backgroundColor: '#d9d9d9',
+                      text-align: 'center',
+                      backgroundColor: '#d9d9d9d9',
                     }}
                   >
                     Date Uploaded
@@ -478,7 +528,7 @@ const App: React.FC = () => {
                     style={{
                       padding: '12px',
                       borderBottom: '2px solid #ccc',
-                      textAlign: 'center',
+                      text-align: 'center',
                       backgroundColor: '#d9d9d9',
                     }}
                   >
@@ -488,7 +538,7 @@ const App: React.FC = () => {
                     style={{
                       padding: '12px',
                       borderBottom: '2px solid #ccc',
-                      textAlign: 'center',
+                      text-align: 'center',
                       backgroundColor: '#d9d9d9',
                     }}
                   >
@@ -499,12 +549,12 @@ const App: React.FC = () => {
               <tbody>
                 {sampleFiles.map((file) => (
                   <tr key={file.id}>
-                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', textAlign: 'center' }}>{file.id}</td>
-                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', textAlign: 'left' }}>{file.fileName}</td>
-                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', textAlign: 'center' }}>{file.filesize}</td>
-                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', textAlign: 'center' }}>{file.dateUploaded}</td>
-                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', textAlign: 'center' }}>{file.uploadedBy}</td>
-                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', textAlign: 'center' }}>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', text-align: 'center' }}>{file.id}</td>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', text-align: 'left' }}>{file.fileName}</td>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', text-align: 'center' }}>{file.filesize}</td>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', text-align: 'center'center' }}>{file.dateUploaded}</td>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', text-align: 'center' }}>{file.uploadedBy}</td>
+                    <td style={{ padding: '12px', borderBottom: '1px solid #ccc', text-align: 'center' }}>
                       <a
                         href={file.downloadLink}
                         onClick={(e) => {
@@ -512,7 +562,7 @@ const App: React.FC = () => {
                           downloadFile(file.fileName.split('_')[0]);
                         }}
                         style={{
-                          textDecoration: 'none',
+                          text-decoration: 'none',
                           color: '#007BFF',
                           cursor: 'pointer',
                         }}
@@ -526,8 +576,7 @@ const App: React.FC = () => {
             </table>
           </div>
         </div>
-      </div>
-    </main>
+    </div>
   );
 };
 
