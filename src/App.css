@@ -6,6 +6,15 @@ html, body {
   overflow-x: hidden;
 }
 
+.app-main {
+   maxWidth: '100%';
+   minHeight: '100vh';
+   backgroundColor: '#81d7ea'; 
+   paddingTop: '360px';
+   boxSizing: 'border-box'; 
+   overflowX: 'hidden'; 
+}
+
 .app-header {
   display: flex;
   flex-direction: row !important;
