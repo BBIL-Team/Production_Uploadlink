@@ -71,6 +71,7 @@ const App: React.FC = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const [showMessageModal, setShowMessageModal] = useState<boolean>(false);
   const [modalMessage, setModalMessage] = useState<string>("");
+  const [messageType, setMessageType] = useState<'success' | 'error'>('success');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Fetch user attributes on mount
@@ -109,11 +110,24 @@ const App: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Manage body overflow when modals are open
+  useEffect(() => {
+    if (showMessageModal || showUpdateForm) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showMessageModal, showUpdateForm]);
+
   // Handle username update
   const handleUpdateUsername = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUsername.trim()) {
       setModalMessage('Please enter a valid username.');
+      setMessageType('error');
       setShowMessageModal(true);
       return;
     }
@@ -127,6 +141,7 @@ const App: React.FC = () => {
       setShowUpdateForm(false);
       setNewUsername('');
       setModalMessage('Username updated successfully!');
+      setMessageType('success');
       setShowMessageModal(true);
       const attributes = await fetchUserAttributes();
       setUserAttributes((prev) => ({
@@ -136,6 +151,7 @@ const App: React.FC = () => {
     } catch (error: any) {
       console.error('Error updating username:', error);
       setModalMessage(`Failed to update username: ${error.message || 'Unknown error'}`);
+      setMessageType('error');
       setShowMessageModal(true);
     }
   };
@@ -145,6 +161,7 @@ const App: React.FC = () => {
       return true;
     }
     setModalMessage("Please upload a valid CSV file.");
+    setMessageType('error');
     setShowMessageModal(true);
     return false;
   };
@@ -152,11 +169,13 @@ const App: React.FC = () => {
   const uploadFile = async (file: File | null, apiUrl: string) => {
     if (!file) {
       setModalMessage("Please select a CSV file to upload.");
+      setMessageType('error');
       setShowMessageModal(true);
       return;
     }
     if (!selectedMonth) {
       setModalMessage("Please select the correct month.");
+      setMessageType('error');
       setShowMessageModal(true);
       return;
     }
@@ -177,15 +196,18 @@ const App: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setModalMessage(data.message || "File uploaded successfully!");
+        setMessageType('success');
         setShowMessageModal(true);
       } else {
         const errorText = await response.text();
         setModalMessage(`Failed to upload file: ${errorText}`);
+        setMessageType('error');
         setShowMessageModal(true);
       }
     } catch (error) {
       console.error("Error:", error);
       setModalMessage("An error occurred while uploading the file.");
+      setMessageType('error');
       setShowMessageModal(true);
     }
   };
@@ -210,14 +232,17 @@ const App: React.FC = () => {
         link.click();
         document.body.removeChild(link);
         setModalMessage(`Downloaded ${month}_Sample_File.csv successfully!`);
+        setMessageType('success');
         setShowMessageModal(true);
       } else {
         setModalMessage(`Error: ${data.error || "Failed to fetch download link"} (Status: ${response.status})`);
+        setMessageType('error');
         setShowMessageModal(true);
       }
     } catch (error: any) {
       console.error("Download error:", error);
       setModalMessage(`An error occurred while fetching the download link: ${error.message}`);
+      setMessageType('error');
       setShowMessageModal(true);
     }
   };
@@ -238,6 +263,7 @@ const App: React.FC = () => {
   const closeMessageModal = () => {
     setShowMessageModal(false);
     setModalMessage("");
+    setMessageType('success');
   };
 
   // Get financial year months for dropdown
@@ -308,7 +334,10 @@ const App: React.FC = () => {
       {showMessageModal && (
         <div className="modal-overlay">
           <div className="modal-content message-modal">
-            <p className="message-text">{modalMessage}</p>
+            <div className={`message-icon ${messageType}`}>
+              {messageType === 'success' ? '✅' : '⚠️'}
+            </div>
+            <p className={`message-text ${messageType}`}>{modalMessage}</p>
             <button className="ok-btn" onClick={closeMessageModal}>
               OK
             </button>
