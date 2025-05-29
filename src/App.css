@@ -10,7 +10,7 @@ html, body {
   max-width: 100%;
   min-height: calc(100vh - 360px);
   background-color: #81d7ea;
-  padding-top: 360px;
+  padding-top: 440px;
   box-sizing: border-box;
   overflow-x: hidden;
 }
