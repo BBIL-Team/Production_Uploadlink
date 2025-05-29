@@ -352,7 +352,7 @@ const App: React.FC = () => {
                 </div>
                 {isDropdownOpen && (
                   <ul className="dropdown-menu">
-                    {financialYearMonths.map((monthYear, index) => (
+                    {financialYearMonths.map((monthYear) => (
                       <li
                         key={monthYear}
                         className={`dropdown-item ${selectedMonth === monthYear ? 'selected' : ''}`}
