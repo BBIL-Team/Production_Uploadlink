@@ -58,7 +58,6 @@ const getFinancialYearMonths = (currentDate: Date) => {
 const App: React.FC = () => {
   const { signOut } = useAuthenticator();
   const [file, setFile] = useState<File | null>(null);
-  const [responseMessage, setResponseMessage] = useState<string>("");
   const [selectedMonth, setSelectedMonth] = useState<string>("");
   const [displayedMonth, setDisplayedMonth] = useState<string>("");
   const [year, setYear] = useState<number>(2025);
@@ -70,6 +69,8 @@ const App: React.FC = () => {
   const [newUsername, setNewUsername] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
+  const [showMessageModal, setShowMessageModal] = useState<boolean>(false);
+  const [modalMessage, setModalMessage] = useState<string>("");
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Fetch user attributes on mount
@@ -112,7 +113,8 @@ const App: React.FC = () => {
   const handleUpdateUsername = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUsername.trim()) {
-      alert('Please enter a valid username.');
+      setModalMessage('Please enter a valid username.');
+      setShowMessageModal(true);
       return;
     }
     try {
@@ -124,7 +126,8 @@ const App: React.FC = () => {
       setUserAttributes((prev) => ({ ...prev, username: newUsername.trim() }));
       setShowUpdateForm(false);
       setNewUsername('');
-      alert('Username updated successfully!');
+      setModalMessage('Username updated successfully!');
+      setShowMessageModal(true);
       const attributes = await fetchUserAttributes();
       setUserAttributes((prev) => ({
         ...prev,
@@ -132,7 +135,8 @@ const App: React.FC = () => {
       }));
     } catch (error: any) {
       console.error('Error updating username:', error);
-      alert(`Failed to update username: ${error.message || 'Unknown error'}`);
+      setModalMessage(`Failed to update username: ${error.message || 'Unknown error'}`);
+      setShowMessageModal(true);
     }
   };
 
@@ -140,17 +144,20 @@ const App: React.FC = () => {
     if (file && file.name.endsWith(".csv")) {
       return true;
     }
-    alert("Please upload a valid CSV file.");
+    setModalMessage("Please upload a valid CSV file.");
+    setShowMessageModal(true);
     return false;
   };
 
   const uploadFile = async (file: File | null, apiUrl: string) => {
     if (!file) {
-      alert("Please select a CSV file to upload.");
+      setModalMessage("Please select a CSV file to upload.");
+      setShowMessageModal(true);
       return;
     }
     if (!selectedMonth) {
-      alert("Please select the correct month.");
+      setModalMessage("Please select the correct month.");
+      setShowMessageModal(true);
       return;
     }
 
@@ -169,14 +176,17 @@ const App: React.FC = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setResponseMessage(data.message || "File uploaded successfully!");
+        setModalMessage(data.message || "File uploaded successfully!");
+        setShowMessageModal(true);
       } else {
         const errorText = await response.text();
-        setResponseMessage(`Failed to upload file: ${errorText}`);
+        setModalMessage(`Failed to upload file: ${errorText}`);
+        setShowMessageModal(true);
       }
     } catch (error) {
       console.error("Error:", error);
-      setResponseMessage("An error occurred while uploading the file.");
+      setModalMessage("An error occurred while uploading the file.");
+      setShowMessageModal(true);
     }
   };
 
@@ -199,13 +209,16 @@ const App: React.FC = () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        setResponseMessage(`Downloaded ${month}_Sample_File.csv successfully!`);
+        setModalMessage(`Downloaded ${month}_Sample_File.csv successfully!`);
+        setShowMessageModal(true);
       } else {
-        setResponseMessage(`Error: ${data.error || "Failed to fetch download link"} (Status: ${response.status})`);
+        setModalMessage(`Error: ${data.error || "Failed to fetch download link"} (Status: ${response.status})`);
+        setShowMessageModal(true);
       }
     } catch (error: any) {
       console.error("Download error:", error);
-      setResponseMessage(`An error occurred while fetching the download link: ${error.message}`);
+      setModalMessage(`An error occurred while fetching the download link: ${error.message}`);
+      setShowMessageModal(true);
     }
   };
 
@@ -219,6 +232,12 @@ const App: React.FC = () => {
   const selectMonth = (monthYear: string) => {
     setSelectedMonth(monthYear);
     setIsDropdownOpen(false);
+  };
+
+  // Close message modal
+  const closeMessageModal = () => {
+    setShowMessageModal(false);
+    setModalMessage("");
   };
 
   // Get financial year months for dropdown
@@ -281,6 +300,18 @@ const App: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Message Modal */}
+      {showMessageModal && (
+        <div className="modal-overlay">
+          <div className="modal-content message-modal">
+            <p className="message-text">{modalMessage}</p>
+            <button className="ok-btn" onClick={closeMessageModal}>
+              OK
+            </button>
           </div>
         </div>
       )}
@@ -384,9 +415,6 @@ const App: React.FC = () => {
                 Submit File
               </button>
             </div>
-            {responseMessage && (
-              <p className="response-message">{responseMessage}</p>
-            )}
           </div>
         </div>
 
