@@ -99,6 +99,28 @@ html, body {
   text-align: center;
 }
 
+.message-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+
+.message-text {
+  font-size: 16px;
+  margin: 0;
+}
+
+.ok-btn {
+  padding: 8px 16px;
+  background-color: #007BFF;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
 .modal-content h2 {
   font-size: 22px;
   margin: 0 0 16px;
@@ -335,12 +357,6 @@ html, body {
   border: none;
   border-radius: 6px;
   cursor: pointer;
-}
-
-.response-message {
-  margin-top: 12px;
-  color: green;
-  font-size: 16px;
 }
 
 .file-list {
