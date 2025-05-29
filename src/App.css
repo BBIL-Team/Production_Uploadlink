@@ -17,7 +17,7 @@ html, body {
 
 .app-header {
   display: flex;
-  flex-direction: row !important;
+  flex-direction: row;
   align-items: center;
   background-color: #008080;
   color: white;
@@ -40,19 +40,19 @@ html, body {
 .header-user-info {
   margin-left: auto;
   margin-right: 16px;
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  gap: 16px !important;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
   font-size: 14px;
   color: white;
 }
 
 .user-info-inner {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: flex-start !important;
-  gap: 4px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
 }
 
 .username, .phone-number {
@@ -212,8 +212,8 @@ html, body {
 }
 
 .active-month {
-  background-color: #007BFF !important;
-  color: #fff !important;
+  background-color: #007BFF;
+  color: #fff;
 }
 
 .download-button {
@@ -240,13 +240,13 @@ html, body {
   gap: 12px;
 }
 
-.file-input, .month-select {
+.file-input {
   font-size: 16px;
   padding: 8px;
   border-radius: 6px;
+  border: 1px solid #ccc;
 }
 
-/* Custom Dropdown Styles */
 .custom-dropdown {
   position: relative;
   width: 100%;
@@ -298,7 +298,7 @@ html, body {
 }
 
 .dropdown-item:nth-child(even) {
-  background-color: #f9f9f9; /* Light gray for alternate items */
+  background-color: #f9f9f9;
 }
 
 .dropdown-item:hover,
@@ -405,10 +405,10 @@ html, body {
   }
   .header-user-info {
     flex-wrap: wrap;
-    gap: 8px !important;
+    gap: 8px;
   }
   .user-info-inner {
-    align-items: flex-start !important;
-    gap: 4px !important;
+    align-items: flex-start;
+    gap: 4px;
   }
 }
