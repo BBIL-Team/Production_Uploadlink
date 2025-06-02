@@ -8,7 +8,7 @@ html, body {
 
 .app-main {
   max-width: 100%;
-  min-height: calc(100vh - 360px);
+  min-height: calc(100vh - 440px);
   background-color: #81d7ea;
   padding-top: 440px;
   box-sizing: border-box;
@@ -435,7 +435,8 @@ html, body {
   font-size: 16px;
 }
 
-.file-table th, .file-table td {
+.file-table th,
+.file-table td {
   padding: 12px;
   border-bottom: 1px solid #ccc;
   text-align: center;
@@ -446,12 +447,20 @@ html, body {
   border-bottom: 2px solid #ccc;
 }
 
-.file-table td:first-child, .file-table th:first-child {
+.file-table td:first-child,
+.file-table th:first-child {
   text-align: center;
 }
 
-.file-table td:nth-child(2), .file-table th:nth-child(2) {
+.file-table td:nth-child(2),
+.file-table th:nth-child(2) {
   text-align: left;
+}
+
+.file-table td:nth-child(3),
+.file-table th:nth-child(3) {
+  text-align: center;
+  width: 80px;
 }
 
 .download-link {
