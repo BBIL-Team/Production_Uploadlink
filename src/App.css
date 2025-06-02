@@ -455,6 +455,10 @@ html, body {
 .file-table td:nth-child(2),
 .file-table th:nth-child(2) {
   text-align: left;
+  width: 150px; /* Increased width for File Name */
+  white-space: nowrap; /* Prevent wrapping */
+  overflow: hidden; /* Hide overflow */
+  text-overflow: ellipsis; /* Show ellipsis for overflow */
 }
 
 .file-table td:nth-child(3),
