@@ -464,7 +464,7 @@ html, body {
 .file-table td:nth-child(3),
 .file-table th:nth-child(3) {
   text-align: center;
-  width: 120px;
+  width: 80px;
 }
 
 .download-link {
