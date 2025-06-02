@@ -8,9 +8,9 @@ html, body {
 
 .app-main {
   max-width: 100%;
-  min-height: calc(100vh - 130px); /* Adjusted to match padding-top */
+  min-height: calc(100vh - 840px); /* Adjusted to match padding-top */
   background-color: #81d7ea;
-  padding-top: 130px; /* Matches header height (~128px) */
+  padding-top: 840px; /* Matches header height (~128px) */
   box-sizing: border-box;
   overflow-x: hidden;
 }
