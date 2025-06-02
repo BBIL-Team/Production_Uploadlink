@@ -108,49 +108,51 @@ const App: React.FC = () => {
         console.log('S3 files:', data);
 
         const files = await Promise.all(
-          data.files.map(async (file: { key: string; size: number; lastModified: string }, index: number) => {
-            // Extract file name and type
-            const fileNameWithPath = file.key.split('/').pop() || '';
-            const fileNameParts = fileNameWithPath.split('.');
-            const fileName = fileNameParts[0];
-            const fileType = fileNameParts[1]?.toLowerCase() || '';
+          data.files
+            .filter((file: { key: string }) => file.key.endsWith('.csv')) // Filter CSV files only
+            .map(async (file: { key: string; size: number; lastModified: string }, index: number) => {
+              // Extract file name and type
+              const fileNameWithPath = file.key.split('/').pop() || '';
+              const fileNameParts = fileNameWithPath.split('.');
+              const fileName = fileNameParts[0];
+              const fileType = fileNameParts[1]?.toLowerCase() || '';
 
-            // Format filesize (bytes to KB)
-            const filesizeKB = (file.size / 1024).toFixed(1) + ' KB';
+              // Format filesize (bytes to KB)
+              const filesizeKB = (file.size / 1024).toFixed(1) + ' KB';
 
-            // Format date
-            const dateUploaded = new Date(file.lastModified).toISOString().split('T')[0];
+              // Format date
+              const dateUploaded = new Date(file.lastModified).toISOString().split('T')[0];
 
-            // Fetch uploadedBy from DynamoDB
-            let uploadedBy = 'Unknown';
-            try {
-              const uploaderResponse = await fetch(
-                `https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/get-uploader?fileName=${encodeURIComponent(fileNameWithPath)}`,
-                {
-                  method: 'GET',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
+              // Fetch uploadedBy from DynamoDB
+              let uploadedBy = 'Unknown';
+              try {
+                const uploaderResponse = await fetch(
+                  `https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/get-uploader?fileName=${encodeURIComponent(fileNameWithPath)}`,
+                  {
+                    method: 'GET',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                  }
+                );
+                if (uploaderResponse.ok) {
+                  const uploaderData = await uploaderResponse.json();
+                  uploadedBy = uploaderData.uploadedBy || 'Unknown';
                 }
-              );
-              if (uploaderResponse.ok) {
-                const uploaderData = await uploaderResponse.json();
-                uploadedBy = uploaderData.uploadedBy || 'Unknown';
+              } catch (error) {
+                console.error(`Error fetching uploader for ${fileNameWithPath}:`, error);
               }
-            } catch (error) {
-              console.error(`Error fetching uploader for ${fileNameWithPath}:`, error);
-            }
 
-            return {
-              id: index + 1,
-              fileName,
-              fileType,
-              filesize: filesizeKB,
-              dateUploaded,
-              uploadedBy,
-              fileKey: file.key,
-            };
-          })
+              return {
+                id: index + 1,
+                fileName,
+                fileType,
+                filesize: filesizeKB,
+                dateUploaded,
+                uploadedBy,
+                fileKey: file.key,
+              };
+            })
         );
 
         // Sort by dateUploaded descending
@@ -302,55 +304,64 @@ const App: React.FC = () => {
         }
 
         // Refresh file list
-        const response = await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/list-files', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        if (response.ok) {
+        try {
+          const response = await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/list-files', {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+          if (!response.ok) {
+            throw new Error(`Failed to fetch S3 files: ${response.status}`);
+          }
           const data = await response.json();
+          console.log('S3 files:', data);
+
           const files = await Promise.all(
-            data.files.map(async (file: { key: string; size: number; lastModified: string }, index: number) => {
-              const fileNameWithPath = file.key.split('/').pop() || '';
-              const fileNameParts = fileNameWithPath.split('.');
-              const fileName = fileNameParts[0];
-              const fileType = fileNameParts[1]?.toLowerCase() || '';
-              const filesizeKB = (file.size / 1024).toFixed(1) + ' KB';
-              const dateUploaded = new Date(file.lastModified).toISOString().split('T')[0];
+            data.files
+              .filter((file: { key: string }) => file.key.endsWith('.csv')) // Filter CSV files only
+              .map(async (file: { key: string; size: number; lastModified: string }, index: number) => {
+                const fileNameWithPath = file.key.split('/').pop() || '';
+                const fileNameParts = fileNameWithPath.split('.');
+                const fileName = fileNameParts[0];
+                const fileType = fileNameParts[1]?.toLowerCase() || '';
+                const filesizeKB = (file.size / 1024).toFixed(1) + ' KB';
+                const dateUploaded = new Date(file.lastModified).toISOString().split('T')[0];
 
-              let uploadedBy = 'Unknown';
-              try {
-                const uploaderResponse = await fetch(
-                  `https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/get-uploader?fileName=${encodeURIComponent(fileNameWithPath)}`,
-                  {
-                    method: 'GET',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
+                let uploadedBy = 'Unknown';
+                try {
+                  const uploaderResponse = await fetch(
+                    `https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/get-uploader?fileName=${encodeURIComponent(fileNameWithPath)}`,
+                    {
+                      method: 'GET',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                    }
+                  );
+                  if (uploaderResponse.ok) {
+                    const uploaderData = await uploaderResponse.json();
+                    uploadedBy = uploaderData.uploadedBy || 'Unknown';
                   }
-                );
-                if (uploaderResponse.ok) {
-                  const uploaderData = await uploaderResponse.json();
-                  uploadedBy = uploaderData.uploadedBy || 'Unknown';
+                } catch (error) {
+                  console.error(`Error fetching uploader for ${fileNameWithPath}:`, error);
                 }
-              } catch (error) {
-                console.error(`Error fetching uploader for ${fileNameWithPath}:`, error);
-              }
 
-              return {
-                id: index + 1,
-                fileName,
-                fileType,
-                filesize: filesizeKB,
-                dateUploaded,
-                uploadedBy,
-                fileKey: file.key,
-              };
-            })
+                return {
+                  id: index + 1,
+                  fileName,
+                  fileType,
+                  filesize: filesizeKB,
+                  dateUploaded,
+                  uploadedBy,
+                  fileKey: file.key,
+                };
+              })
           );
           files.sort((a, b) => new Date(b.dateUploaded).getTime() - new Date(a.dateUploaded).getTime());
           setS3Files(files);
+        } catch (error) {
+          console.error('Error refreshing S3 files:', error);
         }
       } else {
         const errorText = await uploadResponse.text();
