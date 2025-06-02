@@ -8,9 +8,9 @@ html, body {
 
 .app-main {
   max-width: 100%;
-  min-height: calc(100vh - 440px);
+  min-height: calc(100vh - 130px); /* Adjusted to match padding-top */
   background-color: #81d7ea;
-  padding-top: 440px;
+  padding-top: 130px; /* Matches header height (~128px) */
   box-sizing: border-box;
   overflow-x: hidden;
 }
@@ -213,7 +213,7 @@ html, body {
   text-align: center;
   width: 100%;
   font-size: 28px;
-  margin: 0;
+  margin: 10px 0; /* Add margin-top for spacing */
   box-sizing: border-box;
 }
 
@@ -474,8 +474,8 @@ html, body {
     flex-direction: column;
   }
   .app-main {
-    padding-top: 140px;
-    min-height: calc(100vh - 140px);
+    padding-top: 130px; /* Same as desktop */
+    min-height: calc(100vh - 130px);
   }
   .header-user-info {
     flex-wrap: wrap;
