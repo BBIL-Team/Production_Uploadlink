@@ -430,7 +430,7 @@ const App: React.FC = () => {
                     {financialYearMonths.map((monthYear) => (
                       <li
                         key={monthYear}
-                        className={`dropdown-item ${selectedMonth === 'monthYear' ? 'selected' : ''}`}
+                        className={`dropdown-item ${selectedMonth === monthYear ? 'selected' : ''}`}
                         onClick={() => selectMonth(monthYear)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
