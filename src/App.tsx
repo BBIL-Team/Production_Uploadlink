@@ -366,8 +366,9 @@ const App: React.FC = () => {
     }
   };
 
-  const downloadFile = async (fileKey: string) => {
+  const downloadFile = async (key: string, isMonth: boolean = false) => {
     try {
+      const fileKey = isMonth ? `${key}_Sample_File.csv` : key;
       const response = await fetch('https://e3blv3dko6.execute-api.ap-south-1.amazonaws.com/P1/presigned_urls', {
         method: 'POST',
         headers: {
@@ -529,7 +530,7 @@ const App: React.FC = () => {
             </div>
             {displayedMonth && (
               <div className="download-button">
-                <button onClick={() => downloadFile(`Production_Sample_Files/${displayedMonth}_Sample_File.csv`)} className="download-btn">
+                <button onClick={() => downloadFile(displayedMonth, true)} className="download-btn">
                   Download {displayedMonth} Sample CSV
                 </button>
               </div>
