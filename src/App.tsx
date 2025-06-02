@@ -13,18 +13,11 @@ const months = [
   "July", "August", "September", "October", "November", "December"
 ];
 
-// Sample data for the table
-const sampleFiles = [
-  { id: 1, fileName: "January_Sample_File.csv", dateUploaded: "2025-01-15", uploadedBy: "John Doe", downloadLink: "#", filesize: "12.5 kb" },
-  { id: 2, fileName: "February_Sample_File.csv", dateUploaded: "2025-02-10", uploadedBy: "Jane Smith", downloadLink: "#", filesize: "57.5 kb" },
-  { id: 3, fileName: "March_Sample_File.csv", dateUploaded: "2025-03-20", uploadedBy: "Alice Johnson", downloadLink: "#", filesize: "62.8 kb" },
-];
-
 // Function to get financial year months (previous month if <= 6th, current month, remaining months)
 const getFinancialYearMonths = (currentDate: Date) => {
-  const currentMonth = currentDate.getMonth(); // 0-based (May 2025 = 4)
+  const currentMonth = currentDate.getMonth(); // 0-based (June 2025 = 5)
   const currentYear = currentDate.getFullYear(); // 2025
-  const currentDay = currentDate.getDate(); // 29
+  const currentDay = currentDate.getDate(); // 2
 
   // Financial year: April (currentYear) to March (currentYear + 1)
   const financialYearStartYear = currentMonth >= 3 ? currentYear : currentYear - 1; // April 2025
@@ -72,9 +65,12 @@ const App: React.FC = () => {
   const [showMessageModal, setShowMessageModal] = useState<boolean>(false);
   const [modalMessage, setModalMessage] = useState<string>("");
   const [modalType, setModalType] = useState<'success' | 'error'>('success');
+  const [s3Files, setS3Files] = useState<
+    { id: number; fileName: string; fileType: string; filesize: string; dateUploaded: string; uploadedBy: string; fileKey: string }[]
+  >([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Fetch user attributes on mount
+  // Fetch user attributes and S3 files on mount
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -96,7 +92,80 @@ const App: React.FC = () => {
         setIsLoading(false);
       }
     };
+
+    const fetchS3Files = async () => {
+      try {
+        const response = await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/list-files', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        if (!response.ok) {
+          throw new Error(`Failed to fetch S3 files: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log('S3 files:', data);
+
+        const files = await Promise.all(
+          data.files.map(async (file: { key: string; size: number; lastModified: string }, index: number) => {
+            // Extract file name and type
+            const fileNameWithPath = file.key.split('/').pop() || '';
+            const fileNameParts = fileNameWithPath.split('.');
+            const fileName = fileNameParts[0];
+            const fileType = fileNameParts[1]?.toLowerCase() || '';
+
+            // Format filesize (bytes to KB)
+            const filesizeKB = (file.size / 1024).toFixed(1) + ' KB';
+
+            // Format date
+            const dateUploaded = new Date(file.lastModified).toISOString().split('T')[0];
+
+            // Fetch uploadedBy from DynamoDB
+            let uploadedBy = 'Unknown';
+            try {
+              const uploaderResponse = await fetch(
+                `https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/get-uploader?fileName=${encodeURIComponent(fileNameWithPath)}`,
+                {
+                  method: 'GET',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                }
+              );
+              if (uploaderResponse.ok) {
+                const uploaderData = await uploaderResponse.json();
+                uploadedBy = uploaderData.uploadedBy || 'Unknown';
+              }
+            } catch (error) {
+              console.error(`Error fetching uploader for ${fileNameWithPath}:`, error);
+            }
+
+            return {
+              id: index + 1,
+              fileName,
+              fileType,
+              filesize: filesizeKB,
+              dateUploaded,
+              uploadedBy,
+              fileKey: file.key,
+            };
+          })
+        );
+
+        // Sort by dateUploaded descending
+        files.sort((a, b) => new Date(b.dateUploaded).getTime() - new Date(a.dateUploaded).getTime());
+        setS3Files(files);
+      } catch (error) {
+        console.error('Error fetching S3 files:', error);
+        setModalMessage('Failed to load files from server.');
+        setModalType('error');
+        setShowMessageModal(true);
+      }
+    };
+
     fetchUserData();
+    fetchS3Files();
   }, []);
 
   // Close dropdown when clicking outside
@@ -192,26 +261,99 @@ const App: React.FC = () => {
       return;
     }
 
-    // Extract month name from "Month Year" (e.g., "May 2025" -> "May")
+    // Extract month name from "Month Year" (e.g., "June 2025" -> "June")
     const monthName = selectedMonth.split(' ')[0];
+    const fileName = `${monthName}_Sample_File.csv`;
 
     const formData = new FormData();
     formData.append('file', file);
     formData.append('month', monthName);
 
     try {
-      const response = await fetch(apiUrl, {
+      // Upload to S3
+      const uploadResponse = await fetch(apiUrl, {
         method: "POST",
         body: formData,
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setModalMessage(data.message || "File uploaded successfully!");
+      if (uploadResponse.ok) {
+        const uploadData = await uploadResponse.json();
+        setModalMessage(uploadData.message || "File uploaded successfully!");
         setModalType('success');
         setShowMessageModal(true);
+
+        // Save to DynamoDB
+        try {
+          await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/save-upload', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              fileName,
+              uploadedBy: userAttributes.username || 'Unknown',
+            }),
+          });
+        } catch (error) {
+          console.error('Error saving to DynamoDB:', error);
+          setModalMessage('File uploaded, but failed to save upload details.');
+          setModalType('error');
+          setShowMessageModal(true);
+        }
+
+        // Refresh file list
+        const response = await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/list-files', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const files = await Promise.all(
+            data.files.map(async (file: { key: string; size: number; lastModified: string }, index: number) => {
+              const fileNameWithPath = file.key.split('/').pop() || '';
+              const fileNameParts = fileNameWithPath.split('.');
+              const fileName = fileNameParts[0];
+              const fileType = fileNameParts[1]?.toLowerCase() || '';
+              const filesizeKB = (file.size / 1024).toFixed(1) + ' KB';
+              const dateUploaded = new Date(file.lastModified).toISOString().split('T')[0];
+
+              let uploadedBy = 'Unknown';
+              try {
+                const uploaderResponse = await fetch(
+                  `https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/get-uploader?fileName=${encodeURIComponent(fileNameWithPath)}`,
+                  {
+                    method: 'GET',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                  }
+                );
+                if (uploaderResponse.ok) {
+                  const uploaderData = await uploaderResponse.json();
+                  uploadedBy = uploaderData.uploadedBy || 'Unknown';
+                }
+              } catch (error) {
+                console.error(`Error fetching uploader for ${fileNameWithPath}:`, error);
+              }
+
+              return {
+                id: index + 1,
+                fileName,
+                fileType,
+                filesize: filesizeKB,
+                dateUploaded,
+                uploadedBy,
+                fileKey: file.key,
+              };
+            })
+          );
+          files.sort((a, b) => new Date(b.dateUploaded).getTime() - new Date(a.dateUploaded).getTime());
+          setS3Files(files);
+        }
       } else {
-        const errorText = await response.text();
+        const errorText = await uploadResponse.text();
         setModalMessage(`Failed to upload file: ${errorText}`);
         setModalType('error');
         setShowMessageModal(true);
@@ -224,35 +366,35 @@ const App: React.FC = () => {
     }
   };
 
-  const downloadFile = async (month: string) => {
+  const downloadFile = async (fileKey: string) => {
     try {
-      const response = await fetch("https://e3blv3dko6.execute-api.ap-south-1.amazonaws.com/P1/presigned_urls", {
-        method: "POST",
+      const response = await fetch('https://e3blv3dko6.execute-api.ap-south-1.amazonaws.com/P1/presigned_urls', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ file_key: `${month}_Sample_File.csv` }),
+        body: JSON.stringify({ file_key: fileKey }),
       });
-      console.log("Response status:", response.status, "OK:", response.ok);
+      console.log('Response status:', response.status, 'OK:', response.ok);
       const data = await response.json();
-      console.log("Response data:", data);
+      console.log('Response data:', data);
       if (response.ok && data.presigned_url) {
-        const link = document.createElement("a");
+        const link = document.createElement('a');
         link.href = data.presigned_url;
-        link.download = `${month}_Sample_File.csv`;
+        link.download = fileKey.split('/').pop() || 'download.csv';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        setModalMessage(`Downloaded ${month}_Sample_File.csv successfully!`);
+        setModalMessage(`Downloaded ${fileKey.split('/').pop()} successfully!`);
         setModalType('success');
         setShowMessageModal(true);
       } else {
-        setModalMessage(`Error: ${data.error || "Failed to fetch download link"} (Status: ${response.status})`);
+        setModalMessage(`Error: ${data.error || 'Failed to fetch download link'} (Status: ${response.status})`);
         setModalType('error');
         setShowMessageModal(true);
       }
     } catch (error: any) {
-      console.error("Download error:", error);
+      console.error('Download error:', error);
       setModalMessage(`An error occurred while fetching the download link: ${error.message}`);
       setModalType('error');
       setShowMessageModal(true);
@@ -274,7 +416,7 @@ const App: React.FC = () => {
   // Close message modal
   const closeMessageModal = () => {
     setShowMessageModal(false);
-    setModalMessage("");
+    setModalMessage('');
     setModalType('success');
   };
 
@@ -301,10 +443,7 @@ const App: React.FC = () => {
                 {userAttributes.username ? (
                   `Hi, ${userAttributes.username}`
                 ) : (
-                  <button
-                    className="update-username-btn"
-                    onClick={() => setShowUpdateForm(true)}
-                  >
+                  <button className="update-username-btn" onClick={() => setShowUpdateForm(true)}>
                     Update Username
                   </button>
                 )}
@@ -390,10 +529,7 @@ const App: React.FC = () => {
             </div>
             {displayedMonth && (
               <div className="download-button">
-                <button
-                  onClick={() => downloadFile(displayedMonth)}
-                  className="download-btn"
-                >
+                <button onClick={() => downloadFile(`Production_Sample_Files/${displayedMonth}_Sample_File.csv`)} className="download-btn">
                   Download {displayedMonth} Sample CSV
                 </button>
               </div>
@@ -452,7 +588,7 @@ const App: React.FC = () => {
                 className="upload-btn"
                 onClick={() => {
                   if (validateFile(file)) {
-                    uploadFile(file, "https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink");
+                    uploadFile(file, 'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink');
                   }
                 }}
               >
@@ -471,6 +607,7 @@ const App: React.FC = () => {
                 <tr>
                   <th>S.No.</th>
                   <th>File Name</th>
+                  <th>File Type</th>
                   <th>Filesize</th>
                   <th>Date Uploaded</th>
                   <th>Uploaded By</th>
@@ -478,27 +615,36 @@ const App: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {sampleFiles.map((file) => (
-                  <tr key={file.id}>
-                    <td>{file.id}</td>
-                    <td>{file.fileName}</td>
-                    <td>{file.filesize}</td>
-                    <td>{file.dateUploaded}</td>
-                    <td>{file.uploadedBy}</td>
-                    <td>
-                      <a
-                        href={file.downloadLink}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          downloadFile(file.fileName.split('_')[0]);
-                        }}
-                        className="download-link"
-                      >
-                        Download
-                      </a>
+                {s3Files.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} style={{ textAlign: 'center' }}>
+                      No files found.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  s3Files.map((file) => (
+                    <tr key={file.id}>
+                      <td>{file.id}</td>
+                      <td>{file.fileName}</td>
+                      <td>{file.fileType}</td>
+                      <td>{file.filesize}</td>
+                      <td>{file.dateUploaded}</td>
+                      <td>{file.uploadedBy}</td>
+                      <td>
+                        <a
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            downloadFile(file.fileKey);
+                          }}
+                          className="download-link"
+                        >
+                          Download
+                        </a>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
