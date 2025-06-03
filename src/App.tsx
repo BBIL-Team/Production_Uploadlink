@@ -68,6 +68,8 @@ const App: React.FC = () => {
   const [s3Files, setS3Files] = useState<
     { id: number; fileName: string; fileType: string; filesize: string; dateUploaded: string; uploadedBy: string; fileKey: string }[]
   >([]);
+  const [sortColumn, setSortColumn] = useState<keyof typeof s3Files[0] | ''>(''); // Track sorted column
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc'); // Track sort direction
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Fetch user attributes and S3 files on mount
@@ -155,9 +157,11 @@ const App: React.FC = () => {
             })
         );
 
-        // Sort by dateUploaded descending
+        // Sort by dateUploaded descending by default
         files.sort((a, b) => new Date(b.dateUploaded).getTime() - new Date(a.dateUploaded).getTime());
         setS3Files(files);
+        setSortColumn('dateUploaded'); // Default sort column
+        setSortDirection('desc'); // Default sort direction
       } catch (error) {
         console.error('Error fetching S3 files:', error);
         setModalMessage('Failed to load files from server.');
@@ -360,6 +364,8 @@ const App: React.FC = () => {
           );
           files.sort((a, b) => new Date(b.dateUploaded).getTime() - new Date(a.dateUploaded).getTime());
           setS3Files(files);
+          setSortColumn('dateUploaded');
+          setSortDirection('desc');
         } catch (error) {
           console.error('Error refreshing S3 files:', error);
         }
@@ -430,6 +436,40 @@ const App: React.FC = () => {
     setShowMessageModal(false);
     setModalMessage('');
     setModalType('success');
+  };
+
+  // Handle sorting
+  const handleSort = (column: keyof typeof s3Files[0]) => {
+    const newDirection = sortColumn === column && sortDirection === 'asc' ? 'desc' : 'asc';
+    setSortColumn(column);
+    setSortDirection(newDirection);
+
+    const sortedFiles = [...s3Files].sort((a, b) => {
+      const valueA = a[column];
+      const valueB = b[column];
+
+      // Handle numeric sorting for id and filesize
+      if (column === 'id') {
+        return newDirection === 'asc' ? valueA - valueB : valueB - valueA;
+      }
+      if (column === 'filesize') {
+        const sizeA = parseFloat(valueA.replace(' KB', ''));
+        const sizeB = parseFloat(valueB.replace(' KB', ''));
+        return newDirection === 'asc' ? sizeA - sizeB : sizeB - sizeA;
+      }
+      // Handle date sorting for dateUploaded
+      if (column === 'dateUploaded') {
+        return newDirection === 'asc'
+          ? new Date(valueA).getTime() - new Date(valueB).getTime()
+          : new Date(valueB).getTime() - new Date(valueA).getTime();
+      }
+      // Default string sorting for other columns
+      return newDirection === 'asc'
+        ? valueA.localeCompare(valueB)
+        : valueB.localeCompare(valueA);
+    });
+
+    setS3Files(sortedFiles);
   };
 
   // Get financial year months for dropdown
@@ -617,13 +657,27 @@ const App: React.FC = () => {
             <table className="file-table">
               <thead>
                 <tr>
-                  <th>S.No.</th>
-                  <th>File Name</th>
-                  <th>File Type</th>
-                  <th>Filesize</th>
-                  <th>Date Uploaded</th>
-                  <th>Uploaded By</th>
-                  <th>Download Link</th>
+                  <th onClick={() => handleSort('id')} className={sortColumn === 'id' ? `sorted-${sortDirection}` : ''}>
+                    S.No.
+                  </th>
+                  <th onClick={() => handleSort('fileName')} className={sortColumn === 'fileName' ? `sorted-${sortDirection}` : ''}>
+                    File Name
+                  </th>
+                  <th onClick={() => handleSort('fileType')} className={sortColumn === 'fileType' ? `sorted-${sortDirection}` : ''}>
+                    File Type
+                  </th>
+                  <th onClick={() => handleSort('filesize')} className={sortColumn === 'filesize' ? `sorted-${sortDirection}` : ''}>
+                    Filesize
+                  </th>
+                  <th onClick={() => handleSort('dateUploaded')} className={sortColumn === 'dateUploaded' ? `sorted-${sortDirection}` : ''}>
+                    Date Uploaded
+                  </th>
+                  <th onClick={() => handleSort('uploadedBy')} className={sortColumn === 'uploadedBy' ? `sorted-${sortDirection}` : ''}>
+                    Uploaded By
+                  </th>
+                  <th onClick={() => handleSort('fileKey')} className={sortColumn === 'fileKey' ? `sorted-${sortDirection}` : ''}>
+                    Download Link
+                  </th>
                 </tr>
               </thead>
               <tbody>
