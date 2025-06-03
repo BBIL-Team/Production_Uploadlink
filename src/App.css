@@ -1,4 +1,3 @@
-/* App.css */
 html, body {
   margin: 0;
   padding: 0;
@@ -8,9 +7,9 @@ html, body {
 
 .app-main {
   max-width: 100%;
-  min-height: calc(100vh - 840px); /* Adjusted to match padding-top */
+  min-height: calc(100vh - 840px);
   background-color: #81d7ea;
-  padding-top: 840px; /* Matches header height (~128px) */
+  padding-top: 840px;
   box-sizing: border-box;
   overflow-x: hidden;
 }
@@ -213,7 +212,7 @@ html, body {
   text-align: center;
   width: 100%;
   font-size: 28px;
-  margin: 10px 0; /* Add margin-top for spacing */
+  margin: 10px 0;
   box-sizing: border-box;
 }
 
@@ -433,6 +432,7 @@ html, body {
   background-color: #e6e6e6;
   border-radius: 8px;
   font-size: 16px;
+  table-layout: fixed; /* Enforce specified column widths */
 }
 
 .file-table th,
@@ -445,26 +445,79 @@ html, body {
 .file-table th {
   background-color: #d9d9d9;
   border-bottom: 2px solid #ccc;
+  cursor: pointer; /* Indicate clickable header */
+  position: relative; /* For positioning sort arrows */
+  padding-right: 20px; /* Space for sort arrows */
+}
+
+.file-table th:hover {
+  background-color: #c0c0c0; /* Hover effect */
+}
+
+/* Sort arrow styles */
+.file-table th::after {
+  content: '↕'; /* Up/down arrow (default) */
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  color: #666;
+}
+
+.file-table th.sorted-asc::after {
+  content: '▲'; /* Up arrow for ascending */
+  color: #007BFF; /* Highlight sorted column */
+}
+
+.file-table th.sorted-desc::after {
+  content: '▼'; /* Down arrow for descending */
+  color: #007BFF; /* Highlight sorted column */
 }
 
 .file-table td:first-child,
 .file-table th:first-child {
   text-align: center;
+  width: 50px; /* S.No. */
 }
 
 .file-table td:nth-child(2),
 .file-table th:nth-child(2) {
   text-align: left;
-  width: 80px; /* Increased width for File Name */
-  white-space: nowrap; /* Prevent wrapping */
-  overflow: hidden; /* Hide overflow */
-  text-overflow: ellipsis; /* Show ellipsis for overflow */
+  width: 150px; /* File Name */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .file-table td:nth-child(3),
 .file-table th:nth-child(3) {
   text-align: center;
-  width: 80px;
+  width: 80px; /* File Type */
+}
+
+.file-table td:nth-child(4),
+.file-table th:nth-child(4) {
+  text-align: center;
+  width: 80px; /* Filesize */
+}
+
+.file-table td:nth-child(5),
+.file-table th:nth-child(5) {
+  text-align: center;
+  width: 100px; /* Date Uploaded */
+}
+
+.file-table td:nth-child(6),
+.file-table th:nth-child(6) {
+  text-align: center;
+  width: 100px; /* Uploaded By */
+}
+
+.file-table td:nth-child(7),
+.file-table th:nth-child(7) {
+  text-align: center;
+  width: 100px; /* Download Link */
 }
 
 .download-link {
@@ -478,7 +531,7 @@ html, body {
     flex-direction: column;
   }
   .app-main {
-    padding-top: 130px; /* Same as desktop */
+    padding-top: 130px;
     min-height: calc(100vh - 130px);
   }
   .header-user-info {
