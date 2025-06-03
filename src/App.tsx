@@ -697,7 +697,7 @@ const App: React.FC = () => {
                   s3Files.map((file) => (
                     <tr key={file.id}>
                       <td>{file.id}</td>
-                      <td>{file.fileName}</td>
+                      <td data-full-text={file.fileName}>{file.fileName}</td>
                       <td>{file.fileType}</td>
                       <td>{file.filesize}</td>
                       <td>{file.dateUploaded}</td>
