@@ -8,8 +8,9 @@ console.log('getCurrentUser:', getCurrentUser);
 console.log('fetchUserAttributes:', fetchUserAttributes);
 console.log('updateUserAttributes:', updateUserAttributes);
 
-// Hardcoded bucket name
+// Hardcoded bucket and folder names
 const BUCKET_NAME = 'production-bbil';
+const FOLDER_NAME = 'Production_daily_upload_files_location/';
 
 // Supported file extensions
 const SUPPORTED_EXTENSIONS = ['.csv', '.pdf', '.xlsx', '.xls', '.doc', '.docx'];
@@ -103,7 +104,12 @@ const App: React.FC = () => {
 
     const fetchS3Files = async () => {
       try {
-        const response = await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/list-files', {
+        // Construct the query string with bucket_name and folder_name
+        const queryParams = new URLSearchParams({
+          bucket_name: BUCKET_NAME,
+          folder_name: FOLDER_NAME,
+        });
+        const response = await fetch(`https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/list-files?${queryParams.toString()}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -322,7 +328,11 @@ const App: React.FC = () => {
 
         // Refresh file list
         try {
-          const response = await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/list-files', {
+          const queryParams = new URLSearchParams({
+            bucket_name: BUCKET_NAME,
+            folder_name: FOLDER_NAME,
+          });
+          const response = await fetch(`https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/list-files?${queryParams.toString()}`, {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json',
