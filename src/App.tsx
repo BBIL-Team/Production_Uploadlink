@@ -1,12 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { getCurrentUser, fetchUserAttributes, updateUserAttributes } from '@aws-amplify/auth';
+import { getCurrentUser, fetchUserAttributes, updateUserAttributes } from '@aws/amplify/auth';
 
-// Debug logging to confirm imports
+// Debug logging to console
 console.log('getCurrentUser:', getCurrentUser);
 console.log('fetchUserAttributes:', fetchUserAttributes);
 console.log('updateUserAttributes:', updateUserAttributes);
+
+// Hardcoded bucket name
+const BUCKET_NAME = 'production-bbil';
+
+// Supported file extensions
+const SUPPORTED_EXTENSIONS = ['.csv', '.pdf', '.xlsx', '.xls', '.doc', '.docx'];
 
 const months = [
   "January", "February", "March", "April", "May", "June",
@@ -16,12 +22,12 @@ const months = [
 // Function to get financial year months (previous month if <= 6th, current month, remaining months)
 const getFinancialYearMonths = (currentDate: Date) => {
   const currentMonth = currentDate.getMonth(); // 0-based (June 2025 = 5)
-  const currentYear = currentDate.getFullYear(); // 2025
-  const currentDay = currentDate.getDate(); // 2
+  const currentYear = currentDate.getFullYear();
+  const currentDay = currentDate.getDate();
 
   // Financial year: April (currentYear) to March (currentYear + 1)
-  const financialYearStartYear = currentMonth >= 3 ? currentYear : currentYear - 1; // April 2025
-  const financialYearEndYear = financialYearStartYear + 1; // March 2026
+  const financialYearStartYear = currentMonth >= 3 ? currentYear : currentYear - 1;
+  const financialYearEndYear = financialYearStartYear + 1;
 
   const result: string[] = [];
 
@@ -54,13 +60,13 @@ const App: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState<string>("");
   const [displayedMonth, setDisplayedMonth] = useState<string>("");
   const [year, setYear] = useState<number>(2025);
-  const [userAttributes, setUserAttributes] = useState<{ username: string; phoneNumber: string }>({
+  const [userAttributes, setUserAttributes] = useState<{ username?: string; phoneNumber?: string }>({
     username: '',
     phoneNumber: '',
   });
   const [showUpdateForm, setShowUpdateForm] = useState<boolean>(false);
   const [newUsername, setNewUsername] = useState<string>("");
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setLoading] = useState(true);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const [showMessageModal, setShowMessageModal] = useState<boolean>(false);
   const [modalMessage, setModalMessage] = useState<string>("");
@@ -76,7 +82,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        setIsLoading(true);
+        setLoading(true);
         await getCurrentUser();
         const attributes = await fetchUserAttributes();
         console.log('User attributes:', attributes);
@@ -91,7 +97,7 @@ const App: React.FC = () => {
         console.error('Error fetching user data:', error);
         setUserAttributes({ username: '', phoneNumber: '' });
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
@@ -111,13 +117,16 @@ const App: React.FC = () => {
 
         const files = await Promise.all(
           data.files
-            .filter((file: { key: string }) => file.key.endsWith('.csv')) // Filter CSV files only
+            .filter((file: { key: string }) => {
+              const extension = (file.key.split('.').pop() || '').toLowerCase();
+              return SUPPORTED_EXTENSIONS.includes(`.${extension}`);
+            }) // Filter supported file formats
             .map(async (file: { key: string; size: number; lastModified: string }, index: number) => {
-              // Extract file name and type
-              const fileNameWithPath = file.key.split('/').pop() || '';
-              const fileNameParts = fileNameWithPath.split('.');
-              const fileName = fileNameParts[0];
-              const fileType = fileNameParts[1]?.toLowerCase() || '';
+              // Extract full file name (including extension)
+              const fullFileName = file.key.split('/').pop() || ''; // e.g., "SomeReport.pdf"
+              const fileNameParts = fullFileName.split('.');
+              const fileName = fileNameParts.slice(0, -1).join('.'); // Name without extension, e.g., "SomeReport"
+              const fileType = fileNameParts[fileNameParts.length - 1]?.toLowerCase() || ''; // e.g., "pdf"
 
               // Format filesize (bytes to KB)
               const filesizeKB = (file.size / 1024).toFixed(1) + ' KB';
@@ -129,7 +138,7 @@ const App: React.FC = () => {
               let uploadedBy = 'Unknown';
               try {
                 const uploaderResponse = await fetch(
-                  `https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/get-uploader?fileName=${encodeURIComponent(fileNameWithPath)}`,
+                  `https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/get-uploader?fileName=${encodeURIComponent(fullFileName)}`,
                   {
                     method: 'GET',
                     headers: {
@@ -142,17 +151,17 @@ const App: React.FC = () => {
                   uploadedBy = uploaderData.uploadedBy || 'Unknown';
                 }
               } catch (error) {
-                console.error(`Error fetching uploader for ${fileNameWithPath}:`, error);
+                console.error(`Error fetching uploader for ${fullFileName}:`, error);
               }
 
               return {
                 id: index + 1,
-                fileName,
+                fileName, // Name without extension
                 fileType,
                 filesize: filesizeKB,
                 dateUploaded,
                 uploadedBy,
-                fileKey: file.key,
+                fileKey: file.key, // Full key, e.g., "Production_daily_upload_files_location/SomeReport.pdf"
               };
             })
         );
@@ -244,10 +253,13 @@ const App: React.FC = () => {
   };
 
   const validateFile = (file: File | null): boolean => {
-    if (file && file.name.endsWith(".csv")) {
-      return true;
+    if (file) {
+      const extension = (file.name.split('.').pop() || '').toLowerCase();
+      if (SUPPORTED_EXTENSIONS.includes(`.${extension}`)) {
+        return true;
+      }
     }
-    setModalMessage("Please upload a valid CSV file.");
+    setModalMessage("Please upload a valid file (.csv, .pdf, .xlsx, .xls, .doc, .docx).");
     setModalType('error');
     setShowMessageModal(true);
     return false;
@@ -255,7 +267,7 @@ const App: React.FC = () => {
 
   const uploadFile = async (file: File | null, apiUrl: string) => {
     if (!file) {
-      setModalMessage("Please select a CSV file to upload.");
+      setModalMessage("Please select a file to upload.");
       setModalType('error');
       setShowMessageModal(true);
       return;
@@ -269,11 +281,12 @@ const App: React.FC = () => {
 
     // Extract month name from "Month Year" (e.g., "June 2025" -> "June")
     const monthName = selectedMonth.split(' ')[0];
-    const fileName = `${monthName}_Sample_File.csv`;
+    const originalFileName = file.name; // Preserve original file name, e.g., "MyReport.xlsx"
 
     const formData = new FormData();
     formData.append('file', file);
     formData.append('month', monthName);
+    formData.append('fileName', originalFileName); // Pass original file name to Lambda
 
     try {
       // Upload to S3
@@ -296,7 +309,7 @@ const App: React.FC = () => {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              fileName,
+              fileName: originalFileName,
               uploadedBy: userAttributes.username || 'Unknown',
             }),
           });
@@ -323,19 +336,22 @@ const App: React.FC = () => {
 
           const files = await Promise.all(
             data.files
-              .filter((file: { key: string }) => file.key.endsWith('.csv')) // Filter CSV files only
+              .filter((file: { key: string }) => {
+                const extension = (file.key.split('.').pop() || '').toLowerCase();
+                return SUPPORTED_EXTENSIONS.includes(`.${extension}`);
+              })
               .map(async (file: { key: string; size: number; lastModified: string }, index: number) => {
-                const fileNameWithPath = file.key.split('/').pop() || '';
-                const fileNameParts = fileNameWithPath.split('.');
-                const fileName = fileNameParts[0];
-                const fileType = fileNameParts[1]?.toLowerCase() || '';
+                const fullFileName = file.key.split('/').pop() || '';
+                const fileNameParts = fullFileName.split('.');
+                const fileName = fileNameParts.slice(0, -1).join('.'); // Name without extension
+                const fileType = fileNameParts[fileNameParts.length - 1]?.toLowerCase() || '';
                 const filesizeKB = (file.size / 1024).toFixed(1) + ' KB';
                 const dateUploaded = new Date(file.lastModified).toISOString().split('T')[0];
 
                 let uploadedBy = 'Unknown';
                 try {
                   const uploaderResponse = await fetch(
-                    `https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/get-uploader?fileName=${encodeURIComponent(fileNameWithPath)}`,
+                    `https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/get-uploader?fileName=${encodeURIComponent(fullFileName)}`,
                     {
                       method: 'GET',
                       headers: {
@@ -348,7 +364,7 @@ const App: React.FC = () => {
                     uploadedBy = uploaderData.uploadedBy || 'Unknown';
                   }
                 } catch (error) {
-                  console.error(`Error fetching uploader for ${fileNameWithPath}:`, error);
+                  console.error(`Error fetching uploader for ${fullFileName}:`, error);
                 }
 
                 return {
@@ -385,13 +401,26 @@ const App: React.FC = () => {
 
   const downloadFile = async (key: string, isMonth: boolean = false) => {
     try {
-      const fileKey = isMonth ? `${key}_Sample_File.csv` : key;
+      // Determine the full file key based on the source
+      let fileKey: string;
+      if (isMonth) {
+        // Sample files are in Production_Sample_Files/
+        fileKey = `Production_Sample_Files/${key}_Sample_File.csv`;
+      } else {
+        // Uploaded files are in Production_daily_upload_files_location/, use the full key as-is
+        fileKey = key; // e.g., "Production_daily_upload_files_location/SomeReport.pdf"
+      }
+
       const response = await fetch('https://e3blv3dko6.execute-api.ap-south-1.amazonaws.com/P1/presigned_urls', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ file_key: fileKey }),
+        body: JSON.stringify({
+          bucket_name: BUCKET_NAME,
+          file_key: fileKey,
+          action: 'download',
+        }),
       });
       console.log('Response status:', response.status, 'OK:', response.ok);
       const data = await response.json();
@@ -399,7 +428,7 @@ const App: React.FC = () => {
       if (response.ok && data.presigned_url) {
         const link = document.createElement('a');
         link.href = data.presigned_url;
-        link.download = fileKey.split('/').pop() || 'download.csv';
+        link.download = fileKey.split('/').pop() || 'download';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -466,7 +495,7 @@ const App: React.FC = () => {
       if (column === 'dateUploaded') {
         return newDirection === 'asc'
           ? new Date(valueA as string).getTime() - new Date(valueB as string).getTime()
-          : new Date(valueB as string).getTime() - new Date(valueA as string).getTime();
+          : new Date(valueB as string).getTime() - new Date(a.dateUploaded).getTime();
       }
 
       // Default string sorting for other columns (fileName, fileType, uploadedBy, fileKey)
@@ -600,7 +629,7 @@ const App: React.FC = () => {
             <div className="upload-form">
               <input
                 type="file"
-                accept=".csv"
+                accept=".csv,.pdf,.xlsx,.xls,.doc,.docx"
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
                 className="file-input"
               />
