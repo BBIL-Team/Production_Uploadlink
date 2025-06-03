@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { getCurrentUser, fetchUserAttributes, updateUserAttributes } from '@aws/amplify/auth';
+import { getCurrentUser, fetchUserAttributes, updateUserAttributes } from '@aws-amplify/auth';
 
 // Debug logging to console
 console.log('getCurrentUser:', getCurrentUser);
