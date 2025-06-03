@@ -415,7 +415,7 @@ const App: React.FC = () => {
       let fileKey: string;
       if (isMonth) {
         // Sample files are in Production_Sample_Files/
-        fileKey = `Production_Sample_Files/${key}_Sample_File.csv`;
+        fileKey = `${key}_Sample_File.csv`;
       } else {
         // Uploaded files are in Production_daily_upload_files_location/, use the full key as-is
         fileKey = key; // e.g., "Production_daily_upload_files_location/SomeReport.pdf"
