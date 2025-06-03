@@ -431,7 +431,7 @@ html, body {
   border-collapse: collapse;
   background-color: #e6e6e6;
   border-radius: 8px;
-  font-size: 16px;
+  font-size: 14px;
   table-layout: fixed;
 }
 
@@ -448,7 +448,7 @@ html, body {
   cursor: pointer;
   position: relative;
   padding-right: 20px;
-  font-size: 10px; /* Reduced to ~half of 16px for headers */
+  font-size: 12px; /* Reduced to ~half of 16px for headers */
   text-align: center !important; /* Enforce centering for all headers */
 }
 
