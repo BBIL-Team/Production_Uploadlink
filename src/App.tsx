@@ -448,25 +448,31 @@ const App: React.FC = () => {
       const valueA = a[column];
       const valueB = b[column];
 
-      // Handle numeric sorting for id and filesize
+      // Handle numeric sorting for id
       if (column === 'id') {
-        return newDirection === 'asc' ? valueA - valueB : valueB - valueA;
+        return newDirection === 'asc'
+          ? (valueA as number) - (valueB as number)
+          : (valueB as number) - (valueA as number);
       }
+
+      // Handle numeric sorting for filesize
       if (column === 'filesize') {
-        const sizeA = parseFloat(valueA.replace(' KB', ''));
-        const sizeB = parseFloat(valueB.replace(' KB', ''));
+        const sizeA = parseFloat((valueA as string).replace(' KB', ''));
+        const sizeB = parseFloat((valueB as string).replace(' KB', ''));
         return newDirection === 'asc' ? sizeA - sizeB : sizeB - sizeA;
       }
+
       // Handle date sorting for dateUploaded
       if (column === 'dateUploaded') {
         return newDirection === 'asc'
-          ? new Date(valueA).getTime() - new Date(valueB).getTime()
-          : new Date(valueB).getTime() - new Date(valueA).getTime();
+          ? new Date(valueA as string).getTime() - new Date(valueB as string).getTime()
+          : new Date(valueB as string).getTime() - new Date(valueA as string).getTime();
       }
-      // Default string sorting for other columns
+
+      // Default string sorting for other columns (fileName, fileType, uploadedBy, fileKey)
       return newDirection === 'asc'
-        ? valueA.localeCompare(valueB)
-        : valueB.localeCompare(valueA);
+        ? (valueA as string).localeCompare(valueB as string)
+        : (valueB as string).localeCompare(valueA as string);
     });
 
     setS3Files(sortedFiles);
