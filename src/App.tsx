@@ -598,7 +598,7 @@ const App: React.FC = () => {
 
       {/* Title */}
       <h1 className="app-title">
-        <u>BBIL Production-Upload Interface</u>
+        <u>BBIL Production Dashboard Update Interface</u>
       </h1>
 
       {/* Main Container */}
