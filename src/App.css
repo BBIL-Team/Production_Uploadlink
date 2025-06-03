@@ -432,7 +432,7 @@ html, body {
   background-color: #e6e6e6;
   border-radius: 8px;
   font-size: 16px;
-  table-layout: fixed; /* Enforce specified column widths */
+  table-layout: fixed;
 }
 
 .file-table th,
@@ -445,79 +445,111 @@ html, body {
 .file-table th {
   background-color: #d9d9d9;
   border-bottom: 2px solid #ccc;
-  cursor: pointer; /* Indicate clickable header */
-  position: relative; /* For positioning sort arrows */
-  padding-right: 20px; /* Space for sort arrows */
+  cursor: pointer;
+  position: relative;
+  padding-right: 20px;
+  font-size: 10px; /* Reduced to ~half of 16px for headers */
+  text-align: center !important; /* Enforce centering for all headers */
 }
 
 .file-table th:hover {
-  background-color: #c0c0c0; /* Hover effect */
+  background-color: #c0c0c0;
+}
+
+/* Highlight sorted header */
+.file-table th.sorted-asc,
+.file-table th.sorted-desc {
+  background-color: #b0b0b0; /* Slightly darker shade for sorted header */
 }
 
 /* Sort arrow styles */
 .file-table th::after {
-  content: '↕'; /* Up/down arrow (default) */
+  content: '↕';
   position: absolute;
   right: 8px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 12px;
+  font-size: 10px; /* Match header font size */
   color: #666;
 }
 
 .file-table th.sorted-asc::after {
-  content: '▲'; /* Up arrow for ascending */
-  color: #007BFF; /* Highlight sorted column */
+  content: '▲';
+  color: #007BFF;
 }
 
 .file-table th.sorted-desc::after {
-  content: '▼'; /* Down arrow for descending */
-  color: #007BFF; /* Highlight sorted column */
+  content: '▼';
+  color: #007BFF;
 }
 
 .file-table td:first-child,
 .file-table th:first-child {
   text-align: center;
-  width: 50px; /* S.No. */
+  width: 50px;
 }
 
 .file-table td:nth-child(2),
 .file-table th:nth-child(2) {
   text-align: left;
-  width: 150px; /* File Name */
+  width: 150px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  position: relative; /* For tooltip positioning */
+}
+
+/* Tooltip for File Name column */
+.file-table td:nth-child(2):hover::after {
+  content: attr(data-full-text); /* Use data-full-text attribute for full content */
+  position: absolute;
+  top: -30px; /* Position above the cell */
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #333;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  transition-delay: 2s; /* 2-second delay before showing */
+}
+
+.file-table td:nth-child(2):hover::after {
+  opacity: 1;
 }
 
 .file-table td:nth-child(3),
 .file-table th:nth-child(3) {
   text-align: center;
-  width: 80px; /* File Type */
+  width: 80px;
 }
 
 .file-table td:nth-child(4),
 .file-table th:nth-child(4) {
   text-align: center;
-  width: 80px; /* Filesize */
+  width: 80px;
 }
 
 .file-table td:nth-child(5),
 .file-table th:nth-child(5) {
   text-align: center;
-  width: 100px; /* Date Uploaded */
+  width: 100px;
 }
 
 .file-table td:nth-child(6),
 .file-table th:nth-child(6) {
   text-align: center;
-  width: 100px; /* Uploaded By */
+  width: 100px;
 }
 
 .file-table td:nth-child(7),
 .file-table th:nth-child(7) {
   text-align: center;
-  width: 100px; /* Download Link */
+  width: 100px;
 }
 
 .download-link {
