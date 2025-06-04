@@ -697,7 +697,7 @@ const App: React.FC = () => {
 
         {/* Right Column: File List Table */}
         <div className="file-list">
-          <h2>📋 List of Files Uploaded</h2>
+          <h2>📋 List of Files Submitted</h2>
           <div className="table-container">
             <table className="file-table">
               <thead>
