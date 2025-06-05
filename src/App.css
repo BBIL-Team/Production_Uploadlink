@@ -7,9 +7,9 @@ html, body {
 
 .app-main {
   max-width: 100%;
-  min-height: calc(100vh - 570px);
+  min-height: calc(100vh - 470px);
   background-color: #81d7ea;
-  padding-top: 570px;
+  padding-top: 470px;
   box-sizing: border-box;
   overflow-x: hidden;
 }
