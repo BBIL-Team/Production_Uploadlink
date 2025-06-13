@@ -442,6 +442,24 @@ const App: React.FC = () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+
+        // Log the download action to DynamoDB
+      try {
+        await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/save-files', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fileName: fileKey.split('/').pop(),
+            action: 'download',
+            user: userAttributes.username || 'Unknown',
+          }),
+        });
+      } catch (error) {
+        console.error('Error saving download action:', error);
+      }
+        
         setModalMessage(`Downloaded ${fileKey.split('/').pop()} successfully!`);
         setModalType('success');
         setShowMessageModal(true);
