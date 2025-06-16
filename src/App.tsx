@@ -68,6 +68,8 @@ const App: React.FC = () => {
   const [showUpdateForm, setShowUpdateForm] = useState<boolean>(false);
   const [newUsername, setNewUsername] = useState<string>("");
   const [isLoading, setLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState<boolean>(false); // State for upload loading
+  const [uploadKey, setUploadKey] = useState<number>(0); // Key to reset progress bar animation
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const [showMessageModal, setShowMessageModal] = useState<boolean>(false);
   const [modalMessage, setModalMessage] = useState<string>("");
@@ -202,7 +204,7 @@ const App: React.FC = () => {
 
   // Manage body scroll when modal is open
   useEffect(() => {
-    if (showMessageModal || showUpdateForm) {
+    if (showMessageModal || showUpdateForm || isUploading) {
       const scrollY = window.scrollY;
       document.body.style.overflow = 'hidden';
       document.body.style.position = 'fixed';
@@ -222,7 +224,7 @@ const App: React.FC = () => {
       document.body.style.top = '';
       document.body.style.width = '';
     };
-  }, [showMessageModal, showUpdateForm]);
+  }, [showMessageModal, showUpdateForm, isUploading]);
 
   // Handle username update
   const handleUpdateUsername = async (e: React.FormEvent) => {
@@ -295,6 +297,8 @@ const App: React.FC = () => {
     formData.append('fileName', originalFileName); // Pass original file name to Lambda
 
     try {
+      setIsUploading(true); // Show loading modal
+      setUploadKey((prev) => prev + 1); // Increment key to restart animation
       // Upload to S3
       const uploadResponse = await fetch(apiUrl, {
         method: "POST",
@@ -406,6 +410,8 @@ const App: React.FC = () => {
       setModalMessage("An error occurred while uploading the file.");
       setModalType('error');
       setShowMessageModal(true);
+    } finally {
+      setIsUploading(false); // Hide loading modal
     }
   };
 
@@ -614,6 +620,18 @@ const App: React.FC = () => {
         </div>
       )}
 
+      {/* Loading Modal */}
+      {isUploading && (
+        <div className="modal-overlay">
+          <div className="modal-content loading-modal">
+            <p className="loading-text">Loading...</p>
+            <div className="progress-bar">
+              <div key={uploadKey} className="progress-fill"></div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Title */}
       <h1 className="app-title">
         <u>BBIL Production Dashboard Update Interface</u>
@@ -660,6 +678,7 @@ const App: React.FC = () => {
                 accept=".csv,.pdf,.xlsx,.xls,.doc,.docx"
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
                 className="file-input"
+                disabled={isUploading} // Disable input during upload
               />
               <div className="custom-dropdown" ref={dropdownRef}>
                 <div
@@ -706,8 +725,9 @@ const App: React.FC = () => {
                     uploadFile(file, 'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink');
                   }
                 }}
+                disabled={isUploading} // Disable button during upload
               >
-                Submit File
+                {isUploading ? 'Uploading...' : 'Submit File'}
               </button>
             </div>
           </div>
