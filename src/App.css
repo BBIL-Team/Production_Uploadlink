@@ -616,7 +616,7 @@ html, body {
   width: 0; /* Start at 0% */
   height: 100%;
   background: #fff; /* White fill to match the image */
-  animation: fillProgress 5s linear infinite; /* Animate over 5 seconds, repeat infinitely */
+  animation: fillProgress 15s linear infinite; /* Animate over 5 seconds, repeat infinitely */
 }
 
 /* Keyframe animation for filling the progress bar */
