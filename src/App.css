@@ -605,8 +605,8 @@ html, body {
 .progress-bar {
   width: 150px; /* Adjust width to match the image */
   height: 20px; /* Adjust height to match the image */
-  background: #fff; /* White background for the progress bar */
-  border: 1px solid #000; /* Optional border to match the image */
+  background: #000; /* White background for the progress bar */
+  border: 1px solid #fff; /* Optional border to match the image */
   border-radius: 4px; /* Slight rounding for better appearance */
   overflow: hidden; /* Ensure the fill stays within bounds */
 }
@@ -615,8 +615,8 @@ html, body {
 .progress-fill {
   width: 0; /* Start at 0% */
   height: 100%;
-  background: #000; /* Black fill to match the image */
-  animation: fillProgress 3s linear infinite; /* Animate over 3 seconds, repeat infinitely */
+  background: #fff; /* White fill to match the image */
+  animation: fillProgress 5s linear infinite; /* Animate over 5 seconds, repeat infinitely */
 }
 
 /* Keyframe animation for filling the progress bar */
