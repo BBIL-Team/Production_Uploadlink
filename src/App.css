@@ -539,6 +539,9 @@ html, body {
 .file-table th:nth-child(5) {
   text-align: center;
   width: 100px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .file-table td:nth-child(6),
