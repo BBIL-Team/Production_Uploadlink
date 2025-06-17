@@ -147,7 +147,7 @@ const App: React.FC = () => {
                 hour: '2-digit',
                 minute: '2-digit',
                 second: '2-digit',
-                hour12: true,
+                hour12: False,
               });
 
               // Fetch uploadedBy from DynamoDB
