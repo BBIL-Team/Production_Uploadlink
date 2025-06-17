@@ -139,7 +139,7 @@ const App: React.FC = () => {
               // Format filesize (bytes to KB)
               const filesizeKB = (file.size / 1024).toFixed(1) + ' KB';
 
-              // Format date
+              // Format date and time in 24-hour format
               const dateUploaded = new Date(file.lastModified).toLocaleString('en-IN', {
                 year: 'numeric',
                 month: '2-digit',
@@ -147,7 +147,7 @@ const App: React.FC = () => {
                 hour: '2-digit',
                 minute: '2-digit',
                 second: '2-digit',
-                hour12: 'False',
+                hour12: false,
               });
 
               // Fetch uploadedBy from DynamoDB
