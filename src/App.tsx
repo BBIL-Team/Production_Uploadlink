@@ -785,7 +785,7 @@ const App: React.FC = () => {
                       <td data-full-text={file.fileName}>{file.fileName}</td>
                       <td>{file.fileType}</td>
                       <td>{file.filesize}</td>
-                      <td>{file.dateUploaded}</td>
+                      <td data-full-text={file.dateUploaded}>{file.dateUploaded}</td>
                       <td>{file.uploadedBy}</td>
                       <td>
                         <a
