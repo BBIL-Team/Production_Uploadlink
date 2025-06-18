@@ -816,7 +816,7 @@ const App: React.FC = () => {
         </div>
       </div>
     </main>
-    {/* ✅ Simple Footer */}
+    {/* Footer */}
   <footer style={{
     width:'100%',
     height:'3vh',
