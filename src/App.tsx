@@ -815,16 +815,6 @@ const App: React.FC = () => {
           </div>
         </div>
       </div>
-    <footer style={{
-    width:'100%',
-    height:'3vh',
-    backgroundColor: '#483d8b',
-    textAlign: 'center',
-    fontSize: '14px',
-    color: '#FFFFFF',
-  }}>
-    Thank You
-  </footer>
     </main>
     );
 };
