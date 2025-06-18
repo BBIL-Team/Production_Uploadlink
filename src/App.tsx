@@ -816,6 +816,47 @@ const App: React.FC = () => {
         </div>
       </div>
     </main>
+    {/* ✅ Simple Footer */}
+  <footer style={{
+    width:'100%',
+    height:'3vh',
+    backgroundColor: '#483d8b',
+    textAlign: 'center',
+    fontSize: '14px',
+    color: '#FFFFFF',
+  }}>
+    Thank You
+  </footer>
+   <footer style={{
+    width:'100%',
+    backgroundColor: '#CBC3E3',
+    textAlign: 'left',
+    fontSize: '14px',
+    color: '#FFFFFF',
+  }}>
+   <div style={{
+    display: 'flex',
+    justifyContent: 'space-around',
+    gap: '80px', // space between links
+    flexWrap: 'wrap' // allows wrapping on smaller screens (optional)
+  }}>
+    <a href="https://ap-south-1.quicksight.aws.amazon.com/sn/dashboards/61e1a019-4de1-4e09-bdde-61c3a0ca77bc" target="_blank" rel="noopener noreferrer" style={{ color: '#000000'}}>
+     <b>Dashboard Link</b>
+    </a>
+    <a href="https://example.com" target="_blank" rel="noopener noreferrer" style={{ color: '#000000'}}>
+      <b>Report a Problem</b>
+    </a>
+    <a href="https://example.com" target="_blank" rel="noopener noreferrer" style={{ color: '#000000'}}>
+      <b>Call Business Analytics Dept</b>
+    </a>
+    <a href="https://example.com" target="_blank" rel="noopener noreferrer" style={{ color: '#000000'}}>
+      <b>Request for a Call Back</b>
+    </a>
+  </div>
+</footer>
+    </div>
+  );
+};
   );
 };
 
