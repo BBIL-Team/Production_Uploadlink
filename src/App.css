@@ -423,17 +423,29 @@ html, body {
   padding: 0 0 20px 0;
 }
 
+/* Adjusted table container with scrollbar outside the table */
 .table-container {
-  overflow-x: auto;
+  max-height: calc(2 * (24px + 22px + 16px + 200px + 24px)); /* padding + h2 + margin + grid height + padding */
+  overflow-y: auto;
+  border-radius: 8px;
+  background-color: #e6e6e6;
 }
 
+/* Ensure table fits within container without internal scroll */
 .file-table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
   background-color: #e6e6e6;
   border-radius: 8px;
   font-size: 14px;
-  table-layout: fixed;
+}
+
+.file-table thead {
+  position: sticky;
+  top: 0;
+  background-color: #d9d9d9;
+  z-index: 1;
 }
 
 .file-table th,
@@ -449,8 +461,8 @@ html, body {
   cursor: pointer;
   position: relative;
   padding-right: 20px;
-  font-size: 12px; /* Reduced to ~half of 16px for headers */
-  text-align: center !important; /* Enforce centering for all headers */
+  font-size: 12px;
+  text-align: center !important;
 }
 
 .file-table th:hover {
@@ -460,7 +472,7 @@ html, body {
 /* Highlight sorted header */
 .file-table th.sorted-asc,
 .file-table th.sorted-desc {
-  background-color: #b0b0b0; /* Slightly darker shade for sorted header */
+  background-color: #b0b0b0;
 }
 
 /* Sort arrow styles */
@@ -470,7 +482,7 @@ html, body {
   right: 8px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 10px; /* Match header font size */
+  font-size: 10px;
   color: #666;
 }
 
@@ -497,27 +509,27 @@ html, body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  position: relative; /* For tooltip positioning */
+  position: relative;
 }
 
 /* Tooltip for File Name column */
 .file-table td:nth-child(2):hover::after {
-  content: attr(data-full-text); /* Displays full file name (e.g., SomeReport.pdf) */
+  content: attr(data-full-text);
   position: absolute;
-  top: -40px; /* Positioned higher to avoid overlap */
+  top: -40px;
   left: 50%;
   transform: translateX(-50%);
   background-color: #333;
   color: #fff;
-  padding: 8px 12px; /* Increased padding for readability */
+  padding: 8px 12px;
   border-radius: 6px;
-  font-size: 14px; /* Larger font for clarity */
+  font-size: 14px;
   white-space: nowrap;
   z-index: 10;
   opacity: 0;
-  transition: opacity 0.2s ease; /* Faster fade-in */
-  transition-delay: 0s; /* No delay */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); /* Subtle shadow for depth */
+  transition: opacity 0.2s ease;
+  transition-delay: 0s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .file-table td:nth-child(2):hover::after {
@@ -587,7 +599,7 @@ html, body {
 
 /* Loading modal styles */
 .loading-modal {
-  background: #000; /* Black background as in the image */
+  background: #000;
   padding: 20px;
   border-radius: 8px;
   display: flex;
@@ -601,26 +613,26 @@ html, body {
 /* Loading text */
 .loading-text {
   font-size: 16px;
-  color: #fff; /* White text to match the image */
+  color: #fff;
   margin: 0 0 10px 0;
 }
 
 /* Progress bar container */
 .progress-bar {
-  width: 150px; /* Adjust width to match the image */
-  height: 20px; /* Adjust height to match the image */
-  background: #000; /* White background for the progress bar */
-  border: 1px solid #fff; /* Optional border to match the image */
-  border-radius: 4px; /* Slight rounding for better appearance */
-  overflow: hidden; /* Ensure the fill stays within bounds */
+  width: 150px;
+  height: 20px;
+  background: #000;
+  border: 1px solid #fff;
+  border-radius: 4px;
+  overflow: hidden;
 }
 
 /* Progress bar fill */
 .progress-fill {
-  width: 0; /* Start at 0% */
+  width: 0;
   height: 100%;
-  background: #fff; /* White fill to match the image */
-  animation: fillProgress 15s linear infinite; /* Animate over 5 seconds, repeat infinitely */
+  background: #fff;
+  animation: fillProgress 15s linear infinite;
 }
 
 /* Keyframe animation for filling the progress bar */
