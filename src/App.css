@@ -425,7 +425,7 @@ html, body {
 
 /* Adjusted table container with scrollbar outside the table */
 .table-container {
-  max-height: calc(2 * (24px + 22px + 16px + 200px + 24px))-72px; /* padding + h2 + margin + grid height + padding */
+  max-height: 500px; /* Updated to match your measured height */
   overflow-y: auto;
   border-radius: 8px;
   background-color: #e6e6e6;
@@ -594,6 +594,9 @@ html, body {
   .modal-content {
     width: 90%;
     max-width: 300px;
+  }
+  .table-container {
+    max-height: 400px; /* Adjusted for smaller screens, test and tweak if needed */
   }
 }
 
