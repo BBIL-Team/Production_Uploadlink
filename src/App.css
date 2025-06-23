@@ -426,7 +426,7 @@ html, body {
 
 /* Adjusted table container with scrollbar outside the table */
 .table-container {
-  max-height: 570px; /* Updated to match your measured height */
+  max-height: 500px; /* Updated to match your measured height */
   overflow-y: auto;
   border-radius: 8px;
   background-color: #e6e6e6;
