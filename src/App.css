@@ -16,6 +16,7 @@ html, body {
 
 .app-header {
   display: flex;
+  max-height: 100px;
   flex-direction: row;
   align-items: center;
   background-color: #008080;
