@@ -517,25 +517,28 @@ html, body {
 .file-table td:nth-child(2):hover::after {
   content: attr(data-full-text);
   position: absolute;
-  top: -40px;
+  top: -30px;
   left: 50%;
   transform: translateX(-50%);
   background-color: #333;
   color: #fff;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 14px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
   white-space: nowrap;
   z-index: 10;
   opacity: 0;
-  transition: opacity 0.2s ease;
-  transition-delay: 0s;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  transition: opacity 0.2s ease, visibility 0s linear 0.2s;
+  visibility: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .file-table td:nth-child(2):hover::after {
   opacity: 1;
+  visibility: visible;
+  transition-delay: 0.1s; /* Slight delay for smoother appearance */
 }
+  
 
 .file-table td:nth-child(3),
 .file-table th:nth-child(3) {
