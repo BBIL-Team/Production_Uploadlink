@@ -517,12 +517,12 @@ html, body {
 .file-table td:nth-child(2):hover::after {
   content: attr(data-full-text);
   position: absolute;
-  top: -30px;
+  bottom: -30px; /* Position below the cell */
   left: 50%;
   transform: translateX(-50%);
   background-color: #333;
   color: #fff;
-  padding: 6px 10px;
+  padding: 4px 8px;
   border-radius: 4px;
   font-size: 12px;
   white-space: nowrap;
