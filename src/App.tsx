@@ -282,18 +282,18 @@ const App: React.FC = () => {
   };
 
   const uploadFile = async (file: File | null, apiUrl: string) => {
-    if (!file) {
-      setModalMessage("Please select a file to upload.");
-      setModalType('error');
-      setShowMessageModal(true);
-      return;
-    }
-    if (!selectedMonth) {
-      setModalMessage("Please select the correct month.");
-      setModalType('error');
-      setShowMessageModal(true);
-      return;
-    }
+  if (!file) {
+    setModalMessage("Please select a file to upload.");
+    setModalType('error');
+    setShowMessageModal(true);
+    return;
+  }
+  if (!selectedMonth) {
+    setModalMessage("Please select the correct month.");
+    setModalType('error');
+    setShowMessageModal(true);
+    return;
+  }
 
     // Extract month name from "Month Year" (e.g., "June 2025" -> "June")
     const monthName = selectedMonth.split(' ')[0];
@@ -314,30 +314,29 @@ const App: React.FC = () => {
       });
 
       if (uploadResponse.ok) {
-        const uploadData = await uploadResponse.json();
-        setModalMessage(uploadData.message || "File uploaded successfully!");
-        setModalType('success');
-        setShowMessageModal(true);
+      const uploadData = await uploadResponse.json();
+      **setModalMessage(uploadData.message || "File uploaded successfully!");**
+      setModalType('success');
+      setShowMessageModal(true);
 
         // Save to DynamoDB
         try {
-          await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/save-upload', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              fileName: originalFileName,
-              uploadedBy: userAttributes.username || 'Unknown',
-            }),
-          });
-        } catch (error) {
-          console.error('Error saving to DynamoDB:', error);
-          setModalMessage('File uploaded, but failed to save upload details.');
-          setModalType('error');
-          setShowMessageModal(true);
-        }
-
+        await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/save-upload', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fileName: originalFileName,
+            uploadedBy: userAttributes.username || 'Unknown',
+          }),
+        });
+      } catch (error) {
+        console.error('Error saving to DynamoDB:', error);
+        **setModalMessage(`${uploadData.message || "File uploaded successfully!"} However, failed to save upload details.`);**
+        setModalType('error');
+        setShowMessageModal(true);
+      }
         // Refresh file list
         try {
           const queryParams = new URLSearchParams({
@@ -415,21 +414,21 @@ const App: React.FC = () => {
         } catch (error) {
           console.error('Error refreshing S3 files:', error);
         }
-      } else {
-        const errorText = await uploadResponse.text();
-        setModalMessage(`Failed to upload file: ${errorText}`);
-        setModalType('error');
-        setShowMessageModal(true);
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      setModalMessage("An error occurred while uploading the file.");
+     } else {
+      **const errorData = await uploadResponse.json();**
+      **setModalMessage(errorData.message || errorData.error || `Failed to upload file: ${uploadResponse.statusText}`);**
       setModalType('error');
       setShowMessageModal(true);
-    } finally {
-      setIsUploading(false); // Hide loading modal
     }
-  };
+  } catch (error: any) {
+    console.error("Error:", error);
+    **setModalMessage(`An error occurred while uploading the file: ${error.message || 'Unknown error'}`);**
+    setModalType('error');
+    setShowMessageModal(true);
+  } finally {
+    setIsUploading(false); // Hide loading modal
+  }
+};
 
   const downloadFile = async (key: string, isMonth: boolean = false) => {
     try {
