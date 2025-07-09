@@ -314,29 +314,34 @@ const App: React.FC = () => {
       });
 
       if (uploadResponse.ok) {
-      const uploadData = await uploadResponse.json();
-      **setModalMessage(uploadData.message || "File uploaded successfully!");**
-      setModalType('success');
-      setShowMessageModal(true);
-
-        // Save to DynamoDB
-        try {
-        await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/save-upload', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            fileName: originalFileName,
-            uploadedBy: userAttributes.username || 'Unknown',
-          }),
-        });
-      } catch (error) {
-        console.error('Error saving to DynamoDB:', error);
-        **setModalMessage(`${uploadData.message || "File uploaded successfully!"} However, failed to save upload details.`);**
-        setModalType('error');
+        const uploadData = await uploadResponse.json();
+        // Use Lambda's response message directly
+        setModalMessage(uploadData.message || "File uploaded successfully!");
+        setModalType('success');
         setShowMessageModal(true);
-      }
+
+
+         // Save to DynamoDB
+        try {
+          await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/save-upload', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              fileName: originalFileName,
+              uploadedBy: userAttributes.username || 'Unknown',
+            }),
+          });
+        } catch (error) {
+          console.error('Error saving to DynamoDB:', error);
+          // Display Lambda's success message, but append DynamoDB error
+          setModalMessage(`${uploadData.message || "File uploaded successfully!"} However, failed to save upload details.`);
+          setModalType('error');
+          setShowMessageModal(true);
+        }
+
+        
         // Refresh file list
         try {
           const queryParams = new URLSearchParams({
