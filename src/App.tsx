@@ -420,20 +420,22 @@ const App: React.FC = () => {
           console.error('Error refreshing S3 files:', error);
         }
      } else {
-      **const errorData = await uploadResponse.json();**
-      **setModalMessage(errorData.message || errorData.error || `Failed to upload file: ${uploadResponse.statusText}`);**
+        const errorData = await uploadResponse.json();
+        // Use Lambda's error message if available, otherwise fall back to status text
+        setModalMessage(errorData.message || errorData.error || `Failed to upload file: ${uploadResponse.statusText}`);
+        setModalType('error');
+        setShowMessageModal(true);
+      }
+   } catch (error: any) {
+      console.error("Error:", error);
+      // Generic error message if fetch fails entirely
+      setModalMessage(`An error occurred while uploading the file: ${error.message || 'Unknown error'}`);
       setModalType('error');
       setShowMessageModal(true);
+    } finally {
+      setIsUploading(false); // Hide loading modal
     }
-  } catch (error: any) {
-    console.error("Error:", error);
-    **setModalMessage(`An error occurred while uploading the file: ${error.message || 'Unknown error'}`);**
-    setModalType('error');
-    setShowMessageModal(true);
-  } finally {
-    setIsUploading(false); // Hide loading modal
-  }
-};
+  };
 
   const downloadFile = async (key: string, isMonth: boolean = false) => {
     try {
