@@ -89,6 +89,44 @@ const App: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc'); // Track sort direction
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Add tooltip state
+  const [tooltip, setTooltip] = useState<TooltipState>({
+    visible: false,
+    content: '',
+    x: 0,
+    y: 0,
+  });
+
+  // Handle mouse enter to show tooltip
+  const handleMouseEnter = (e: React.MouseEvent<HTMLTableCellElement>, content: string) => {
+    setTooltip({
+      visible: true,
+      content,
+      x: e.clientX,
+      y: e.clientY,
+    });
+  };
+
+  // Handle mouse move to update tooltip position
+  const handleMouseMove = (e: React.MouseEvent<HTMLTableCellElement>) => {
+    setTooltip((prev) => ({
+      ...prev,
+      x: e.clientX,
+      y: e.clientY,
+    }));
+  };
+
+  // Handle mouse leave to hide tooltip
+  const handleMouseLeave = () => {
+    setTooltip({
+      visible: false,
+      content: '',
+      x: 0,
+      y: 0,
+    });
+  };
+
+  
   // Fetch user attributes and S3 files on mount
   useEffect(() => {
     const fetchUserData = async () => {
@@ -576,6 +614,19 @@ const App: React.FC = () => {
 
   return (
     <main className="app-main">
+      {/* Add tooltip element */}
+      {tooltip.visible && (
+        <div
+          className="tooltip"
+          style={{
+            left: `${tooltip.x + 10}px`, // Offset to avoid cursor overlap
+            top: `${tooltip.y + 10}px`,
+          }}
+        >
+          {tooltip.content}
+        </div>
+      )}
+      
       {/* Header */}
       <header className="app-header">
         <div style={{ width: '130px', height: '120px', overflow: 'hidden', borderRadius: '8px', marginLeft: '20px' }}>
@@ -804,10 +855,25 @@ const App: React.FC = () => {
                   s3Files.map((file) => (
                     <tr key={file.id}>
                       <td>{file.id}</td>
-                      <td data-full-text={file.fileName}>{file.fileName}</td>
+                      <td data-full-text={file.fileName}
+                       onMouseEnter={(e) => handleMouseEnter(e, file.fileName)}
+                      onMouseMove={handleMouseMove}
+                      onMouseLeave={handleMouseLeave}
+                      className="tooltip-target" 
+                        >
+                        {file.fileName}
+                      </td>
                       <td>{file.fileType}</td>
                       <td>{file.filesize}</td>
-                      <td data-full-text={file.dateUploaded}>{file.dateUploaded}</td>
+                      <td 
+                        data-full-text={file.dateUploaded}
+                        onMouseEnter={(e) => handleMouseEnter(e, file.dateUploaded)}
+                        onMouseMove={handleMouseMove}
+                        onMouseLeave={handleMouseLeave}
+                        className="tooltip-target"
+                        >
+                        {file.dateUploaded}
+                      </td>
                       <td>{file.uploadedBy}</td>
                       <td>
                         <a
