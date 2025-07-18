@@ -432,6 +432,32 @@ html, body {
   background-color: #e6e6e6;
 }
 
+/* Tooltip styles */
+.tooltip {
+  position: fixed;
+  background-color: #333;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  max-width: 300px;
+  z-index: 1000;
+  pointer-events: none; /* Prevent tooltip from interfering with mouse events */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  white-space: normal; /* Allow text to wrap if too long */
+}
+
+/* Optional: Add cursor pointer to indicate hoverable cells */
+.tooltip-target {
+  cursor: pointer;
+}
+
+/* Optional: Add a slight transition for smooth appearance */
+.tooltip {
+  transition: opacity 0.2s ease-in-out;
+  opacity: 0.9;
+}
+
 /* Ensure table fits within container without internal scroll */
 .file-table {
   width: 100%;
