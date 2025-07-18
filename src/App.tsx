@@ -55,6 +55,14 @@ const getFinancialYearMonths = (currentDate: Date) => {
   return result;
 };
 
+// Define the type for tooltip state
+interface TooltipState {
+  visible: boolean;
+  content: string;
+  x: number;
+  y: number;
+}
+
 const App: React.FC = () => {
   const { signOut } = useAuthenticator();
   const [file, setFile] = useState<File | null>(null);
