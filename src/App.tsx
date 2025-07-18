@@ -594,11 +594,11 @@ const App: React.FC = () => {
       }
 
       // Handle date sorting for dateUploaded
-      if (column === 'dateUploaded') {
-        return newDirection === 'asc'
-          ? new Date(valueA as string).getTime() - new Date(valueB as string).getTime()
-          : new Date(valueB as string).getTime() - new Date(a.dateUploaded).getTime();
-      }
+    if (column === 'dateUploaded') {
+      return newDirection === 'asc'
+        ? new Date(valueA as string).getTime() - new Date(valueB as string).getTime()
+        : new Date(valueB as string).getTime() - new Date(valueA as string).getTime();
+    }
 
       // Default string sorting for other columns (fileName, fileType, uploadedBy, fileKey)
       return newDirection === 'asc'
