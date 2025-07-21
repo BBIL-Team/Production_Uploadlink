@@ -63,6 +63,14 @@ interface TooltipState {
   y: number;
 }
 
+// Define the type for context menu state
+interface ContextMenuState {
+  visible: boolean;
+  x: number;
+  y: number;
+  column: keyof typeof s3Files[0] | null;
+}
+
 const App: React.FC = () => {
   const { signOut } = useAuthenticator();
   const [file, setFile] = useState<File | null>(null);
@@ -76,8 +84,8 @@ const App: React.FC = () => {
   const [showUpdateForm, setShowUpdateForm] = useState<boolean>(false);
   const [newUsername, setNewUsername] = useState<string>("");
   const [isLoading, setLoading] = useState(true);
-  const [isUploading, setIsUploading] = useState<boolean>(false); // State for upload loading
-  const [uploadKey, setUploadKey] = useState<number>(0); // Key to reset progress bar animation
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [uploadKey, setUploadKey] = useState<number>(0);
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const [showMessageModal, setShowMessageModal] = useState<boolean>(false);
   const [modalMessage, setModalMessage] = useState<string>("");
@@ -85,16 +93,26 @@ const App: React.FC = () => {
   const [s3Files, setS3Files] = useState<
     { id: number; fileName: string; fileType: string; filesize: string; dateUploaded: string; uploadedBy: string; fileKey: string }[]
   >([]);
-  const [sortColumn, setSortColumn] = useState<keyof typeof s3Files[0] | ''>(''); // Track sorted column
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc'); // Track sort direction
+  const [sortColumn, setSortColumn] = useState<keyof typeof s3Files[0] | ''>(''); 
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [hiddenColumns, setHiddenColumns] = useState<(keyof typeof s3Files[0])[]>([]); // State for hidden columns
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
 
-  // Add tooltip state
+  // Tooltip state
   const [tooltip, setTooltip] = useState<TooltipState>({
     visible: false,
     content: '',
     x: 0,
     y: 0,
+  });
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>({
+    visible: false,
+    x: 0,
+    y: 0,
+    column: null,
   });
 
   // Handle mouse enter to show tooltip
@@ -126,7 +144,39 @@ const App: React.FC = () => {
     });
   };
 
-  
+  // Handle right-click to show context menu
+  const handleContextMenu = (e: React.MouseEvent<HTMLTableCellElement>, column: keyof typeof s3Files[0]) => {
+    e.preventDefault();
+    setContextMenu({
+      visible: true,
+      x: e.clientX,
+      y: e.clientY,
+      column,
+    });
+  };
+
+  // Handle hiding a column
+  const handleHideColumn = () => {
+    if (contextMenu.column) {
+      setHiddenColumns((prev) => [...prev, contextMenu.column!]);
+      setContextMenu({ visible: false, x: 0, y: 0, column: null });
+    }
+  };
+
+  // Close context menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(event.target as Node)) {
+        setContextMenu({ visible: false, x: 0, y: 0, column: null });
+      }
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Fetch user attributes and S3 files on mount
   useEffect(() => {
     const fetchUserData = async () => {
@@ -152,7 +202,6 @@ const App: React.FC = () => {
 
     const fetchS3Files = async () => {
       try {
-        // Construct the query string with bucket_name and folder_name
         const queryParams = new URLSearchParams({
           bucket_name: BUCKET_NAME,
           folder_name: FOLDER_NAME,
@@ -174,18 +223,13 @@ const App: React.FC = () => {
             .filter((file: { key: string }) => {
               const extension = (file.key.split('.').pop() || '').toLowerCase();
               return SUPPORTED_EXTENSIONS.includes(`.${extension}`);
-            }) // Filter supported file formats
+            })
             .map(async (file: { key: string; size: number; lastModified: string }, index: number) => {
-              // Extract full file name (including extension)
-              const fullFileName = file.key.split('/').pop() || ''; // e.g., "SomeReport.pdf"
+              const fullFileName = file.key.split('/').pop() || '';
               const fileNameParts = fullFileName.split('.');
-              const fileName = fileNameParts.slice(0, -1).join('.'); // Name without extension, e.g., "SomeReport"
-              const fileType = fileNameParts[fileNameParts.length - 1]?.toLowerCase() || ''; // e.g., "pdf"
-
-              // Format filesize (bytes to KB)
+              const fileName = fileNameParts.slice(0, -1).join('.');
+              const fileType = fileNameParts[fileNameParts.length - 1]?.toLowerCase() || '';
               const filesizeKB = (file.size / 1024).toFixed(1) + ' KB';
-
-              // Format date and time in 24-hour format
               const dateUploaded = new Date(file.lastModified).toLocaleString('en-IN', {
                 year: 'numeric',
                 month: '2-digit',
@@ -196,7 +240,6 @@ const App: React.FC = () => {
                 hour12: false,
               });
 
-              // Fetch uploadedBy from DynamoDB
               let uploadedBy = 'Unknown';
               try {
                 const uploaderResponse = await fetch(
@@ -218,21 +261,20 @@ const App: React.FC = () => {
 
               return {
                 id: index + 1,
-                fileName, // Name without extension
+                fileName,
                 fileType,
                 filesize: filesizeKB,
                 dateUploaded,
                 uploadedBy,
-                fileKey: file.key, // Full key, e.g., "Production_daily_upload_files_location/SomeReport.pdf"
+                fileKey: file.key,
               };
             })
         );
 
-        // Sort by dateUploaded descending by default
         files.sort((a, b) => new Date(b.dateUploaded).getTime() - new Date(a.dateUploaded).getTime());
         setS3Files(files);
-        setSortColumn('dateUploaded'); // Default sort column
-        setSortDirection('desc'); // Default sort direction
+        setSortColumn('dateUploaded');
+        setSortDirection('desc');
       } catch (error) {
         console.error('Error fetching S3 files:', error);
         setModalMessage('Failed to load files from server.');
@@ -243,17 +285,6 @@ const App: React.FC = () => {
 
     fetchUserData();
     fetchS3Files();
-  }, []);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   // Manage body scroll when modal is open
@@ -328,32 +359,30 @@ const App: React.FC = () => {
   };
 
   const uploadFile = async (file: File | null, apiUrl: string) => {
-  if (!file) {
-    setModalMessage("Please select a file to upload.");
-    setModalType('error');
-    setShowMessageModal(true);
-    return;
-  }
-  if (!selectedMonth) {
-    setModalMessage("Please select the correct month.");
-    setModalType('error');
-    setShowMessageModal(true);
-    return;
-  }
+    if (!file) {
+      setModalMessage("Please select a file to upload.");
+      setModalType('error');
+      setShowMessageModal(true);
+      return;
+    }
+    if (!selectedMonth) {
+      setModalMessage("Please select the correct month.");
+      setModalType('error');
+      setShowMessageModal(true);
+      return;
+    }
 
-    // Extract month name from "Month Year" (e.g., "June 2025" -> "June")
     const monthName = selectedMonth.split(' ')[0];
-    const originalFileName = file.name; // Preserve original file name, e.g., "MyReport.xlsx"
+    const originalFileName = file.name;
 
     const formData = new FormData();
     formData.append('file', file);
     formData.append('month', monthName);
-    formData.append('fileName', originalFileName); // Pass original file name to Lambda
+    formData.append('fileName', originalFileName);
 
     try {
-      setIsUploading(true); // Show loading modal
-      setUploadKey((prev) => prev + 1); // Increment key to restart animation
-      // Upload to S3
+      setIsUploading(true);
+      setUploadKey((prev) => prev + 1);
       const uploadResponse = await fetch(apiUrl, {
         method: "POST",
         body: formData,
@@ -361,13 +390,10 @@ const App: React.FC = () => {
 
       if (uploadResponse.ok) {
         const uploadData = await uploadResponse.json();
-        // Use Lambda's response message directly
         setModalMessage(uploadData.message || "File uploaded successfully!");
         setModalType('success');
         setShowMessageModal(true);
 
-
-         // Save to DynamoDB
         try {
           await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/save-upload', {
             method: 'POST',
@@ -381,14 +407,11 @@ const App: React.FC = () => {
           });
         } catch (error) {
           console.error('Error saving to DynamoDB:', error);
-          // Display Lambda's success message, but append DynamoDB error
           setModalMessage(`${uploadData.message || "File uploaded successfully!"} However, failed to save upload details.`);
           setModalType('error');
           setShowMessageModal(true);
         }
 
-        
-        // Refresh file list
         try {
           const queryParams = new URLSearchParams({
             bucket_name: BUCKET_NAME,
@@ -415,7 +438,7 @@ const App: React.FC = () => {
               .map(async (file: { key: string; size: number; lastModified: string }, index: number) => {
                 const fullFileName = file.key.split('/').pop() || '';
                 const fileNameParts = fullFileName.split('.');
-                const fileName = fileNameParts.slice(0, -1).join('.'); // Name without extension
+                const fileName = fileNameParts.slice(0, -1).join('.');
                 const fileType = fileNameParts[fileNameParts.length - 1]?.toLowerCase() || '';
                 const filesizeKB = (file.size / 1024).toFixed(1) + ' KB';
                 const dateUploaded = new Date(file.lastModified).toLocaleString('en-IN', {
@@ -465,34 +488,29 @@ const App: React.FC = () => {
         } catch (error) {
           console.error('Error refreshing S3 files:', error);
         }
-     } else {
+      } else {
         const errorData = await uploadResponse.json();
-        // Use Lambda's error message if available, otherwise fall back to status text
         setModalMessage(errorData.message || errorData.error || `Failed to upload file: ${uploadResponse.statusText}`);
         setModalType('error');
         setShowMessageModal(true);
       }
-   } catch (error: any) {
+    } catch (error: any) {
       console.error("Error:", error);
-      // Generic error message if fetch fails entirely
       setModalMessage(`An error occurred while uploading the file: ${error.message || 'Unknown error'}`);
       setModalType('error');
       setShowMessageModal(true);
     } finally {
-      setIsUploading(false); // Hide loading modal
+      setIsUploading(false);
     }
   };
 
   const downloadFile = async (key: string, isMonth: boolean = false) => {
     try {
-      // Determine the full file key based on the source
       let fileKey: string;
       if (isMonth) {
-        // Sample files are in Production_Sample_Files/
         fileKey = `Production_Sample_Files/${key}_Sample_File.csv`;
       } else {
-        // Uploaded files are in Production_daily_upload_files_location/, use the full key as-is
-        fileKey = key; // e.g., "Production_daily_upload_files_location/SomeReport.pdf"
+        fileKey = key;
       }
 
       const response = await fetch('https://e3blv3dko6.execute-api.ap-south-1.amazonaws.com/P1/presigned_urls', {
@@ -517,23 +535,22 @@ const App: React.FC = () => {
         link.click();
         document.body.removeChild(link);
 
-        // Log the download action to DynamoDB
-      try {
-        await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/save-files', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            fileName: fileKey.split('/').pop(),
-            action: 'download',
-            user: userAttributes.username || 'Unknown',
-          }),
-        });
-      } catch (error) {
-        console.error('Error saving download action:', error);
-      }
-        
+        try {
+          await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/save-files', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              fileName: fileKey.split('/').pop(),
+              action: 'download',
+              user: userAttributes.username || 'Unknown',
+            }),
+          });
+        } catch (error) {
+          console.error('Error saving download action:', error);
+        }
+
         setModalMessage(`Downloaded ${fileKey.split('/').pop()} successfully!`);
         setModalType('success');
         setShowMessageModal(true);
@@ -553,23 +570,19 @@ const App: React.FC = () => {
   const handlePreviousYear = () => setYear((prevYear) => prevYear - 1);
   const handleNextYear = () => setYear((prevYear) => prevYear + 1);
 
-  // Toggle dropdown
   const toggleDropdown = () => setIsDropdownOpen((prev) => !prev);
 
-  // Select month
   const selectMonth = (monthYear: string) => {
     setSelectedMonth(monthYear);
     setIsDropdownOpen(false);
   };
 
-  // Close message modal
   const closeMessageModal = () => {
     setShowMessageModal(false);
     setModalMessage('');
     setModalType('success');
   };
 
-  // Handle sorting
   const handleSort = (column: keyof typeof s3Files[0]) => {
     const newDirection = sortColumn === column && sortDirection === 'asc' ? 'desc' : 'asc';
     setSortColumn(column);
@@ -579,28 +592,24 @@ const App: React.FC = () => {
       const valueA = a[column];
       const valueB = b[column];
 
-      // Handle numeric sorting for id
       if (column === 'id') {
         return newDirection === 'asc'
           ? (valueA as number) - (valueB as number)
           : (valueB as number) - (valueA as number);
       }
 
-      // Handle numeric sorting for filesize
       if (column === 'filesize') {
         const sizeA = parseFloat((valueA as string).replace(' KB', ''));
         const sizeB = parseFloat((valueB as string).replace(' KB', ''));
         return newDirection === 'asc' ? sizeA - sizeB : sizeB - sizeA;
       }
 
-      // Handle date sorting for dateUploaded
-    if (column === 'dateUploaded') {
-      return newDirection === 'asc'
-        ? new Date(valueA as string).getTime() - new Date(valueB as string).getTime()
-        : new Date(valueB as string).getTime() - new Date(valueA as string).getTime();
-    }
+      if (column === 'dateUploaded') {
+        return newDirection === 'asc'
+          ? new Date(valueA as string).getTime() - new Date(valueB as string).getTime()
+          : new Date(valueB as string).getTime() - new Date(a.dateUploaded).getTime();
+      }
 
-      // Default string sorting for other columns (fileName, fileType, uploadedBy, fileKey)
       return newDirection === 'asc'
         ? (valueA as string).localeCompare(valueB as string)
         : (valueB as string).localeCompare(valueA as string);
@@ -609,17 +618,26 @@ const App: React.FC = () => {
     setS3Files(sortedFiles);
   };
 
-  // Get financial year months for dropdown
   const financialYearMonths = getFinancialYearMonths(new Date());
+
+  // Define table columns with their display names
+  const columns: { key: keyof typeof s3Files[0]; label: string }[] = [
+    { key: 'id', label: 'S.No.' },
+    { key: 'fileName', label: 'File Name' },
+    { key: 'fileType', label: 'File Type' },
+    { key: 'filesize', label: 'Filesize' },
+    { key: 'dateUploaded', label: 'Date Uploaded' },
+    { key: 'uploadedBy', label: 'Uploaded By' },
+    { key: 'fileKey', label: 'Download Link' },
+  ];
 
   return (
     <main className="app-main">
-      {/* Add tooltip element */}
       {tooltip.visible && (
         <div
           className="tooltip"
           style={{
-            left: `${tooltip.x + 10}px`, // Offset to avoid cursor overlap
+            left: `${tooltip.x + 10}px`,
             top: `${tooltip.y + 10}px`,
           }}
         >
@@ -627,7 +645,24 @@ const App: React.FC = () => {
         </div>
       )}
       
-      {/* Header */}
+      {contextMenu.visible && (
+        <div
+          ref={contextMenuRef}
+          className="context-menu"
+          style={{
+            left: `${contextMenu.x}px`,
+            top: `${contextMenu.y}px`,
+          }}
+        >
+          <div
+            className="context-menu-item"
+            onClick={handleHideColumn}
+          >
+            Hide Column
+          </div>
+        </div>
+      )}
+
       <header className="app-header">
         <div style={{ width: '130px', height: '120px', overflow: 'hidden', borderRadius: '8px', marginLeft: '20px' }}>
           <img
@@ -659,7 +694,6 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Username Update Modal */}
       {showUpdateForm && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -683,7 +717,6 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Message Modal */}
       {showMessageModal && (
         <div className="modal-overlay">
           <div className="modal-content message-modal">
@@ -701,7 +734,6 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Loading Modal */}
       {isUploading && (
         <div className="modal-overlay">
           <div className="modal-content loading-modal">
@@ -713,16 +745,12 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Title */}
       <h1 className="app-title">
         <u>BBIL Production Dashboard Update Interface</u>
       </h1>
 
-      {/* Main Container */}
       <div className="container">
-        {/* Left Column: Calendar and Upload */}
         <div className="left-column">
-          {/* Calendar Section */}
           <div className="calendar-section">
             <h2>Sample File Download Segment</h2>
             <div className="year-navigation">
@@ -750,7 +778,6 @@ const App: React.FC = () => {
             )}
           </div>
 
-          {/* Upload Section */}
           <div className="upload-section">
             <h2>📤 Upload File</h2>
             <div className="upload-form">
@@ -759,7 +786,7 @@ const App: React.FC = () => {
                 accept=".csv,.pdf,.xlsx,.xls,.doc,.docx"
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
                 className="file-input"
-                disabled={isUploading} // Disable input during upload
+                disabled={isUploading}
               />
               <div className="custom-dropdown" ref={dropdownRef}>
                 <div
@@ -806,7 +833,7 @@ const App: React.FC = () => {
                     uploadFile(file, 'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink');
                   }
                 }}
-                disabled={isUploading} // Disable button during upload
+                disabled={isUploading}
               >
                 {isUploading ? 'Uploading...' : 'Submit File'}
               </button>
@@ -814,79 +841,76 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Column: File List Table */}
         <div className="file-list">
           <h2>📋 List of Files Submitted</h2>
           <div className="table-container">
             <table className="file-table">
               <thead>
                 <tr>
-                  <th onClick={() => handleSort('id')} className={sortColumn === 'id' ? `sorted-${sortDirection}` : ''}>
-                    S.No.
-                  </th>
-                  <th onClick={() => handleSort('fileName')} className={sortColumn === 'fileName' ? `sorted-${sortDirection}` : ''}>
-                    File Name
-                  </th>
-                  <th onClick={() => handleSort('fileType')} className={sortColumn === 'fileType' ? `sorted-${sortDirection}` : ''}>
-                    File Type
-                  </th>
-                  <th onClick={() => handleSort('filesize')} className={sortColumn === 'filesize' ? `sorted-${sortDirection}` : ''}>
-                    Filesize
-                  </th>
-                  <th onClick={() => handleSort('dateUploaded')} className={sortColumn === 'dateUploaded' ? `sorted-${sortDirection}` : ''}>
-                    Date Uploaded
-                  </th>
-                  <th onClick={() => handleSort('uploadedBy')} className={sortColumn === 'uploadedBy' ? `sorted-${sortDirection}` : ''}>
-                    Uploaded By
-                  </th>
-                  <th onClick={() => handleSort('fileKey')} className={sortColumn === 'fileKey' ? `sorted-${sortDirection}` : ''}>
-                    Download Link
-                  </th>
+                  {columns.map((col) => (
+                    !hiddenColumns.includes(col.key) && (
+                      <th
+                        key={col.key}
+                        onClick={() => handleSort(col.key)}
+                        onContextMenu={(e) => handleContextMenu(e, col.key)}
+                        className={sortColumn === col.key ? `sorted-${sortDirection}` : ''}
+                      >
+                        {col.label}
+                      </th>
+                    )
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {s3Files.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={{ textAlign: 'center' }}>
+                    <td colSpan={columns.length - hiddenColumns.length} style={{ textAlign: 'center' }}>
                       No files found.
                     </td>
                   </tr>
                 ) : (
                   s3Files.map((file) => (
                     <tr key={file.id}>
-                      <td>{file.id}</td>
-                      <td data-full-text={file.fileName}
-                       onMouseEnter={(e) => handleMouseEnter(e, file.fileName)}
-                      onMouseMove={handleMouseMove}
-                      onMouseLeave={handleMouseLeave}
-                      className="tooltip-target" 
+                      {!hiddenColumns.includes('id') && <td>{file.id}</td>}
+                      {!hiddenColumns.includes('fileName') && (
+                        <td
+                          data-full-text={file.fileName}
+                          onMouseEnter={(e) => handleMouseEnter(e, file.fileName)}
+                          onMouseMove={handleMouseMove}
+                          onMouseLeave={handleMouseLeave}
+                          className="tooltip-target"
                         >
-                        {file.fileName}
-                      </td>
-                      <td>{file.fileType}</td>
-                      <td>{file.filesize}</td>
-                      <td 
-                        data-full-text={file.dateUploaded}
-                        onMouseEnter={(e) => handleMouseEnter(e, file.dateUploaded)}
-                        onMouseMove={handleMouseMove}
-                        onMouseLeave={handleMouseLeave}
-                        className="tooltip-target"
+                          {file.fileName}
+                        </td>
+                      )}
+                      {!hiddenColumns.includes('fileType') && <td>{file.fileType}</td>}
+                      {!hiddenColumns.includes('filesize') && <td>{file.filesize}</td>}
+                      {!hiddenColumns.includes('dateUploaded') && (
+                        <td
+                          data-full-text={file.dateUploaded}
+                          onMouseEnter={(e) => handleMouseEnter(e, file.dateUploaded)}
+                          onMouseMove={handleMouseMove}
+                          onMouseLeave={handleMouseLeave}
+                          className="tooltip-target"
                         >
-                        {file.dateUploaded}
-                      </td>
-                      <td>{file.uploadedBy}</td>
-                      <td>
-                        <a
-                          href="#"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            downloadFile(file.fileKey);
-                          }}
-                          className="download-link"
-                        >
-                          Download
-                        </a>
-                      </td>
+                          {file.dateUploaded}
+                        </td>
+                      )}
+                      {!hiddenColumns.includes('uploadedBy') && <td>{file.uploadedBy}</td>}
+                      {!hiddenColumns.includes('fileKey') && (
+                        <td>
+                          <a
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              downloadFile(file.fileKey);
+                            }}
+                            className="download-link"
+                          >
+                            Download
+                          </a>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}
@@ -896,7 +920,7 @@ const App: React.FC = () => {
         </div>
       </div>
     </main>
-    );
+  );
 };
 
 export default App;
