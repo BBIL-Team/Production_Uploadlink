@@ -68,7 +68,7 @@ interface ContextMenuState {
   visible: boolean;
   x: number;
   y: number;
-  column: keyof typeof s3Files[0] | null;
+  column: 'id' | 'fileName' | 'fileType' | 'filesize' | 'dateUploaded' | 'uploadedBy' | 'fileKey' | null;
 }
 
 const App: React.FC = () => {
@@ -95,7 +95,7 @@ const App: React.FC = () => {
   >([]);
   const [sortColumn, setSortColumn] = useState<keyof typeof s3Files[0] | ''>(''); 
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [hiddenColumns, setHiddenColumns] = useState<(keyof typeof s3Files[0])[]>([]); // State for hidden columns
+  const [hiddenColumns, setHiddenColumns] = useState<(keyof typeof s3Files[0])[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
@@ -158,7 +158,7 @@ const App: React.FC = () => {
   // Handle hiding a column
   const handleHideColumn = () => {
     if (contextMenu.column) {
-      setHiddenColumns((prev) => [...prev, contextMenu.column!]);
+      setHiddenColumns((prev) => [...prev, contextMenu.column as keyof typeof s3Files[0]]);
       setContextMenu({ visible: false, x: 0, y: 0, column: null });
     }
   };
