@@ -379,6 +379,7 @@ const App: React.FC = () => {
     formData.append('file', file);
     formData.append('month', monthName);
     formData.append('fileName', originalFileName);
+    formData.append('username', userAttributes.username || 'Unknown'); // Added username to formData
 
     try {
       setIsUploading(true);
