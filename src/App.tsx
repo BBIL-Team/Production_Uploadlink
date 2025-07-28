@@ -1013,7 +1013,7 @@ const App: React.FC = () => {
                           >
                             Download
                           </a>
-                          {userAttributes.username?.toLowerCase() === 'abcd@gmail.com' && (
+                          {userAttributes.username?.toLowerCase() === 'deepshika5686@bharatbiotech.com' && (
                             <>
                               {' / '}
                               <a
