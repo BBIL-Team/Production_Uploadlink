@@ -289,7 +289,7 @@ const App: React.FC = () => {
 
   // Manage body scroll when modal is open
   useEffect(() => {
-    if (showMessageModal || showUpdateForm || isUploading) {
+    if (showMessageModal || showUpdateForm || isUploading || showConfirmDeleteModal) {
       const scrollY = window.scrollY;
       document.body.style.overflow = 'hidden';
       document.body.style.position = 'fixed';
@@ -309,7 +309,7 @@ const App: React.FC = () => {
       document.body.style.top = '';
       document.body.style.width = '';
     };
-  }, [showMessageModal, showUpdateForm, isUploading]);
+  }, [showMessageModal, showUpdateForm, isUploading, showConfirmDeleteModal]);
 
   // Handle username update
   const handleUpdateUsername = async (e: React.FormEvent) => {
@@ -671,6 +671,21 @@ const App: React.FC = () => {
     }
   };
 
+  const handleConfirmDelete = () => {
+    if (fileToDelete) {
+      deleteFile(fileToDelete);
+      setShowConfirmDeleteModal(false);
+      setFileToDelete(null);
+      setFileNameToDelete(null);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowConfirmDeleteModal(false);
+    setFileToDelete(null);
+    setFileNameToDelete(null);
+  };
+
   const handlePreviousYear = () => setYear((prevYear) => prevYear - 1);
   const handleNextYear = () => setYear((prevYear) => prevYear + 1);
 
@@ -834,6 +849,24 @@ const App: React.FC = () => {
             <button className="ok-btn" onClick={closeMessageModal}>
               OK
             </button>
+          </div>
+        </div>
+      )}
+      {showConfirmDeleteModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3 className="modal-title">Confirm Deletion</h3>
+            <p className="message-text">
+              Are you sure you want to delete the file "{fileNameToDelete}"? This action cannot be undone.
+            </p>
+            <div className="modal-buttons" style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <button className="submit-btn" onClick={handleConfirmDelete}>
+                Confirm
+              </button>
+              <button className="cancel-btn" onClick={handleCancelDelete}>
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
