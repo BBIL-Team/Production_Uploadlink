@@ -568,6 +568,109 @@ const App: React.FC = () => {
     }
   };
 
+  const deleteFile = async (key: string) => {
+    try {
+      const response = await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/delete-file', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bucket_name: BUCKET_NAME,
+          file_key: key,
+        }),
+      });
+
+      if (response.ok) {
+        setModalMessage(`File ${key.split('/').pop()} deleted successfully!`);
+        setModalType('success');
+        setShowMessageModal(true);
+
+        // Refresh file list
+        const queryParams = new URLSearchParams({
+          bucket_name: BUCKET_NAME,
+          folder_name: FOLDER_NAME,
+        });
+        const fetchResponse = await fetch(`https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/list-files?${queryParams.toString()}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        if (!fetchResponse.ok) {
+          throw new Error(`Failed to fetch S3 files: ${fetchResponse.status}`);
+        }
+        const data = await fetchResponse.json();
+        const files = await Promise.all(
+          data.files
+            .filter((file: { key: string }) => {
+              const extension = (file.key.split('.').pop() || '').toLowerCase();
+              return SUPPORTED_EXTENSIONS.includes(`.${extension}`);
+            })
+            .map(async (file: { key: string; size: number; lastModified: string }, index: number) => {
+              const fullFileName = file.key.split('/').pop() || '';
+              const fileNameParts = fullFileName.split('.');
+              const fileName = fileNameParts.slice(0, -1).join('.');
+              const fileType = fileNameParts[fileNameParts.length - 1]?.toLowerCase() || '';
+              const filesizeKB = (file.size / 1024).toFixed(1) + ' KB';
+              const dateUploaded = new Date(file.lastModified).toLocaleString('en-IN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false,
+              });
+
+              let uploadedBy = 'Unknown';
+              try {
+                const uploaderResponse = await fetch(
+                  `https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/get-uploader?fileName=${encodeURIComponent(fullFileName)}`,
+                  {
+                    method: 'GET',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                  }
+                );
+                if (uploaderResponse.ok) {
+                  const uploaderData = await uploaderResponse.json();
+                  uploadedBy = uploaderData.uploadedBy || 'Unknown';
+                }
+              } catch (error) {
+                console.error(`Error fetching uploader for ${fullFileName}:`, error);
+              }
+
+              return {
+                id: index + 1,
+                fileName,
+                fileType,
+                filesize: filesizeKB,
+                dateUploaded,
+                uploadedBy,
+                fileKey: file.key,
+              };
+            })
+        );
+        files.sort((a, b) => new Date(b.dateUploaded).getTime() - new Date(a.dateUploaded).getTime());
+        setS3Files(files);
+        setSortColumn('dateUploaded');
+        setSortDirection('desc');
+      } else {
+        const errorData = await response.json();
+        setModalMessage(`Failed to delete file: ${errorData.message || response.statusText}`);
+        setModalType('error');
+        setShowMessageModal(true);
+      }
+    } catch (error: any) {
+      console.error('Delete error:', error);
+      setModalMessage(`An error occurred while deleting the file: ${error.message || 'Unknown error'}`);
+      setModalType('error');
+      setShowMessageModal(true);
+    }
+  };
+
   const handlePreviousYear = () => setYear((prevYear) => prevYear - 1);
   const handleNextYear = () => setYear((prevYear) => prevYear + 1);
 
@@ -910,6 +1013,21 @@ const App: React.FC = () => {
                           >
                             Download
                           </a>
+                          {userAttributes.username?.toLowerCase() === 'abcd@gmail.com' && (
+                            <>
+                              {' / '}
+                              <a
+                                href="#"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  deleteFile(file.fileKey);
+                                }}
+                                className="download-link"
+                              >
+                                Delete
+                              </a>
+                            </>
+                          )}
                         </td>
                       )}
                     </tr>
