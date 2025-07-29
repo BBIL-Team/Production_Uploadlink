@@ -1068,11 +1068,14 @@ const App: React.FC = () => {
                               <a
                                 href="#"
                                 onClick={(e) => {
-                                  e.preventDefault();
-                                  deleteFile(file.fileKey);
-                                }}
-                                className="download-link"
-                              >
+                                 e.preventDefault();
+                      setFileToDelete(file.fileKey);
+                      setFileNameToDelete(file.fileName);
+                      setShowConfirmDeleteModal(true);
+                    }}
+                    className="download-link"
+                    aria-label={`Delete file ${file.fileName}`}
+                  >
                                 Delete
                               </a>
                             </>
