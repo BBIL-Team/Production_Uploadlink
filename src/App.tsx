@@ -96,10 +96,7 @@ const App: React.FC = () => {
   const [sortColumn, setSortColumn] = useState<keyof typeof s3Files[0] | ''>(''); 
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [hiddenColumns, setHiddenColumns] = useState<(keyof typeof s3Files[0])[]>([]);
-  const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState<boolean>(false);
-  const [fileToDelete, setFileToDelete] = useState<string | null>(null);
-  const [fileNameToDelete, setFileNameToDelete] = useState<string | null>(null);
-  const [isDeleteOptionEnabled, setIsDeleteOptionEnabled] = useState<boolean>(false);
+  const [showDeleteOption, setShowDeleteOption] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
@@ -164,6 +161,47 @@ const App: React.FC = () => {
     if (contextMenu.column) {
       setHiddenColumns((prev) => [...prev, contextMenu.column as keyof typeof s3Files[0]]);
       setContextMenu({ visible: false, x: 0, y: 0, column: null });
+    }
+  };
+
+  // Delete file function
+  const deleteFile = async (key: string, fileName: string) => {
+    try {
+      const response = await fetch('https://e3blv3dko6.execute-api.ap-south-1.amazonaws.com/P1/presigned_urls', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bucket_name: BUCKET_NAME,
+          file_key: key,
+          action: 'delete',
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setS3Files((prev) => prev.filter((file) => file.fileKey !== key));
+          setModalMessage(`File ${fileName} deleted successfully!`);
+          setModalType('success');
+          setShowMessageModal(true);
+        } else {
+          setModalMessage(`Failed to delete file: ${data.error || 'Unknown error'}`);
+          setModalType('error');
+          setShowMessageModal(true);
+        }
+      } else {
+        const errorData = await response.json();
+        setModalMessage(`Failed to delete file: ${errorData.error || response.statusText}`);
+        setModalType('error');
+        setShowMessageModal(true);
+      }
+    } catch (error: any) {
+      console.error('Delete error:', error);
+      setModalMessage(`An error occurred while deleting the file: ${error.message}`);
+      setModalType('error');
+      setShowMessageModal(true);
     }
   };
 
@@ -293,7 +331,7 @@ const App: React.FC = () => {
 
   // Manage body scroll when modal is open
   useEffect(() => {
-    if (showMessageModal || showUpdateForm || isUploading || showConfirmDeleteModal) {
+    if (showMessageModal || showUpdateForm || isUploading) {
       const scrollY = window.scrollY;
       document.body.style.overflow = 'hidden';
       document.body.style.position = 'fixed';
@@ -313,7 +351,7 @@ const App: React.FC = () => {
       document.body.style.top = '';
       document.body.style.width = '';
     };
-  }, [showMessageModal, showUpdateForm, isUploading, showConfirmDeleteModal]);
+  }, [showMessageModal, showUpdateForm, isUploading]);
 
   // Handle username update
   const handleUpdateUsername = async (e: React.FormEvent) => {
@@ -383,7 +421,7 @@ const App: React.FC = () => {
     formData.append('file', file);
     formData.append('month', monthName);
     formData.append('fileName', originalFileName);
-    formData.append('username', userAttributes.username || 'Unknown'); // Added username to formData
+    formData.append('username', userAttributes.username || 'Unknown');
 
     try {
       setIsUploading(true);
@@ -572,124 +610,6 @@ const App: React.FC = () => {
     }
   };
 
-  const deleteFile = async (key: string) => {
-    try {
-      const response = await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/delete-file', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          bucket_name: BUCKET_NAME,
-          file_key: key,
-        }),
-      });
-
-      if (response.ok) {
-        setModalMessage(`File ${key.split('/').pop()} deleted successfully!`);
-        setModalType('success');
-        setShowMessageModal(true);
-
-        // Refresh file list
-        const queryParams = new URLSearchParams({
-          bucket_name: BUCKET_NAME,
-          folder_name: FOLDER_NAME,
-        });
-        const fetchResponse = await fetch(`https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/list-files?${queryParams.toString()}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        if (!fetchResponse.ok) {
-          throw new Error(`Failed to fetch S3 files: ${fetchResponse.status}`);
-        }
-        const data = await fetchResponse.json();
-        const files = await Promise.all(
-          data.files
-            .filter((file: { key: string }) => {
-              const extension = (file.key.split('.').pop() || '').toLowerCase();
-              return SUPPORTED_EXTENSIONS.includes(`.${extension}`);
-            })
-            .map(async (file: { key: string; size: number; lastModified: string }, index: number) => {
-              const fullFileName = file.key.split('/').pop() || '';
-              const fileNameParts = fullFileName.split('.');
-              const fileName = fileNameParts.slice(0, -1).join('.');
-              const fileType = fileNameParts[fileNameParts.length - 1]?.toLowerCase() || '';
-              const filesizeKB = (file.size / 1024).toFixed(1) + ' KB';
-              const dateUploaded = new Date(file.lastModified).toLocaleString('en-IN', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false,
-              });
-
-              let uploadedBy = 'Unknown';
-              try {
-                const uploaderResponse = await fetch(
-                  `https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/get-uploader?fileName=${encodeURIComponent(fullFileName)}`,
-                  {
-                    method: 'GET',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
-                  }
-                );
-                if (uploaderResponse.ok) {
-                  const uploaderData = await uploaderResponse.json();
-                  uploadedBy = uploaderData.uploadedBy || 'Unknown';
-                }
-              } catch (error) {
-                console.error(`Error fetching uploader for ${fullFileName}:`, error);
-              }
-
-              return {
-                id: index + 1,
-                fileName,
-                fileType,
-                filesize: filesizeKB,
-                dateUploaded,
-                uploadedBy,
-                fileKey: file.key,
-              };
-            })
-        );
-        files.sort((a, b) => new Date(b.dateUploaded).getTime() - new Date(a.dateUploaded).getTime());
-        setS3Files(files);
-        setSortColumn('dateUploaded');
-        setSortDirection('desc');
-      } else {
-        const errorData = await response.json();
-        setModalMessage(`Failed to delete file: ${errorData.message || response.statusText}`);
-        setModalType('error');
-        setShowMessageModal(true);
-      }
-    } catch (error: any) {
-      console.error('Delete error:', error);
-      setModalMessage(`An error occurred while deleting the file: ${error.message || 'Unknown error'}`);
-      setModalType('error');
-      setShowMessageModal(true);
-    }
-  };
-
-  const handleConfirmDelete = () => {
-    if (fileToDelete) {
-      deleteFile(fileToDelete);
-      setShowConfirmDeleteModal(false);
-      setFileToDelete(null);
-      setFileNameToDelete(null);
-    }
-  };
-
-  const handleCancelDelete = () => {
-    setShowConfirmDeleteModal(false);
-    setFileToDelete(null);
-    setFileNameToDelete(null);
-  };
-
   const handlePreviousYear = () => setYear((prevYear) => prevYear - 1);
   const handleNextYear = () => setYear((prevYear) => prevYear + 1);
 
@@ -856,24 +776,6 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
-      {showConfirmDeleteModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3 className="modal-title">Confirm Deletion</h3>
-            <p className="message-text">
-              Are you sure you want to delete the file "{fileNameToDelete}"? This action cannot be undone.
-            </p>
-            <div className="modal-buttons" style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <button className="submit-btn" onClick={handleConfirmDelete}>
-                Confirm
-              </button>
-              <button className="cancel-btn" onClick={handleCancelDelete}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {isUploading && (
         <div className="modal-overlay">
@@ -984,15 +886,15 @@ const App: React.FC = () => {
 
         <div className="file-list">
           <h2>📋 List of Files Submitted</h2>
-          {userAttributes.username?.toLowerCase() === 'deepshika5686@bharatbiotech.com' && (
-            <div style={{ marginBottom: '10px' }}>
+          {userAttributes.username === 'abcd@gmail.com' && (
+            <div className="delete-checkbox">
               <label>
                 <input
                   type="checkbox"
-                  checked={isDeleteOptionEnabled}
-                  onChange={(e) => setIsDeleteOptionEnabled(e.target.checked)}
+                  checked={showDeleteOption}
+                  onChange={(e) => setShowDeleteOption(e.target.checked)}
                 />
-                Delete Option
+                Enable Delete Option
               </label>
             </div>
           )}
@@ -1062,23 +964,18 @@ const App: React.FC = () => {
                           >
                             Download
                           </a>
-                          {userAttributes.username?.toLowerCase() === 'deepshika5686@bharatbiotech.com' && (
-                            <>
-                              {' / '}
-                              <a
-                                href="#"
-                                onClick={(e) => {
-                                 e.preventDefault();
-                      setFileToDelete(file.fileKey);
-                      setFileNameToDelete(file.fileName);
-                      setShowConfirmDeleteModal(true);
-                    }}
-                    className="download-link"
-                    aria-label={`Delete file ${file.fileName}`}
-                  >
-                                Delete
-                              </a>
-                            </>
+                          {userAttributes.username === 'abcd@gmail.com' && showDeleteOption && (
+                            <a
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                deleteFile(file.fileKey, file.fileName);
+                              }}
+                              className="delete-link"
+                              style={{ marginLeft: '10px', color: 'red' }}
+                            >
+                              Delete
+                            </a>
                           )}
                         </td>
                       )}
