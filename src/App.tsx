@@ -96,6 +96,9 @@ const App: React.FC = () => {
   const [sortColumn, setSortColumn] = useState<keyof typeof s3Files[0] | ''>(''); 
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [hiddenColumns, setHiddenColumns] = useState<(keyof typeof s3Files[0])[]>([]);
+  const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState<boolean>(false);
+  const [fileToDelete, setFileToDelete] = useState<string | null>(null);
+  const [fileNameToDelete, setFileNameToDelete] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
