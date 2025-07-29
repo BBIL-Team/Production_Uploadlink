@@ -99,6 +99,7 @@ const App: React.FC = () => {
   const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState<boolean>(false);
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
   const [fileNameToDelete, setFileNameToDelete] = useState<string | null>(null);
+  const [isDeleteOptionEnabled, setIsDeleteOptionEnabled] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
@@ -983,6 +984,18 @@ const App: React.FC = () => {
 
         <div className="file-list">
           <h2>📋 List of Files Submitted</h2>
+          {userAttributes.username?.toLowerCase() === 'abcd@gmail.com' && (
+            <div style={{ marginBottom: '10px' }}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={isDeleteOptionEnabled}
+                  onChange={(e) => setIsDeleteOptionEnabled(e.target.checked)}
+                />
+                Delete Option
+              </label>
+            </div>
+          )}
           <div className="table-container">
             <table className="file-table">
               <thead>
