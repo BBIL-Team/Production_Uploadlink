@@ -574,7 +574,7 @@ const App: React.FC = () => {
 
   const deleteFile = async (key: string) => {
     try {
-      const response = await fetch(' https://6teu9qdra0.execute-api.ap-south-1.amazonaws.com/default/s3-files-pull-and-download-or-view', {
+      const response = await fetch('https://e3blv3dko6.execute-api.ap-south-1.amazonaws.com/P1/presigned_urls', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
