@@ -575,13 +575,14 @@ const App: React.FC = () => {
   const deleteFile = async (key: string) => {
     try {
       const response = await fetch('https://e3blv3dko6.execute-api.ap-south-1.amazonaws.com/P1/presigned_urls', {
-        method: 'DELETE',
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           bucket_name: BUCKET_NAME,
           file_key: key,
+          action: 'delete',
         }),
       });
 
