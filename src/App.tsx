@@ -1008,7 +1008,7 @@ const App: React.FC = () => {
               />
               Delete Option
             </label>
-          )}>
+          )}
           <h2>📋 List of Files Submitted</h2>
           <div className="table-container">
             <table className="file-table">
