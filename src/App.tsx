@@ -995,7 +995,7 @@ const App: React.FC = () => {
         onChange={(e) => setIsDeleteOptionEnabled(e.target.checked)}
         aria-checked={isDeleteOptionEnabled}
       />
-      <B>Delete Option</B>
+      <b>Delete Option</b>
     </label>
   </div>
 )}
