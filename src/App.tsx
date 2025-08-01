@@ -983,25 +983,33 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <div className="file-list">
-          <h2>📋 List of Files Submitted</h2>
+        <div className="file-list"style={{ position: 'relative', paddingTop: '40px' }}>
           {userAttributes.username?.toLowerCase() === 'deepshika5686@bharatbiotech.com' && (
-            <div className="delete-option-container" style={{ marginBottom: '10px' }}>
-    <label
-  className="delete-option-label"
-  style={{ position: 'absolute', marginLeft: '45vw', top: '50vh', display: 'flex', alignItems: 'center', backgroundColor:'#81d7ea' }}
->
-  <input
-    type="checkbox"
-    className="delete-option-checkbox"
-    checked={isDeleteOptionEnabled}
-    onChange={(e) => setIsDeleteOptionEnabled(e.target.checked)}
-    aria-checked={isDeleteOptionEnabled}
-  />
-  Delete Option
-</label>
-  </div>
-)}
+            <label
+              className="delete-option-label"
+              style={{
+                position: 'absolute',
+                right: '12px',
+                top: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                fontSize: '16px',
+                color: '#333',
+                fontWeight: 'bold',
+                cursor: 'pointer'
+              }}
+            >
+              <input
+                type="checkbox"
+                className="delete-option-checkbox"
+                checked={isDeleteOptionEnabled}
+                onChange={(e) => setIsDeleteOptionEnabled(e.target.checked)}
+                aria-checked={isDeleteOptionEnabled}
+              />
+              Delete Option
+            </label>
+          )}>
+          <h2>📋 List of Files Submitted</h2>
           <div className="table-container">
             <table className="file-table">
               <thead>
