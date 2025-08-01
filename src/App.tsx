@@ -989,7 +989,7 @@ const App: React.FC = () => {
             <div className="delete-option-container" style={{ marginBottom: '10px' }}>
     <label
   className="delete-option-label"
-  style={{ position: 'absolute', marginLeft: '45vw', top: '35vh', display: 'flex', alignItems: 'center', backgroundColor:'#81d7ea' }}
+  style={{ position: 'absolute', marginLeft: '45vw', top: '50vh', display: 'flex', alignItems: 'center', backgroundColor:'#81d7ea' }}
 >
   <input
     type="checkbox"
