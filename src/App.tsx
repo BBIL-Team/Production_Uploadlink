@@ -987,16 +987,19 @@ const App: React.FC = () => {
           <h2>📋 List of Files Submitted</h2>
           {userAttributes.username?.toLowerCase() === 'deepshika5686@bharatbiotech.com' && (
             <div className="delete-option-container" style={{ marginBottom: '10px' }}>
-    <label className="delete-option-label" style="margin-left: 45vw;">
-      <input
-        type="checkbox"
-        className="delete-option-checkbox"
-        checked={isDeleteOptionEnabled}
-        onChange={(e) => setIsDeleteOptionEnabled(e.target.checked)}
-        aria-checked={isDeleteOptionEnabled}
-      />
-      <b>Delete Option</b>
-    </label>
+    <label
+  className="delete-option-label"
+  style={{ position: 'absolute', right: '12px', top: '12px', display: 'flex', alignItems: 'center', fontWeight: 'bold' }}
+>
+  <input
+    type="checkbox"
+    className="delete-option-checkbox"
+    checked={isDeleteOptionEnabled}
+    onChange={(e) => setIsDeleteOptionEnabled(e.target.checked)}
+    aria-checked={isDeleteOptionEnabled}
+  />
+  Delete Option
+</label>
   </div>
 )}
           <div className="table-container">
