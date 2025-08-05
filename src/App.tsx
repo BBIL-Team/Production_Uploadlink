@@ -994,7 +994,6 @@ const App: React.FC = () => {
                   alignItems: 'center',
                   fontSize: '16px',
                   color: '#333',
-                  fontWeight: 'bold',
                   cursor: 'pointer'
                 }}
               >
