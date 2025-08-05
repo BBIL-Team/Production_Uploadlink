@@ -984,7 +984,7 @@ const App: React.FC = () => {
         </div>
 
         <div className="file-list"style={{ position: 'relative', paddingTop: '40px' }}>
-          {userAttributes.username?.toLowerCase() === 'rajan5170@bharatbiotech.com' && (
+          {userAttributes.username?.toLowerCase() === 'manika5170@bharatbiotech.com' && (
             <label
               className="delete-option-label"
               style={{
@@ -1076,7 +1076,7 @@ const App: React.FC = () => {
                           >
                             Download
                           </a>
-                          {userAttributes.username?.toLowerCase() === 'rajan51706@bharatbiotech.com' && isDeleteOptionEnabled && (
+                          {userAttributes.username?.toLowerCase() === 'manika5170@bharatbiotech.com' && isDeleteOptionEnabled && (
                             <>
                               {' / '}
                               <a
