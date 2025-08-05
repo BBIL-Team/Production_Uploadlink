@@ -983,33 +983,33 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <div className="file-list"style={{ position: 'relative', paddingTop: '40px' }}>
-          {userAttributes.username?.toLowerCase() === 'deepshika5686@bharatbiotech.com' && (
-            <label
-              className="delete-option-label"
-              style={{
-                position: 'absolute',
-                right: '12px',
-                top: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                fontSize: '16px',
-                color: '#333',
-                fontWeight: 'bold',
-                cursor: 'pointer'
-              }}
-            >
-              <input
-                type="checkbox"
-                className="delete-option-checkbox"
-                checked={isDeleteOptionEnabled}
-                onChange={(e) => setIsDeleteOptionEnabled(e.target.checked)}
-                aria-checked={isDeleteOptionEnabled}
-              />
-              Delete Option
-            </label>
-          )}
-          <h2>📋 List of Files Submitted</h2>
+        <div className="file-list"style={{ position: 'relative'}}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <h2 style={{ margin: 0, marginRight: '10px' }}>📋 List of Files Submitted</h2>
+            {userAttributes.username?.toLowerCase() === 'deepshika5686@bharatbiotech.com' && (
+              <label
+                className="delete-option-label"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  fontSize: '16px',
+                  color: '#333',
+                  fontWeight: 'bold',
+                  cursor: 'pointer'
+                }}
+              >
+                <input
+                  type="checkbox"
+                  className="delete-option-checkbox"
+                  checked={isDeleteOptionEnabled}
+                  onChange={(e) => setIsDeleteOptionEnabled(e.target.checked)}
+                  aria-checked={isDeleteOptionEnabled}
+                  aria-label="Toggle delete option"
+                />
+                Delete Option
+              </label>
+            )}
+          </div>
           <div className="table-container">
             <table className="file-table">
               <thead>
