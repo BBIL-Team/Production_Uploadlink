@@ -984,7 +984,7 @@ const App: React.FC = () => {
         </div>
 
         <div className="file-list"style={{ position: 'relative', paddingTop: '40px' }}>
-          {userAttributes.username?.toLowerCase() === 'deepshika5686@bharatbitech.com' && (
+          {userAttributes.username?.toLowerCase() === 'deepshika5686@bharatbiotech.com' && (
             <label
               className="delete-option-label"
               style={{
