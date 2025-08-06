@@ -986,7 +986,7 @@ const App: React.FC = () => {
         <div className="file-list"style={{ position: 'relative'}}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
             <h2 style={{ margin: 0, marginRight: '10px' }}>📋 List of Files Submitted</h2>
-            {userAttributes.username?.toLowerCase() === 'deepshika5686@bharatbiotech.com' && (
+            {userAttributes.username?.toLowerCase() === 'manika5170@bharatbiotech.com' && (
               <label
                 className="delete-option-label"
                 style={{
@@ -1075,7 +1075,7 @@ const App: React.FC = () => {
                           >
                             Download
                           </a>
-                          {userAttributes.username?.toLowerCase() === 'deepshika5686@bharatbiotech.com' && isDeleteOptionEnabled && (
+                          {userAttributes.username?.toLowerCase() === 'manika5170@bharatbiotech.com' && isDeleteOptionEnabled && (
                             <>
                               {' / '}
                               <a
