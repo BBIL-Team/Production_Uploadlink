@@ -527,6 +527,7 @@ const App: React.FC = () => {
           bucket_name: BUCKET_NAME,
           file_key: fileKey,
           action: 'download',
+          isSample: isMonth // Set isSample to true for sample files, false for submitted files
         }),
       });
       console.log('Response status:', response.status, 'OK:', response.ok);
