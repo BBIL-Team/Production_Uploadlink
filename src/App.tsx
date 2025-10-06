@@ -100,6 +100,7 @@ const App: React.FC = () => {
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
   const [fileNameToDelete, setFileNameToDelete] = useState<string | null>(null);
   const [isDeleteOptionEnabled, setIsDeleteOptionEnabled] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<'monthly' | 'daily'>('daily'); // New state for tab navigation
   const dropdownRef = useRef<HTMLDivElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
@@ -167,7 +168,7 @@ const App: React.FC = () => {
     }
   };
 
-  // Close context menu when clicking outside
+  // Close context menu and dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (contextMenuRef.current && !contextMenuRef.current.contains(event.target as Node)) {
@@ -383,7 +384,7 @@ const App: React.FC = () => {
     formData.append('file', file);
     formData.append('month', monthName);
     formData.append('fileName', originalFileName);
-    formData.append('username', userAttributes.username || 'Unknown'); // Added username to formData
+    formData.append('username', userAttributes.username || 'Unknown');
 
     try {
       setIsUploading(true);
@@ -527,7 +528,7 @@ const App: React.FC = () => {
           bucket_name: BUCKET_NAME,
           file_key: fileKey,
           action: 'download',
-          isSample: isMonth // Set isSample to true for sample files, false for submitted files
+          isSample: isMonth
         }),
       });
       console.log('Response status:', response.status, 'OK:', response.ok);
@@ -592,7 +593,6 @@ const App: React.FC = () => {
         setModalType('success');
         setShowMessageModal(true);
 
-        // Refresh file list
         const queryParams = new URLSearchParams({
           bucket_name: BUCKET_NAME,
           folder_name: FOLDER_NAME,
@@ -892,218 +892,246 @@ const App: React.FC = () => {
         <u>BBIL Production Dashboard Update Interface</u>
       </h1>
 
-      <div className="container">
-        <div className="left-column">
-          <div className="calendar-section">
-            <h2>Sample File Download Segment</h2>
-            <div className="year-navigation">
-              <button onClick={handlePreviousYear}>{'\u003C'}</button>
-              <h2>{year}</h2>
-              <button onClick={handleNextYear}>{'\u003E'}</button>
-            </div>
-            <div className="months-grid">
-              {months.map((month) => (
-                <button
-                  key={month}
-                  onClick={() => setDisplayedMonth(month === displayedMonth ? '' : month)}
-                  className={`month-button ${displayedMonth === month ? 'active-month' : ''}`}
-                >
-                  {month}
-                </button>
-              ))}
-            </div>
-            {displayedMonth && (
-              <div className="download-button">
-                <button onClick={() => downloadFile(displayedMonth, true)} className="download-btn">
-                  Download {displayedMonth} Sample CSV
-                </button>
-              </div>
-            )}
-          </div>
+      {/* Navigation Bar */}
+      <nav className="bg-gray-100 p-4 mb-6">
+        <div className="flex space-x-4">
+          <button
+            className={`px-4 py-2 rounded-md font-medium ${activeTab === 'monthly' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-300'}`}
+            onClick={() => setActiveTab('monthly')}
+          >
+            Monthly Upload
+          </button>
+          <button
+            className={`px-4 py-2 rounded-md font-medium ${activeTab === 'daily' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-300'}`}
+            onClick={() => setActiveTab('daily')}
+          >
+            Daily Upload
+          </button>
+        </div>
+      </nav>
 
-          <div className="upload-section">
-            <h2>📤 Upload File</h2>
-            <div className="upload-form">
-              <input
-                type="file"
-                accept=".csv,.pdf,.xlsx,.xls,.doc,.docx"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
-                className="file-input"
-                disabled={isUploading}
-              />
-              <div className="custom-dropdown" ref={dropdownRef}>
-                <div
-                  className={`dropdown-toggle ${isDropdownOpen ? 'open' : ''}`}
-                  onClick={toggleDropdown}
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      toggleDropdown();
+      {/* Conditional Rendering Based on Active Tab */}
+      {activeTab === 'monthly' ? (
+        <div className="container">
+          <div className="p-4 text-center">
+            <h2 className="text-xl font-semibold">Monthly Upload</h2>
+            <p className="text-gray-600">Monthly upload functionality will be implemented here.</p>
+          </div>
+        </div>
+      ) : (
+        <div className="container">
+          <div className="left-column">
+            <div className="calendar-section">
+              <h2>Sample File Download Segment</h2>
+              <div className="year-navigation">
+                <button onClick={handlePreviousYear}>{'\u003C'}</button>
+                <h2>{year}</h2>
+                <button onClick={handleNextYear}>{'\u003E'}</button>
+              </div>
+              <div className="months-grid">
+                {months.map((month) => (
+                  <button
+                    key={month}
+                    onClick={() => setDisplayedMonth(month === displayedMonth ? '' : month)}
+                    className={`month-button ${displayedMonth === month ? 'active-month' : ''}`}
+                  >
+                    {month}
+                  </button>
+                ))}
+              </div>
+              {displayedMonth && (
+                <div className="download-button">
+                  <button onClick={() => downloadFile(displayedMonth, true)} className="download-btn">
+                    Download {displayedMonth} Sample CSV
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="upload-section">
+              <h2>📤 Upload File</h2>
+              <div className="upload-form">
+                <input
+                  type="file"
+                  accept=".csv,.pdf,.xlsx,.xls,.doc,.docx"
+                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  className="file-input"
+                  disabled={isUploading}
+                />
+                <div className="custom-dropdown" ref={dropdownRef}>
+                  <div
+                    className={`dropdown-toggle ${isDropdownOpen ? 'open' : ''}`}
+                    onClick={toggleDropdown}
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        toggleDropdown();
+                      }
+                    }}
+                  >
+                    <span>{selectedMonth || 'Select Month'}</span>
+                    <span className="dropdown-arrow"></span>
+                  </div>
+                  {isDropdownOpen && (
+                    <ul className="dropdown-menu">
+                      {financialYearMonths.map((monthYear) => (
+                        <li
+                          key={monthYear}
+                          className={`dropdown-item ${selectedMonth === monthYear ? 'selected' : ''}`}
+                          onClick={() => selectMonth(monthYear)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              selectMonth(monthYear);
+                            }
+                          }}
+                          tabIndex={0}
+                          role="option"
+                          aria-selected={selectedMonth === monthYear}
+                        >
+                          {monthYear}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <button
+                  className="upload-btn"
+                  onClick={() => {
+                    if (validateFile(file)) {
+                      uploadFile(file, 'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink');
                     }
                   }}
+                  disabled={isUploading}
                 >
-                  <span>{selectedMonth || 'Select Month'}</span>
-                  <span className="dropdown-arrow"></span>
-                </div>
-                {isDropdownOpen && (
-                  <ul className="dropdown-menu">
-                    {financialYearMonths.map((monthYear) => (
-                      <li
-                        key={monthYear}
-                        className={`dropdown-item ${selectedMonth === monthYear ? 'selected' : ''}`}
-                        onClick={() => selectMonth(monthYear)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            selectMonth(monthYear);
-                          }
-                        }}
-                        tabIndex={0}
-                        role="option"
-                        aria-selected={selectedMonth === monthYear}
-                      >
-                        {monthYear}
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                  {isUploading ? 'Uploading...' : 'Submit File'}
+                </button>
               </div>
-              <button
-                className="upload-btn"
-                onClick={() => {
-                  if (validateFile(file)) {
-                    uploadFile(file, 'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink');
-                  }
-                }}
-                disabled={isUploading}
-              >
-                {isUploading ? 'Uploading...' : 'Submit File'}
-              </button>
+            </div>
+          </div>
+
+          <div className="file-list" style={{ position: 'relative' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <h2 style={{ margin: 0, marginRight: '10px' }}>📋 List of Files Submitted</h2>
+              {userAttributes.username?.toLowerCase() === 'manika5170@bharatbiotech.com' && (
+                <label
+                  className="delete-option-label"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    fontSize: '16px',
+                    color: '#333',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    className="delete-option-checkbox"
+                    checked={isDeleteOptionEnabled}
+                    onChange={(e) => setIsDeleteOptionEnabled(e.target.checked)}
+                    aria-checked={isDeleteOptionEnabled}
+                    aria-label="Toggle delete option"
+                  />
+                  Delete Option
+                </label>
+              )}
+            </div>
+            <div className="table-container">
+              <table className="file-table">
+                <thead>
+                  <tr>
+                    {columns.map((col) => (
+                      !hiddenColumns.includes(col.key) && (
+                        <th
+                          key={col.key}
+                          onClick={() => handleSort(col.key)}
+                          onContextMenu={(e) => handleContextMenu(e, col.key)}
+                          className={sortColumn === col.key ? `sorted-${sortDirection}` : ''}
+                        >
+                          {col.label}
+                        </th>
+                      )
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {s3Files.length === 0 ? (
+                    <tr>
+                      <td colSpan={columns.length - hiddenColumns.length} style={{ textAlign: 'center' }}>
+                        No files found.
+                      </td>
+                    </tr>
+                  ) : (
+                    s3Files.map((file) => (
+                      <tr key={file.id}>
+                        {!hiddenColumns.includes('id') && <td>{file.id}</td>}
+                        {!hiddenColumns.includes('fileName') && (
+                          <td
+                            data-full-text={file.fileName}
+                            onMouseEnter={(e) => handleMouseEnter(e, file.fileName)}
+                            onMouseMove={handleMouseMove}
+                            onMouseLeave={handleMouseLeave}
+                            className="tooltip-target"
+                          >
+                            {file.fileName}
+                          </td>
+                        )}
+                        {!hiddenColumns.includes('fileType') && <td>{file.fileType}</td>}
+                        {!hiddenColumns.includes('filesize') && <td>{file.filesize}</td>}
+                        {!hiddenColumns.includes('dateUploaded') && (
+                          <td
+                            data-full-text={file.dateUploaded}
+                            onMouseEnter={(e) => handleMouseEnter(e, file.dateUploaded)}
+                            onMouseMove={handleMouseMove}
+                            onMouseLeave={handleMouseLeave}
+                            className="tooltip-target"
+                          >
+                            {file.dateUploaded}
+                          </td>
+                        )}
+                        {!hiddenColumns.includes('uploadedBy') && <td>{file.uploadedBy}</td>}
+                        {!hiddenColumns.includes('fileKey') && (
+                          <td>
+                            <a
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                downloadFile(file.fileKey);
+                              }}
+                              className="download-link"
+                            >
+                              Download
+                            </a>
+                            {userAttributes.username?.toLowerCase() === 'manika5170@bharatbiotech.com' && isDeleteOptionEnabled && (
+                              <>
+                                {' / '}
+                                <a
+                                  href="#"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    setFileToDelete(file.fileKey);
+                                    setFileNameToDelete(file.fileName);
+                                    setShowConfirmDeleteModal(true);
+                                  }}
+                                  className="download-link"
+                                  aria-label={`Delete file ${file.fileName}`}
+                                >
+                                  Delete
+                                </a>
+                              </>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
-
-        <div className="file-list"style={{ position: 'relative'}}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <h2 style={{ margin: 0, marginRight: '10px' }}>📋 List of Files Submitted</h2>
-            {userAttributes.username?.toLowerCase() === 'manika5170@bharatbiotech.com' && (
-              <label
-                className="delete-option-label"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  fontSize: '16px',
-                  color: '#333',
-                  cursor: 'pointer'
-                }}
-              >
-                <input
-                  type="checkbox"
-                  className="delete-option-checkbox"
-                  checked={isDeleteOptionEnabled}
-                  onChange={(e) => setIsDeleteOptionEnabled(e.target.checked)}
-                  aria-checked={isDeleteOptionEnabled}
-                  aria-label="Toggle delete option"
-                />
-                Delete Option
-              </label>
-            )}
-          </div>
-          <div className="table-container">
-            <table className="file-table">
-              <thead>
-                <tr>
-                  {columns.map((col) => (
-                    !hiddenColumns.includes(col.key) && (
-                      <th
-                        key={col.key}
-                        onClick={() => handleSort(col.key)}
-                        onContextMenu={(e) => handleContextMenu(e, col.key)}
-                        className={sortColumn === col.key ? `sorted-${sortDirection}` : ''}
-                      >
-                        {col.label}
-                      </th>
-                    )
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {s3Files.length === 0 ? (
-                  <tr>
-                    <td colSpan={columns.length - hiddenColumns.length} style={{ textAlign: 'center' }}>
-                      No files found.
-                    </td>
-                  </tr>
-                ) : (
-                  s3Files.map((file) => (
-                    <tr key={file.id}>
-                      {!hiddenColumns.includes('id') && <td>{file.id}</td>}
-                      {!hiddenColumns.includes('fileName') && (
-                        <td
-                          data-full-text={file.fileName}
-                          onMouseEnter={(e) => handleMouseEnter(e, file.fileName)}
-                          onMouseMove={handleMouseMove}
-                          onMouseLeave={handleMouseLeave}
-                          className="tooltip-target"
-                        >
-                          {file.fileName}
-                        </td>
-                      )}
-                      {!hiddenColumns.includes('fileType') && <td>{file.fileType}</td>}
-                      {!hiddenColumns.includes('filesize') && <td>{file.filesize}</td>}
-                      {!hiddenColumns.includes('dateUploaded') && (
-                        <td
-                          data-full-text={file.dateUploaded}
-                          onMouseEnter={(e) => handleMouseEnter(e, file.dateUploaded)}
-                          onMouseMove={handleMouseMove}
-                          onMouseLeave={handleMouseLeave}
-                          className="tooltip-target"
-                        >
-                          {file.dateUploaded}
-                        </td>
-                      )}
-                      {!hiddenColumns.includes('uploadedBy') && <td>{file.uploadedBy}</td>}
-                      {!hiddenColumns.includes('fileKey') && (
-                        <td>
-                          <a
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              downloadFile(file.fileKey);
-                            }}
-                            className="download-link"
-                          >
-                            Download
-                          </a>
-                          {userAttributes.username?.toLowerCase() === 'manika5170@bharatbiotech.com' && isDeleteOptionEnabled && (
-                            <>
-                              {' / '}
-                              <a
-                                href="#"
-                                onClick={(e) => {
-                                 e.preventDefault();
-                      setFileToDelete(file.fileKey);
-                      setFileNameToDelete(file.fileName);
-                      setShowConfirmDeleteModal(true);
-                    }}
-                    className="download-link"
-                    aria-label={`Delete file ${file.fileName}`}
-                  >
-                                Delete
-                              </a>
-                            </>
-                          )}
-                        </td>
-                      )}
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+      )}
     </main>
   );
 };
