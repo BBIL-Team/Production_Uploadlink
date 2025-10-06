@@ -394,6 +394,38 @@ const App: React.FC = () => {
         setModalType('success');
         setShowMessageModal(true);
 
+       const uploadFile = async (file: File | null, apiUrl: string, month: string) => {
+  if (!file) {
+    setModalMessage("Please select a file to upload.");
+    setModalType('error');
+    setShowMessageModal(true);
+    return;
+  }
+
+  const originalFileName = file.name;
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('month', month);
+  formData.append('fileName', originalFileName);
+  formData.append('username', userAttributes.username || 'Unknown');
+
+  try {
+    setIsUploading(true);
+    setUploadKey((prev) => prev + 1);
+    const uploadResponse = await fetch(apiUrl, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (uploadResponse.ok) {
+      const uploadData = await uploadResponse.json();
+      setModalMessage(uploadData.message || "File uploaded successfully!");
+      setModalType('success');
+      setShowMessageModal(true);
+
+      // Only save upload details for monthly uploads (skip for 'Daily')
+      if (month !== 'Daily') {
         try {
           await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/save-upload', {
             method: 'POST',
@@ -411,24 +443,25 @@ const App: React.FC = () => {
           setModalType('error');
           setShowMessageModal(true);
         }
-
-        await loadS3Files();
-      } else {
-        const errorData = await uploadResponse.json();
-        setModalMessage(errorData.message || errorData.error || `Failed to upload file: ${uploadResponse.statusText}`);
-        setModalType('error');
-        setShowMessageModal(true);
       }
-    } catch (error: any) {
-      console.error("Error:", error);
-      setModalMessage(`An error occurred while uploading the file: ${error.message || 'Unknown error'}`);
+
+      await loadS3Files();
+    } else {
+      const errorData = await uploadResponse.json();
+      setModalMessage(errorData.message || errorData.error || `Failed to upload file: ${uploadResponse.statusText}`);
       setModalType('error');
       setShowMessageModal(true);
-    } finally {
-      setIsUploading(false);
     }
-  };
-
+  } catch (error: any) {
+    console.error("Error:", error);
+    setModalMessage(`An error occurred while uploading the file: ${error.message || 'Unknown error'}`);
+    setModalType('error');
+    setShowMessageModal(true);
+  } finally {
+    setIsUploading(false);
+  }
+};
+        
   const handleMonthlyUpload = () => {
     if (!selectedMonth) {
       setModalMessage("Please select the correct month.");
