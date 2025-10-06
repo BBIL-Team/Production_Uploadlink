@@ -444,7 +444,7 @@ const App: React.FC = () => {
 
   const handleDailyUpload = () => {
     if (validateFile(dailyFile)) {
-      uploadFile(dailyFile, 'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Daily_Uploadlink', 'Daily');
+      uploadFile(dailyFile, ' https://1whw41i19a.execute-api.ap-south-1.amazonaws.com/S1/Production_DailyUpload', 'Daily');
     }
   };
 
