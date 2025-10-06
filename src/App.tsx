@@ -378,7 +378,7 @@ const App: React.FC = () => {
     formData.append('file', file);
     formData.append('month', month);
     formData.append('fileName', originalFileName);
-    formData.append('username', userAttributes.username || 'Unknown'); // Added username to formData
+    formData.append('username', userAttributes.username || 'Unknown');
 
     try {
       setIsUploading(true);
@@ -444,7 +444,7 @@ const App: React.FC = () => {
 
   const handleDailyUpload = () => {
     if (validateFile(dailyFile)) {
-      uploadFile(dailyFile, 'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink', 'Daily');
+      uploadFile(dailyFile, 'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Daily_Uploadlink', 'Daily');
     }
   };
 
@@ -466,7 +466,7 @@ const App: React.FC = () => {
           bucket_name: BUCKET_NAME,
           file_key: fileKey,
           action: 'download',
-          isSample: isMonth // Set isSample to true for sample files, false for submitted files
+          isSample: isMonth
         }),
       });
       console.log('Response status:', response.status, 'OK:', response.ok);
@@ -531,7 +531,6 @@ const App: React.FC = () => {
         setModalType('success');
         setShowMessageModal(true);
 
-        // Refresh file list
         await loadS3Files();
       } else {
         const errorData = await response.json();
@@ -870,7 +869,7 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          <div className="file-list" style={{ position: 'relative'}}>
+          <div className="file-list" style={{ position: 'relative' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
               <h2 style={{ margin: 0, marginRight: '10px' }}>📋 List of Files Submitted</h2>
               {userAttributes.username?.toLowerCase() === 'manika5170@bharatbiotech.com' && (
@@ -968,14 +967,14 @@ const App: React.FC = () => {
                                 <a
                                   href="#"
                                   onClick={(e) => {
-                                   e.preventDefault();
-                        setFileToDelete(file.fileKey);
-                        setFileNameToDelete(file.fileName);
-                        setShowConfirmDeleteModal(true);
-                      }}
-                      className="download-link"
-                      aria-label={`Delete file ${file.fileName}`}
-                    >
+                                    e.preventDefault();
+                                    setFileToDelete(file.fileKey);
+                                    setFileNameToDelete(file.fileName);
+                                    setShowConfirmDeleteModal(true);
+                                  }}
+                                  className="download-link"
+                                  aria-label={`Delete file ${file.fileName}`}
+                                >
                                   Delete
                                 </a>
                               </>
@@ -1014,7 +1013,7 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          <div className="file-list" style={{ position: 'relative'}}>
+          <div className="file-list" style={{ position: 'relative' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
               <h2 style={{ margin: 0, marginRight: '10px' }}>📋 List of Files Submitted</h2>
               {userAttributes.username?.toLowerCase() === 'manika5170@bharatbiotech.com' && (
@@ -1112,14 +1111,14 @@ const App: React.FC = () => {
                                 <a
                                   href="#"
                                   onClick={(e) => {
-                                   e.preventDefault();
-                        setFileToDelete(file.fileKey);
-                        setFileNameToDelete(file.fileName);
-                        setShowConfirmDeleteModal(true);
-                      }}
-                      className="download-link"
-                      aria-label={`Delete file ${file.fileName}`}
-                    >
+                                    e.preventDefault();
+                                    setFileToDelete(file.fileKey);
+                                    setFileNameToDelete(file.fileName);
+                                    setShowConfirmDeleteModal(true);
+                                  }}
+                                  className="download-link"
+                                  aria-label={`Delete file ${file.fileName}`}
+                                >
                                   Delete
                                 </a>
                               </>
