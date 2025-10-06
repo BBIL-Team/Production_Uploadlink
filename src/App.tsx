@@ -74,6 +74,7 @@ interface ContextMenuState {
 const App: React.FC = () => {
   const { signOut } = useAuthenticator();
   const [file, setFile] = useState<File | null>(null);
+  const [dailyFile, setDailyFile] = useState<File | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string>("");
   const [displayedMonth, setDisplayedMonth] = useState<string>("");
   const [year, setYear] = useState<number>(2025);
@@ -100,7 +101,7 @@ const App: React.FC = () => {
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
   const [fileNameToDelete, setFileNameToDelete] = useState<string | null>(null);
   const [isDeleteOptionEnabled, setIsDeleteOptionEnabled] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'monthly' | 'daily'>('daily'); // New state for tab navigation
+  const [activeTab, setActiveTab] = useState<'monthly' | 'daily'>('monthly'); // Default to monthly
   const dropdownRef = useRef<HTMLDivElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
@@ -182,6 +183,89 @@ const App: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const loadS3Files = async () => {
+    try {
+      const queryParams = new URLSearchParams({
+        bucket_name: BUCKET_NAME,
+        folder_name: FOLDER_NAME,
+      });
+      const response = await fetch(`https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/list-files?${queryParams.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch S3 files: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log('S3 files:', data);
+
+      const files = await Promise.all(
+        data.files
+          .filter((file: { key: string }) => {
+            const extension = (file.key.split('.').pop() || '').toLowerCase();
+            return SUPPORTED_EXTENSIONS.includes(`.${extension}`);
+          })
+          .map(async (file: { key: string; size: number; lastModified: string }, index: number) => {
+            const fullFileName = file.key.split('/').pop() || '';
+            const fileNameParts = fullFileName.split('.');
+            const fileName = fileNameParts.slice(0, -1).join('.');
+            const fileType = fileNameParts[fileNameParts.length - 1]?.toLowerCase() || '';
+            const filesizeKB = (file.size / 1024).toFixed(1) + ' KB';
+            const dateUploaded = new Date(file.lastModified).toLocaleString('en-IN', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: false,
+            });
+
+            let uploadedBy = 'Unknown';
+            try {
+              const uploaderResponse = await fetch(
+                `https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/get-uploader?fileName=${encodeURIComponent(fullFileName)}`,
+                {
+                  method: 'GET',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                }
+              );
+              if (uploaderResponse.ok) {
+                const uploaderData = await uploaderResponse.json();
+                uploadedBy = uploaderData.uploadedBy || 'Unknown';
+              }
+            } catch (error) {
+              console.error(`Error fetching uploader for ${fullFileName}:`, error);
+            }
+
+            return {
+              id: index + 1,
+              fileName,
+              fileType,
+              filesize: filesizeKB,
+              dateUploaded,
+              uploadedBy,
+              fileKey: file.key,
+            };
+          })
+      );
+
+      files.sort((a, b) => new Date(b.dateUploaded).getTime() - new Date(a.dateUploaded).getTime());
+      setS3Files(files);
+      setSortColumn('dateUploaded');
+      setSortDirection('desc');
+    } catch (error) {
+      console.error('Error fetching S3 files:', error);
+      setModalMessage('Failed to load files from server.');
+      setModalType('error');
+      setShowMessageModal(true);
+    }
+  };
+
   // Fetch user attributes and S3 files on mount
   useEffect(() => {
     const fetchUserData = async () => {
@@ -205,91 +289,8 @@ const App: React.FC = () => {
       }
     };
 
-    const fetchS3Files = async () => {
-      try {
-        const queryParams = new URLSearchParams({
-          bucket_name: BUCKET_NAME,
-          folder_name: FOLDER_NAME,
-        });
-        const response = await fetch(`https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/list-files?${queryParams.toString()}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        if (!response.ok) {
-          throw new Error(`Failed to fetch S3 files: ${response.status}`);
-        }
-        const data = await response.json();
-        console.log('S3 files:', data);
-
-        const files = await Promise.all(
-          data.files
-            .filter((file: { key: string }) => {
-              const extension = (file.key.split('.').pop() || '').toLowerCase();
-              return SUPPORTED_EXTENSIONS.includes(`.${extension}`);
-            })
-            .map(async (file: { key: string; size: number; lastModified: string }, index: number) => {
-              const fullFileName = file.key.split('/').pop() || '';
-              const fileNameParts = fullFileName.split('.');
-              const fileName = fileNameParts.slice(0, -1).join('.');
-              const fileType = fileNameParts[fileNameParts.length - 1]?.toLowerCase() || '';
-              const filesizeKB = (file.size / 1024).toFixed(1) + ' KB';
-              const dateUploaded = new Date(file.lastModified).toLocaleString('en-IN', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false,
-              });
-
-              let uploadedBy = 'Unknown';
-              try {
-                const uploaderResponse = await fetch(
-                  `https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/get-uploader?fileName=${encodeURIComponent(fullFileName)}`,
-                  {
-                    method: 'GET',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
-                  }
-                );
-                if (uploaderResponse.ok) {
-                  const uploaderData = await uploaderResponse.json();
-                  uploadedBy = uploaderData.uploadedBy || 'Unknown';
-                }
-              } catch (error) {
-                console.error(`Error fetching uploader for ${fullFileName}:`, error);
-              }
-
-              return {
-                id: index + 1,
-                fileName,
-                fileType,
-                filesize: filesizeKB,
-                dateUploaded,
-                uploadedBy,
-                fileKey: file.key,
-              };
-            })
-        );
-
-        files.sort((a, b) => new Date(b.dateUploaded).getTime() - new Date(a.dateUploaded).getTime());
-        setS3Files(files);
-        setSortColumn('dateUploaded');
-        setSortDirection('desc');
-      } catch (error) {
-        console.error('Error fetching S3 files:', error);
-        setModalMessage('Failed to load files from server.');
-        setModalType('error');
-        setShowMessageModal(true);
-      }
-    };
-
     fetchUserData();
-    fetchS3Files();
+    loadS3Files();
   }, []);
 
   // Manage body scroll when modal is open
@@ -363,28 +364,21 @@ const App: React.FC = () => {
     return false;
   };
 
-  const uploadFile = async (file: File | null, apiUrl: string) => {
+  const uploadFile = async (file: File | null, apiUrl: string, month: string) => {
     if (!file) {
       setModalMessage("Please select a file to upload.");
       setModalType('error');
       setShowMessageModal(true);
       return;
     }
-    if (!selectedMonth) {
-      setModalMessage("Please select the correct month.");
-      setModalType('error');
-      setShowMessageModal(true);
-      return;
-    }
 
-    const monthName = selectedMonth.split(' ')[0];
     const originalFileName = file.name;
 
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('month', monthName);
+    formData.append('month', month);
     formData.append('fileName', originalFileName);
-    formData.append('username', userAttributes.username || 'Unknown');
+    formData.append('username', userAttributes.username || 'Unknown'); // Added username to formData
 
     try {
       setIsUploading(true);
@@ -418,82 +412,7 @@ const App: React.FC = () => {
           setShowMessageModal(true);
         }
 
-        try {
-          const queryParams = new URLSearchParams({
-            bucket_name: BUCKET_NAME,
-            folder_name: FOLDER_NAME,
-          });
-          const response = await fetch(`https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/list-files?${queryParams.toString()}`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          });
-          if (!response.ok) {
-            throw new Error(`Failed to fetch S3 files: ${response.status}`);
-          }
-          const data = await response.json();
-          console.log('S3 files:', data);
-
-          const files = await Promise.all(
-            data.files
-              .filter((file: { key: string }) => {
-                const extension = (file.key.split('.').pop() || '').toLowerCase();
-                return SUPPORTED_EXTENSIONS.includes(`.${extension}`);
-              })
-              .map(async (file: { key: string; size: number; lastModified: string }, index: number) => {
-                const fullFileName = file.key.split('/').pop() || '';
-                const fileNameParts = fullFileName.split('.');
-                const fileName = fileNameParts.slice(0, -1).join('.');
-                const fileType = fileNameParts[fileNameParts.length - 1]?.toLowerCase() || '';
-                const filesizeKB = (file.size / 1024).toFixed(1) + ' KB';
-                const dateUploaded = new Date(file.lastModified).toLocaleString('en-IN', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                  hour12: false,
-                });
-
-                let uploadedBy = 'Unknown';
-                try {
-                  const uploaderResponse = await fetch(
-                    `https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/get-uploader?fileName=${encodeURIComponent(fullFileName)}`,
-                    {
-                      method: 'GET',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                    }
-                  );
-                  if (uploaderResponse.ok) {
-                    const uploaderData = await uploaderResponse.json();
-                    uploadedBy = uploaderData.uploadedBy || 'Unknown';
-                  }
-                } catch (error) {
-                  console.error(`Error fetching uploader for ${fullFileName}:`, error);
-                }
-
-                return {
-                  id: index + 1,
-                  fileName,
-                  fileType,
-                  filesize: filesizeKB,
-                  dateUploaded,
-                  uploadedBy,
-                  fileKey: file.key,
-                };
-              })
-          );
-          files.sort((a, b) => new Date(b.dateUploaded).getTime() - new Date(a.dateUploaded).getTime());
-          setS3Files(files);
-          setSortColumn('dateUploaded');
-          setSortDirection('desc');
-        } catch (error) {
-          console.error('Error refreshing S3 files:', error);
-        }
+        await loadS3Files();
       } else {
         const errorData = await uploadResponse.json();
         setModalMessage(errorData.message || errorData.error || `Failed to upload file: ${uploadResponse.statusText}`);
@@ -507,6 +426,25 @@ const App: React.FC = () => {
       setShowMessageModal(true);
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleMonthlyUpload = () => {
+    if (!selectedMonth) {
+      setModalMessage("Please select the correct month.");
+      setModalType('error');
+      setShowMessageModal(true);
+      return;
+    }
+    if (validateFile(file)) {
+      const monthName = selectedMonth.split(' ')[0];
+      uploadFile(file, 'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink', monthName);
+    }
+  };
+
+  const handleDailyUpload = () => {
+    if (validateFile(dailyFile)) {
+      uploadFile(dailyFile, 'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink', 'Daily');
     }
   };
 
@@ -528,7 +466,7 @@ const App: React.FC = () => {
           bucket_name: BUCKET_NAME,
           file_key: fileKey,
           action: 'download',
-          isSample: isMonth
+          isSample: isMonth // Set isSample to true for sample files, false for submitted files
         }),
       });
       console.log('Response status:', response.status, 'OK:', response.ok);
@@ -593,76 +531,8 @@ const App: React.FC = () => {
         setModalType('success');
         setShowMessageModal(true);
 
-        const queryParams = new URLSearchParams({
-          bucket_name: BUCKET_NAME,
-          folder_name: FOLDER_NAME,
-        });
-        const fetchResponse = await fetch(`https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/list-files?${queryParams.toString()}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        if (!fetchResponse.ok) {
-          throw new Error(`Failed to fetch S3 files: ${fetchResponse.status}`);
-        }
-        const data = await fetchResponse.json();
-        const files = await Promise.all(
-          data.files
-            .filter((file: { key: string }) => {
-              const extension = (file.key.split('.').pop() || '').toLowerCase();
-              return SUPPORTED_EXTENSIONS.includes(`.${extension}`);
-            })
-            .map(async (file: { key: string; size: number; lastModified: string }, index: number) => {
-              const fullFileName = file.key.split('/').pop() || '';
-              const fileNameParts = fullFileName.split('.');
-              const fileName = fileNameParts.slice(0, -1).join('.');
-              const fileType = fileNameParts[fileNameParts.length - 1]?.toLowerCase() || '';
-              const filesizeKB = (file.size / 1024).toFixed(1) + ' KB';
-              const dateUploaded = new Date(file.lastModified).toLocaleString('en-IN', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false,
-              });
-
-              let uploadedBy = 'Unknown';
-              try {
-                const uploaderResponse = await fetch(
-                  `https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/get-uploader?fileName=${encodeURIComponent(fullFileName)}`,
-                  {
-                    method: 'GET',
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
-                  }
-                );
-                if (uploaderResponse.ok) {
-                  const uploaderData = await uploaderResponse.json();
-                  uploadedBy = uploaderData.uploadedBy || 'Unknown';
-                }
-              } catch (error) {
-                console.error(`Error fetching uploader for ${fullFileName}:`, error);
-              }
-
-              return {
-                id: index + 1,
-                fileName,
-                fileType,
-                filesize: filesizeKB,
-                dateUploaded,
-                uploadedBy,
-                fileKey: file.key,
-              };
-            })
-        );
-        files.sort((a, b) => new Date(b.dateUploaded).getTime() - new Date(a.dateUploaded).getTime());
-        setS3Files(files);
-        setSortColumn('dateUploaded');
-        setSortDirection('desc');
+        // Refresh file list
+        await loadS3Files();
       } else {
         const errorData = await response.json();
         setModalMessage(`Failed to delete file: ${errorData.message || response.statusText}`);
@@ -913,13 +783,6 @@ const App: React.FC = () => {
       {/* Conditional Rendering Based on Active Tab */}
       {activeTab === 'monthly' ? (
         <div className="container">
-          <div className="p-4 text-center">
-            <h2 className="text-xl font-semibold">Monthly Upload</h2>
-            <p className="text-gray-600">Monthly upload functionality will be implemented here.</p>
-          </div>
-        </div>
-      ) : (
-        <div className="container">
           <div className="left-column">
             <div className="calendar-section">
               <h2>Sample File Download Segment</h2>
@@ -998,11 +861,7 @@ const App: React.FC = () => {
                 </div>
                 <button
                   className="upload-btn"
-                  onClick={() => {
-                    if (validateFile(file)) {
-                      uploadFile(file, 'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink');
-                    }
-                  }}
+                  onClick={handleMonthlyUpload}
                   disabled={isUploading}
                 >
                   {isUploading ? 'Uploading...' : 'Submit File'}
@@ -1011,7 +870,7 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          <div className="file-list" style={{ position: 'relative' }}>
+          <div className="file-list" style={{ position: 'relative'}}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
               <h2 style={{ margin: 0, marginRight: '10px' }}>📋 List of Files Submitted</h2>
               {userAttributes.username?.toLowerCase() === 'manika5170@bharatbiotech.com' && (
@@ -1109,14 +968,158 @@ const App: React.FC = () => {
                                 <a
                                   href="#"
                                   onClick={(e) => {
-                                    e.preventDefault();
-                                    setFileToDelete(file.fileKey);
-                                    setFileNameToDelete(file.fileName);
-                                    setShowConfirmDeleteModal(true);
-                                  }}
-                                  className="download-link"
-                                  aria-label={`Delete file ${file.fileName}`}
-                                >
+                                   e.preventDefault();
+                        setFileToDelete(file.fileKey);
+                        setFileNameToDelete(file.fileName);
+                        setShowConfirmDeleteModal(true);
+                      }}
+                      className="download-link"
+                      aria-label={`Delete file ${file.fileName}`}
+                    >
+                                  Delete
+                                </a>
+                              </>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="container">
+          <div className="left-column">
+            <div className="upload-section">
+              <h2>📤 Daily Upload File</h2>
+              <div className="upload-form">
+                <input
+                  type="file"
+                  accept=".csv,.pdf,.xlsx,.xls,.doc,.docx"
+                  onChange={(e) => setDailyFile(e.target.files?.[0] || null)}
+                  className="file-input"
+                  disabled={isUploading}
+                />
+                <button
+                  className="upload-btn"
+                  onClick={handleDailyUpload}
+                  disabled={isUploading}
+                >
+                  {isUploading ? 'Uploading...' : 'Submit File'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="file-list" style={{ position: 'relative'}}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <h2 style={{ margin: 0, marginRight: '10px' }}>📋 List of Files Submitted</h2>
+              {userAttributes.username?.toLowerCase() === 'manika5170@bharatbiotech.com' && (
+                <label
+                  className="delete-option-label"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    fontSize: '16px',
+                    color: '#333',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    className="delete-option-checkbox"
+                    checked={isDeleteOptionEnabled}
+                    onChange={(e) => setIsDeleteOptionEnabled(e.target.checked)}
+                    aria-checked={isDeleteOptionEnabled}
+                    aria-label="Toggle delete option"
+                  />
+                  Delete Option
+                </label>
+              )}
+            </div>
+            <div className="table-container">
+              <table className="file-table">
+                <thead>
+                  <tr>
+                    {columns.map((col) => (
+                      !hiddenColumns.includes(col.key) && (
+                        <th
+                          key={col.key}
+                          onClick={() => handleSort(col.key)}
+                          onContextMenu={(e) => handleContextMenu(e, col.key)}
+                          className={sortColumn === col.key ? `sorted-${sortDirection}` : ''}
+                        >
+                          {col.label}
+                        </th>
+                      )
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {s3Files.length === 0 ? (
+                    <tr>
+                      <td colSpan={columns.length - hiddenColumns.length} style={{ textAlign: 'center' }}>
+                        No files found.
+                      </td>
+                    </tr>
+                  ) : (
+                    s3Files.map((file) => (
+                      <tr key={file.id}>
+                        {!hiddenColumns.includes('id') && <td>{file.id}</td>}
+                        {!hiddenColumns.includes('fileName') && (
+                          <td
+                            data-full-text={file.fileName}
+                            onMouseEnter={(e) => handleMouseEnter(e, file.fileName)}
+                            onMouseMove={handleMouseMove}
+                            onMouseLeave={handleMouseLeave}
+                            className="tooltip-target"
+                          >
+                            {file.fileName}
+                          </td>
+                        )}
+                        {!hiddenColumns.includes('fileType') && <td>{file.fileType}</td>}
+                        {!hiddenColumns.includes('filesize') && <td>{file.filesize}</td>}
+                        {!hiddenColumns.includes('dateUploaded') && (
+                          <td
+                            data-full-text={file.dateUploaded}
+                            onMouseEnter={(e) => handleMouseEnter(e, file.dateUploaded)}
+                            onMouseMove={handleMouseMove}
+                            onMouseLeave={handleMouseLeave}
+                            className="tooltip-target"
+                          >
+                            {file.dateUploaded}
+                          </td>
+                        )}
+                        {!hiddenColumns.includes('uploadedBy') && <td>{file.uploadedBy}</td>}
+                        {!hiddenColumns.includes('fileKey') && (
+                          <td>
+                            <a
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                downloadFile(file.fileKey);
+                              }}
+                              className="download-link"
+                            >
+                              Download
+                            </a>
+                            {userAttributes.username?.toLowerCase() === 'manika5170@bharatbiotech.com' && isDeleteOptionEnabled && (
+                              <>
+                                {' / '}
+                                <a
+                                  href="#"
+                                  onClick={(e) => {
+                                   e.preventDefault();
+                        setFileToDelete(file.fileKey);
+                        setFileNameToDelete(file.fileName);
+                        setShowConfirmDeleteModal(true);
+                      }}
+                      className="download-link"
+                      aria-label={`Delete file ${file.fileName}`}
+                    >
                                   Delete
                                 </a>
                               </>
