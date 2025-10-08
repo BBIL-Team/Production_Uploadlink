@@ -7,16 +7,15 @@ html, body {
 
 .app-main {
   max-width: 100%;
-  min-height: calc(100vh - 470px);
+  min-height: 100vh;
   background-color: var(--brand-bg);
-  padding-top: 470px;
+  padding-top: 0;           /* spacer handles this now */
   box-sizing: border-box;
   overflow-x: hidden;
 }
 
 .app-header {
   display: flex;
-  max-height: 100px;
   flex-direction: row;
   align-items: center;
   background-color: #008080;
@@ -619,10 +618,6 @@ html, body {
   .container {
     flex-direction: column;
   }
-  .app-main {
-    padding-top: 130px;
-    min-height: calc(100vh - 130px);
-  }
   .header-user-info {
     flex-wrap: wrap;
     gap: 8px;
@@ -1035,28 +1030,4 @@ html, body {
 /* Optional: lighten emoji appearance a touch on dark bg */
 .footer-link::first-letter { filter: none; }
 
-/* ==== FIX: keep content below the fixed header ==== */
-:root {
-  --header-h: 120px;  /* match your real header height */
-}
-
-.app-header {
-  height: var(--header-h);
-  max-height: none;          /* was 100px; let the variable control it */
-  padding: 8px 16px;         /* optional: a bit more breathing room */
-}
-
-.app-main {
-  padding-top: calc(var(--header-h) + 16px);  /* space for title under header */
-  min-height: calc(100vh - var(--header-h));
-}
-
-/* Mobile: header a tad taller */
-@media (max-width: 600px) {
-  :root { --header-h: 130px; }
-  .app-main {
-    padding-top: calc(var(--header-h) + 12px);
-    min-height: calc(100vh - var(--header-h));
-  }
-}
 
