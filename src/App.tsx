@@ -3,22 +3,10 @@ import './App.css';
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { getCurrentUser, fetchUserAttributes, updateUserAttributes } from '@aws-amplify/auth';
 
-  // --- Footer link helpers (replace with your real values) ---
-  const DASHBOARD_URL = 'https://your-dashboard-url.example.com'; // TODO: replace
-  const SUPPORT_EMAIL = 'analytics@bharatbiotech.com';            // TODO: confirm or replace
-  const BA_PHONE_TEL  = '+914000000000';                          // TODO: replace with real phone in E.164
-
-// at the top of the component with the other refs/state:
-const headerRef = useRef<HTMLDivElement>(null);
-const [headerH, setHeaderH] = useState(0);
-
-useEffect(() => {
-  const setH = () => setHeaderH(headerRef.current?.offsetHeight ?? 0);
-  setH();
-  window.addEventListener('resize', setH);
-  return () => window.removeEventListener('resize', setH);
-}, []);
-
+// --- Footer link helpers (replace with your real values) ---
+const DASHBOARD_URL = 'https://your-dashboard-url.example.com'; // TODO: replace
+const SUPPORT_EMAIL = 'analytics@bharatbiotech.com';            // TODO: confirm or replace
+const BA_PHONE_TEL  = '+914000000000';                          // TODO: replace with real phone in E.164
 
 // Debug logging to console
 console.log('getCurrentUser:', getCurrentUser);
@@ -90,6 +78,23 @@ interface ContextMenuState {
 
 const App: React.FC = () => {
   const { signOut } = useAuthenticator();
+
+  // ✅ Moved INSIDE the component; ref typed for <header>
+  const headerRef = useRef<HTMLElement | null>(null);
+  const [headerH, setHeaderH] = useState(0);
+
+  useEffect(() => {
+    const sync = () => setHeaderH(headerRef.current?.offsetHeight ?? 0);
+    sync(); // initial
+    const ro = new ResizeObserver(sync);
+    if (headerRef.current) ro.observe(headerRef.current);
+    window.addEventListener('resize', sync);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', sync);
+    };
+  }, []);
+
   const [file, setFile] = useState<File | null>(null);
   const [dailyFileA, setDailyFileA] = useState<File | null>(null);
   const [dailyFileB, setDailyFileB] = useState<File | null>(null);
@@ -123,7 +128,7 @@ const App: React.FC = () => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
-    const reportSubject = 'Report a Problem – BBIL Production Dashboard';
+  const reportSubject = 'Report a Problem – BBIL Production Dashboard';
   const reportBodyRaw = `Hi Business Analytics Team,
 
 I'm facing an issue on the Production Dashboard.
@@ -152,7 +157,6 @@ Thanks.`;
   const reportMailto   = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(reportSubject)}&body=${encodeURIComponent(reportBodyRaw)}`;
   const callbackMailto = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(callbackSubject)}&body=${encodeURIComponent(callbackBodyRaw)}`;
 
-  
   // Tooltip state
   const [tooltip, setTooltip] = useState<TooltipState>({
     visible: false,
@@ -421,72 +425,72 @@ Thanks.`;
     return false;
   };
 
-const uploadFile = async (file: File | null, apiUrl: string, month: string, segment?: 'DS' | 'DP') => {
-  if (!file) {
-    setModalMessage("Please select a file to upload.");
-    setModalType('error');
-    setShowMessageModal(true);
-    return;
-  }
-
-  const originalFileName = file.name;
-
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('month', month);
-  if (segment) formData.append('segment', segment);
-  formData.append('fileName', originalFileName);
-  formData.append('username', userAttributes.username || 'Unknown');
-
-  try {
-    setIsUploading(true);
-    setUploadKey((prev) => prev + 1);
-    const uploadResponse = await fetch(apiUrl, {
-      method: "POST",
-      body: formData,
-    });
-
-    if (uploadResponse.ok) {
-      const uploadData = await uploadResponse.json();
-      setModalMessage(uploadData.message || "File uploaded successfully!");
-      setModalType('success');
-      setShowMessageModal(true);
-
-      // Only save upload details for monthly uploads (skip for 'Daily')
-      if (month !== 'Daily') {
-        try {
-          await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/save-upload', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              fileName: originalFileName,
-              uploadedBy: userAttributes.username || 'Unknown',
-            }),
-          });
-        } catch (error) {
-          console.error('Error saving to DynamoDB:', error);
-          setModalMessage(`${uploadData.message || "File uploaded successfully!"} However, failed to save upload details.`);
-          setModalType('error');
-          setShowMessageModal(true);
-        }
-      }
-
-      await loadS3Files();
-    } else {
-      const errorData = await uploadResponse.json();
-      setModalMessage(errorData.message || errorData.error || `Failed to upload file: ${uploadResponse.statusText}`);
+  const uploadFile = async (file: File | null, apiUrl: string, month: string, segment?: 'DS' | 'DP') => {
+    if (!file) {
+      setModalMessage("Please select a file to upload.");
       setModalType('error');
       setShowMessageModal(true);
+      return;
     }
-  } catch (error: any) {
-    console.error("Error:", error);
-    setModalMessage(`An error occurred while uploading the file: ${error.message || 'Unknown error'}`);
-    setModalType('error');
-    setShowMessageModal(true);
-  } finally {
-    setIsUploading(false);
-  }
-};
+
+    const originalFileName = file.name;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('month', month);
+    if (segment) formData.append('segment', segment);
+    formData.append('fileName', originalFileName);
+    formData.append('username', userAttributes.username || 'Unknown');
+
+    try {
+      setIsUploading(true);
+      setUploadKey((prev) => prev + 1);
+      const uploadResponse = await fetch(apiUrl, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (uploadResponse.ok) {
+        const uploadData = await uploadResponse.json();
+        setModalMessage(uploadData.message || "File uploaded successfully!");
+        setModalType('success');
+        setShowMessageModal(true);
+
+        // Only save upload details for monthly uploads (skip for 'Daily')
+        if (month !== 'Daily') {
+          try {
+            await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/save-upload', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                fileName: originalFileName,
+                uploadedBy: userAttributes.username || 'Unknown',
+              }),
+            });
+          } catch (error) {
+            console.error('Error saving to DynamoDB:', error);
+            setModalMessage(`${uploadData.message || "File uploaded successfully!"} However, failed to save upload details.`);
+            setModalType('error');
+            setShowMessageModal(true);
+          }
+        }
+
+        await loadS3Files();
+      } else {
+        const errorData = await uploadResponse.json();
+        setModalMessage(errorData.message || errorData.error || `Failed to upload file: ${uploadResponse.statusText}`);
+        setModalType('error');
+        setShowMessageModal(true);
+      }
+    } catch (error: any) {
+      console.error("Error:", error);
+      setModalMessage(`An error occurred while uploading the file: ${error.message || 'Unknown error'}`);
+      setModalType('error');
+      setShowMessageModal(true);
+    } finally {
+      setIsUploading(false);
+    }
+  };
         
   const handleMonthlyUpload = () => {
     if (!selectedMonth) {
@@ -660,7 +664,8 @@ const uploadFile = async (file: File | null, apiUrl: string, month: string, segm
       if (column === 'dateUploaded') {
         return newDirection === 'asc'
           ? new Date(valueA as string).getTime() - new Date(valueB as string).getTime()
-          : new Date(valueB as string).getTime() - new Date(a.dateUploaded).getTime();
+          // ✅ fixed to compare valueB vs valueA (was using a.dateUploaded)
+          : new Date(valueB as string).getTime() - new Date(valueA as string).getTime();
       }
 
       return newDirection === 'asc'
@@ -843,17 +848,17 @@ const uploadFile = async (file: File | null, apiUrl: string, month: string, segm
         </button>
       </nav>
 
-    {/* Daily-only banner: instantly tells the user where they are */}
-    {activeTab === 'daily' && (
-      <div className="mode-banner" role="status">
-        You’re in <strong>Daily Update</strong> mode. Choose the correct segment below:
-        <span className="legend">
-          <span className="pill pill-ds">DS</span> Drug Substance
-          <span className="dot">•</span>
-          <span className="pill pill-dp">DP</span> Drug Product
-        </span>
-      </div>
-    )}
+      {/* Daily-only banner */}
+      {activeTab === 'daily' && (
+        <div className="mode-banner" role="status">
+          You’re in <strong>Daily Update</strong> mode. Choose the correct segment below:
+          <span className="legend">
+            <span className="pill pill-ds">DS</span> Drug Substance
+            <span className="dot">•</span>
+            <span className="pill pill-dp">DP</span> Drug Product
+          </span>
+        </div>
+      )}
 
       {/* Conditional Rendering Based on Active Tab */}
       {activeTab === 'monthly' ? (
@@ -913,7 +918,7 @@ const uploadFile = async (file: File | null, apiUrl: string, month: string, segm
                   </div>
                   {isDropdownOpen && (
                     <ul className="dropdown-menu">
-                      {financialYearMonths.map((monthYear) => (
+                      {getFinancialYearMonths(new Date()).map((monthYear) => (
                         <li
                           key={monthYear}
                           className={`dropdown-item ${selectedMonth === monthYear ? 'selected' : ''}`}
@@ -1067,49 +1072,49 @@ const uploadFile = async (file: File | null, apiUrl: string, month: string, segm
         </div>
       ) : (
         <div className="container">
-        <div className="left-column">
-          {/* Segment A */}
-          <div className="upload-section segment segment--ds">
-            <h2>📤 Daily Status – Drug Substance (DS)</h2>
-            <div className="upload-form">
-              <input
-                type="file"
-                accept=".csv,.pdf,.xlsx,.xls,.doc,.docx"
-                onChange={(e) => setDailyFileA(e.target.files?.[0] || null)}
-                className="file-input"
-                disabled={isUploading}
-              />
-              <button
-                className="upload-btn"
-                onClick={() => handleDailyUpload(dailyFileA, 'DS')}
-                disabled={isUploading}
-              >
-                {isUploading ? 'Uploading...' : 'Submit File'}
-              </button>
+          <div className="left-column">
+            {/* Segment A */}
+            <div className="upload-section segment segment--ds">
+              <h2>📤 Daily Status – Drug Substance (DS)</h2>
+              <div className="upload-form">
+                <input
+                  type="file"
+                  accept=".csv,.pdf,.xlsx,.xls,.doc,.docx"
+                  onChange={(e) => setDailyFileA(e.target.files?.[0] || null)}
+                  className="file-input"
+                  disabled={isUploading}
+                />
+                <button
+                  className="upload-btn"
+                  onClick={() => handleDailyUpload(dailyFileA, 'DS')}
+                  disabled={isUploading}
+                >
+                  {isUploading ? 'Uploading...' : 'Submit File'}
+                </button>
+              </div>
+            </div>
+
+            {/* Segment B */}
+            <div className="upload-section segment segment--dp" style={{ marginTop: '16px' }}>
+              <h2>📤 Daily Status – Drug Product (DP)</h2>
+              <div className="upload-form">
+                <input
+                  type="file"
+                  accept=".csv,.pdf,.xlsx,.xls,.doc,.docx"
+                  onChange={(e) => setDailyFileB(e.target.files?.[0] || null)}
+                  className="file-input"
+                  disabled={isUploading}
+                />
+                <button
+                  className="upload-btn"
+                  onClick={() => handleDailyUpload(dailyFileB, 'DP')}
+                  disabled={isUploading}
+                >
+                  {isUploading ? 'Uploading...' : 'Submit File'}
+                </button>
+              </div>
             </div>
           </div>
-    
-          {/* Segment B */}
-          <div className="upload-section segment segment--dp" style={{ marginTop: '16px' }}>
-            <h2>📤 Daily Status – Drug Product (DP)</h2>
-            <div className="upload-form">
-              <input
-                type="file"
-                accept=".csv,.pdf,.xlsx,.xls,.doc,.docx"
-                onChange={(e) => setDailyFileB(e.target.files?.[0] || null)}
-                className="file-input"
-                disabled={isUploading}
-              />
-              <button
-                className="upload-btn"
-                onClick={() => handleDailyUpload(dailyFileB, 'DP')}
-                disabled={isUploading}
-              >
-                {isUploading ? 'Uploading...' : 'Submit File'}
-              </button>
-            </div>
-          </div>
-        </div>
 
           <div className="file-list" style={{ position: 'relative' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -1233,7 +1238,7 @@ const uploadFile = async (file: File | null, apiUrl: string, month: string, segm
         </div>
       )}
 
-            {/* ===== Footer ===== */}
+      {/* ===== Footer ===== */}
       <footer className="app-footer" role="contentinfo" aria-label="Support and quick actions">
         <div className="footer-heading">Need help?</div>
 
