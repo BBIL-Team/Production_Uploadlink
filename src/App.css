@@ -690,44 +690,53 @@ html, body {
   align-items: center;
   padding: 12px 16px;
   margin: 8px 16px 24px;            /* give it breathing room so edges are visible */
-  background: var(--card-bg);        /* was var(--brand-bg) — switch to card surface */
-  border: 1px solid #d7dee7;         /* slightly stronger than --border for contrast */
+  background: linear-gradient(
+    180deg,
+    rgba(var(--accent-rgb), .10) 0%,
+    rgba(var(--accent-rgb), .04) 100%
+  );
+  border: 1px solid rgba(var(--accent-rgb), .25);
   border-radius: 12px;
-  box-shadow: 0 6px 16px rgba(16, 24, 40, 0.06); /* soft, light elevation */
+  box-shadow: 0 6px 16px rgba(16, 24, 40, 0.06), inset 0 -2px 0 rgba(var(--accent-rgb), .15); /* soft, light elevation */
 }
 
-/* Individual tab buttons */
+/* Tab buttons (segmented control feel) */
 .tab-btn {
   appearance: none;
+  background: #fff;
+  color: var(--ink);
   border: 1px solid transparent;
-  background: var(--card-bg);
-  color: #264153;                    /* muted navy text */
   font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.2px;
   padding: 10px 16px;
   border-radius: 10px;
   cursor: pointer;
-  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease, color 120ms ease, border-color 120ms ease;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    background 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
 }
 
 .tab-btn:hover {
-  background: #f6f9fc;
-  border-color: #d7dee7;
+  background: rgba(var(--accent-rgb), .08);
+  border-color: rgba(var(--accent-rgb), .25);
 }
 
 .tab-btn:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(14, 140, 195, 0.25); /* focus ring in brand hue */
+  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), .25);
 }
 
-/* Active tab */
+/* Active tab: strong, branded pill */
 .tab-btn.active {
-  background: linear-gradient(180deg, #10a6c5 0%, #0e8cc3 100%); /* teal → blue */
-  color: #ffffff;
+  background: linear-gradient(180deg, var(--brand-accent-1) 0%, var(--brand-accent-2) 100%);
+  color: #fff;
   border-color: transparent;
-  box-shadow: 0 2px 6px rgba(14, 140, 195, 0.25);
+  box-shadow: 0 2px 6px rgba(var(--accent-rgb), .28);
 }
 
 /* Pressed feedback for non-active tabs */
