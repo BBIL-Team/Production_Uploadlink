@@ -1034,3 +1034,29 @@ html, body {
 
 /* Optional: lighten emoji appearance a touch on dark bg */
 .footer-link::first-letter { filter: none; }
+
+/* ==== FIX: keep content below the fixed header ==== */
+:root {
+  --header-h: 120px;  /* match your real header height */
+}
+
+.app-header {
+  height: var(--header-h);
+  max-height: none;          /* was 100px; let the variable control it */
+  padding: 8px 16px;         /* optional: a bit more breathing room */
+}
+
+.app-main {
+  padding-top: calc(var(--header-h) + 16px);  /* space for title under header */
+  min-height: calc(100vh - var(--header-h));
+}
+
+/* Mobile: header a tad taller */
+@media (max-width: 600px) {
+  :root { --header-h: 130px; }
+  .app-main {
+    padding-top: calc(var(--header-h) + 12px);
+    min-height: calc(100vh - var(--header-h));
+  }
+}
+
