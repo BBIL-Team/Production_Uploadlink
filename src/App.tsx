@@ -676,7 +676,6 @@ Thanks.`;
     setS3Files(sortedFiles);
   };
 
-  const financialYearMonths = getFinancialYearMonths(new Date());
 
   // Define table columns with their display names
   const columns: { key: keyof typeof s3Files[0]; label: string }[] = [
