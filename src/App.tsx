@@ -74,7 +74,8 @@ interface ContextMenuState {
 const App: React.FC = () => {
   const { signOut } = useAuthenticator();
   const [file, setFile] = useState<File | null>(null);
-  const [dailyFile, setDailyFile] = useState<File | null>(null);
+  const [dailyFileA, setDailyFileA] = useState<File | null>(null);
+  const [dailyFileB, setDailyFileB] = useState<File | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string>("");
   const [displayedMonth, setDisplayedMonth] = useState<string>("");
   const [year, setYear] = useState<number>(2025);
@@ -475,9 +476,9 @@ const App: React.FC = () => {
     }
   };
 
-  const handleDailyUpload = () => {
-    if (validateFile(dailyFile)) {
-      uploadFile(dailyFile, ' https://1whw41i19a.execute-api.ap-south-1.amazonaws.com/S1/Production_DailyUpload', 'Daily');
+  const handleDailyUpload = (file: File | null) => {
+    if (validateFile(file)) {
+      uploadFile(file, ' https://1whw41i19a.execute-api.ap-south-1.amazonaws.com/S1/Production_DailyUpload', 'Daily');
     }
   };
 
@@ -1023,21 +1024,42 @@ const App: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="container">
-          <div className="left-column">
+        <div className="left-column">
+            {/* Segment A */}
             <div className="upload-section">
-              <h2>📤 Daily Upload File</h2>
+              <h2>📤 Daily Upload – Segment A</h2>
               <div className="upload-form">
                 <input
                   type="file"
                   accept=".csv,.pdf,.xlsx,.xls,.doc,.docx"
-                  onChange={(e) => setDailyFile(e.target.files?.[0] || null)}
+                  onChange={(e) => setDailyFileA(e.target.files?.[0] || null)}
                   className="file-input"
                   disabled={isUploading}
                 />
                 <button
                   className="upload-btn"
-                  onClick={handleDailyUpload}
+                  onClick={() => handleDailyUpload(dailyFileA)}
+                  disabled={isUploading}
+                >
+                  {isUploading ? 'Uploading...' : 'Submit File'}
+                </button>
+              </div>
+            </div>
+
+            {/* Segment B */}
+            <div className="upload-section" style={{ marginTop: '16px' }}>
+              <h2>📤 Daily Upload – Segment B</h2>
+              <div className="upload-form">
+                <input
+                  type="file"
+                  accept=".csv,.pdf,.xlsx,.xls,.doc,.docx"
+                  onChange={(e) => setDailyFileB(e.target.files?.[0] || null)}
+                  className="file-input"
+                  disabled={isUploading}
+                />
+                <button
+                  className="upload-btn"
+                  onClick={() => handleDailyUpload(dailyFileB)}
                   disabled={isUploading}
                 >
                   {isUploading ? 'Uploading...' : 'Submit File'}
