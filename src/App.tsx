@@ -365,7 +365,7 @@ const App: React.FC = () => {
     return false;
   };
 
-const uploadFile = async (file: File | null, apiUrl: string, month: string) => {
+const uploadFile = async (file: File | null, apiUrl: string, month: string, segment?: 'DS' | 'DP') => {
   if (!file) {
     setModalMessage("Please select a file to upload.");
     setModalType('error');
@@ -378,6 +378,7 @@ const uploadFile = async (file: File | null, apiUrl: string, month: string) => {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('month', month);
+  if (segment) formData.append('segment', segment);
   formData.append('fileName', originalFileName);
   formData.append('username', userAttributes.username || 'Unknown');
 
@@ -444,9 +445,9 @@ const uploadFile = async (file: File | null, apiUrl: string, month: string) => {
     }
   };
 
-  const handleDailyUpload = (file: File | null) => {
+  const handleDailyUpload = (file: File | null, segment: 'DS' | 'DP') => {
     if (validateFile(file)) {
-      uploadFile(file, 'https://1whw41i19a.execute-api.ap-south-1.amazonaws.com/S1/Production_DailyUpload', 'Daily');
+      uploadFile(file, 'https://1whw41i19a.execute-api.ap-south-1.amazonaws.com/S1/Production_DailyUpload', 'Daily', , segment);
     }
   };
 
@@ -1021,7 +1022,7 @@ const uploadFile = async (file: File | null, apiUrl: string, month: string) => {
               />
               <button
                 className="upload-btn"
-                onClick={() => handleDailyUpload(dailyFileA)}
+                onClick={() => handleDailyUpload(dailyFileA, 'DS')}
                 disabled={isUploading}
               >
                 {isUploading ? 'Uploading...' : 'Submit File'}
@@ -1042,7 +1043,7 @@ const uploadFile = async (file: File | null, apiUrl: string, month: string) => {
               />
               <button
                 className="upload-btn"
-                onClick={() => handleDailyUpload(dailyFileB)}
+                onClick={() => handleDailyUpload(dailyFileB, 'DP')}
                 disabled={isUploading}
               >
                 {isUploading ? 'Uploading...' : 'Submit File'}
