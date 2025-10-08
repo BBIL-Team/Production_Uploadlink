@@ -8,34 +8,6 @@ import { getCurrentUser, fetchUserAttributes, updateUserAttributes } from '@aws-
   const SUPPORT_EMAIL = 'analytics@bharatbiotech.com';            // TODO: confirm or replace
   const BA_PHONE_TEL  = '+914000000000';                          // TODO: replace with real phone in E.164
 
-  const reportSubject = 'Report a Problem – BBIL Production Dashboard';
-  const reportBodyRaw = `Hi Business Analytics Team,
-
-I'm facing an issue on the Production Dashboard.
-
-Details:
-- Username: ${userAttributes.username || 'Unknown'}
-- Phone (masked): ${userAttributes.phoneNumber || 'Not set'}
-- When: ${new Date().toLocaleString('en-IN')}
-- What I was doing:
-- Error message (if any):
-- Steps to reproduce:
-
-Thanks.`;
-
-  const callbackSubject = 'Request for a Call Back – BBIL Production Dashboard';
-  const callbackBodyRaw = `Hi Business Analytics Team,
-
-Please call me back regarding the Production Dashboard.
-
-- Name/Username: ${userAttributes.username || 'Unknown'}
-- Phone (masked): ${userAttributes.phoneNumber || 'Not set'}
-- Preferred time:
-
-Thanks.`;
-
-  const reportMailto   = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(reportSubject)}&body=${encodeURIComponent(reportBodyRaw)}`;
-  const callbackMailto = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(callbackSubject)}&body=${encodeURIComponent(callbackBodyRaw)}`;
 
 
 // Debug logging to console
@@ -141,6 +113,36 @@ const App: React.FC = () => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
+    const reportSubject = 'Report a Problem – BBIL Production Dashboard';
+  const reportBodyRaw = `Hi Business Analytics Team,
+
+I'm facing an issue on the Production Dashboard.
+
+Details:
+- Username: ${userAttributes.username || 'Unknown'}
+- Phone (masked): ${userAttributes.phoneNumber || 'Not set'}
+- When: ${new Date().toLocaleString('en-IN')}
+- What I was doing:
+- Error message (if any):
+- Steps to reproduce:
+
+Thanks.`;
+
+  const callbackSubject = 'Request for a Call Back – BBIL Production Dashboard';
+  const callbackBodyRaw = `Hi Business Analytics Team,
+
+Please call me back regarding the Production Dashboard.
+
+- Name/Username: ${userAttributes.username || 'Unknown'}
+- Phone (masked): ${userAttributes.phoneNumber || 'Not set'}
+- Preferred time:
+
+Thanks.`;
+
+  const reportMailto   = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(reportSubject)}&body=${encodeURIComponent(reportBodyRaw)}`;
+  const callbackMailto = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(callbackSubject)}&body=${encodeURIComponent(callbackBodyRaw)}`;
+
+  
   // Tooltip state
   const [tooltip, setTooltip] = useState<TooltipState>({
     visible: false,
