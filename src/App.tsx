@@ -447,7 +447,7 @@ const uploadFile = async (file: File | null, apiUrl: string, month: string, segm
 
   const handleDailyUpload = (file: File | null, segment: 'DS' | 'DP') => {
     if (validateFile(file)) {
-      uploadFile(file, 'https://1whw41i19a.execute-api.ap-south-1.amazonaws.com/S1/Production_DailyUpload', 'Daily', , segment);
+      uploadFile(file, 'https://1whw41i19a.execute-api.ap-south-1.amazonaws.com/S1/Production_DailyUpload', 'Daily', segment);
     }
   };
 
