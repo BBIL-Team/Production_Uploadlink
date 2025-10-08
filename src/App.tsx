@@ -764,22 +764,25 @@ const uploadFile = async (file: File | null, apiUrl: string, month: string) => {
       </h1>
 
       {/* Navigation Bar */}
-      <nav className="bg-gray-100 p-4 mb-6">
-        <div className="flex space-x-4">
-          <button
-            className={`px-4 py-2 rounded-md font-medium ${activeTab === 'monthly' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-300'}`}
-            onClick={() => setActiveTab('monthly')}
-          >
-            Monthly Upload
-          </button>
-          <button
-            className={`px-4 py-2 rounded-md font-medium ${activeTab === 'daily' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border border-gray-300'}`}
-            onClick={() => setActiveTab('daily')}
-          >
-            Daily Upload
-          </button>
-        </div>
+      <nav className="top-tabs" role="tablist" aria-label="Upload views">
+        <button
+          role="tab"
+          aria-selected={activeTab === 'monthly'}
+          className={`tab-btn ${activeTab === 'monthly' ? 'active' : ''}`}
+          onClick={() => setActiveTab('monthly')}
+        >
+          Monthly Upload
+        </button>
+        <button
+          role="tab"
+          aria-selected={activeTab === 'daily'}
+          className={`tab-btn ${activeTab === 'daily' ? 'active' : ''}`}
+          onClick={() => setActiveTab('daily')}
+        >
+          Daily Upload
+        </button>
       </nav>
+
 
       {/* Conditional Rendering Based on Active Tab */}
       {activeTab === 'monthly' ? (
