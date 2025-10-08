@@ -365,37 +365,7 @@ const App: React.FC = () => {
     return false;
   };
 
-  const uploadFile = async (file: File | null, apiUrl: string, month: string) => {
-    if (!file) {
-      setModalMessage("Please select a file to upload.");
-      setModalType('error');
-      setShowMessageModal(true);
-      return;
-    }
-
-    const originalFileName = file.name;
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('month', month);
-    formData.append('fileName', originalFileName);
-    formData.append('username', userAttributes.username || 'Unknown');
-
-    try {
-      setIsUploading(true);
-      setUploadKey((prev) => prev + 1);
-      const uploadResponse = await fetch(apiUrl, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (uploadResponse.ok) {
-        const uploadData = await uploadResponse.json();
-        setModalMessage(uploadData.message || "File uploaded successfully!");
-        setModalType('success');
-        setShowMessageModal(true);
-
-       const uploadFile = async (file: File | null, apiUrl: string, month: string) => {
+const uploadFile = async (file: File | null, apiUrl: string, month: string) => {
   if (!file) {
     setModalMessage("Please select a file to upload.");
     setModalType('error');
@@ -430,9 +400,7 @@ const App: React.FC = () => {
         try {
           await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/save-upload', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               fileName: originalFileName,
               uploadedBy: userAttributes.username || 'Unknown',
@@ -478,7 +446,7 @@ const App: React.FC = () => {
 
   const handleDailyUpload = (file: File | null) => {
     if (validateFile(file)) {
-      uploadFile(file, ' https://1whw41i19a.execute-api.ap-south-1.amazonaws.com/S1/Production_DailyUpload', 'Daily');
+      uploadFile(file, 'https://1whw41i19a.execute-api.ap-south-1.amazonaws.com/S1/Production_DailyUpload', 'Daily');
     }
   };
 
@@ -1191,9 +1159,6 @@ const App: React.FC = () => {
       )}
     </main>
   );
-};
-    };
-  };
 };
 
 export default App;
