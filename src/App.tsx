@@ -628,7 +628,7 @@ const uploadFile = async (file: File | null, apiUrl: string, month: string) => {
   ];
 
   return (
-    <main className={`app-main ${activeTab}-theme`}> {/* << theme switch */}
+    <main className={`app-main ${activeTab === 'daily' ? 'daily-theme' : ''}`}>
       {tooltip.visible && (
         <div
           className="tooltip"
@@ -1009,7 +1009,7 @@ const uploadFile = async (file: File | null, apiUrl: string, month: string) => {
         <div className="container">
         <div className="left-column">
           {/* Segment A */}
-          <div className="upload-section">
+          <div className="upload-section segment segment--ds">
             <h2>📤 Daily Status – Drug Substance (DS)</h2>
             <div className="upload-form">
               <input
@@ -1030,7 +1030,7 @@ const uploadFile = async (file: File | null, apiUrl: string, month: string) => {
           </div>
     
           {/* Segment B */}
-          <div className="upload-section" style={{ marginTop: '16px' }}>
+          <div className="upload-section segment segment--dp" style={{ marginTop: '16px' }}>
             <h2>📤 Daily Status – Drug Product (DP)</h2>
             <div className="upload-form">
               <input
