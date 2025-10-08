@@ -871,3 +871,77 @@ html, body {
 .app-main.daily-theme .app-header {
   background-color: #5b5bd6;
 }
+
+/* Footer – light, theme-tinted, clearly a page utility */
+.app-footer {
+  margin: 24px 16px 40px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--brand-accent-1) 12%, #ffffff) 0%,
+    color-mix(in srgb, var(--brand-accent-2) 5%,  #ffffff) 100%
+  );
+  border: 1px solid color-mix(in srgb, var(--brand-accent-2) 22%, #e6eaf0);
+  box-shadow: 0 6px 16px rgba(16, 24, 40, 0.06), inset 0 2px 0 rgba(255,255,255,.6);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.footer-heading {
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 14px;
+  margin-right: 4px;
+}
+
+.footer-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-left: auto;     /* heading on left, actions on right */
+}
+
+.footer-link {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--ink);
+  border: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: .2px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+  transition: background 120ms ease, border-color 120ms ease, transform 80ms ease, box-shadow 120ms ease;
+}
+
+.footer-link:hover {
+  background: color-mix(in srgb, var(--brand-accent-1) 10%, #ffffff);
+  border-color: color-mix(in srgb, var(--brand-accent-2) 25%, var(--border));
+}
+
+.footer-link:active {
+  transform: translateY(1px);
+}
+
+/* Small screens */
+@media (max-width: 640px) {
+  .app-footer {
+    justify-content: center;
+  }
+  .footer-heading {
+    width: 100%;
+    text-align: center;
+    margin-bottom: 4px;
+  }
+  .footer-actions {
+    margin-left: 0;
+    justify-content: center;
+  }
+}
