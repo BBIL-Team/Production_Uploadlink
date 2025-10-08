@@ -628,7 +628,7 @@ const uploadFile = async (file: File | null, apiUrl: string, month: string) => {
   ];
 
   return (
-    <main className="app-main">
+    <main className={`app-main ${activeTab}-theme`}> {/* << theme switch */}
       {tooltip.visible && (
         <div
           className="tooltip"
@@ -783,6 +783,17 @@ const uploadFile = async (file: File | null, apiUrl: string, month: string) => {
         </button>
       </nav>
 
+    {/* Daily-only banner: instantly tells the user where they are */}
+    {activeTab === 'daily' && (
+      <div className="mode-banner" role="status">
+        You’re in <strong>Daily Update</strong> mode. Choose the correct segment below:
+        <span className="legend">
+          <span className="pill pill-ds">DS</span> Drug Substance
+          <span className="dot">•</span>
+          <span className="pill pill-dp">DP</span> Drug Product
+        </span>
+      </div>
+    )}
 
       {/* Conditional Rendering Based on Active Tab */}
       {activeTab === 'monthly' ? (
