@@ -8,6 +8,16 @@ import { getCurrentUser, fetchUserAttributes, updateUserAttributes } from '@aws-
   const SUPPORT_EMAIL = 'analytics@bharatbiotech.com';            // TODO: confirm or replace
   const BA_PHONE_TEL  = '+914000000000';                          // TODO: replace with real phone in E.164
 
+// at the top of the component with the other refs/state:
+const headerRef = useRef<HTMLDivElement>(null);
+const [headerH, setHeaderH] = useState(0);
+
+useEffect(() => {
+  const setH = () => setHeaderH(headerRef.current?.offsetHeight ?? 0);
+  setH();
+  window.addEventListener('resize', setH);
+  return () => window.removeEventListener('resize', setH);
+}, []);
 
 
 // Debug logging to console
@@ -706,7 +716,7 @@ const uploadFile = async (file: File | null, apiUrl: string, month: string, segm
         </div>
       )}
 
-      <header className="app-header">
+      <header ref={headerRef} className="app-header">
         <div style={{ width: '130px', height: '100%', overflow: 'hidden', borderRadius: '8px', marginLeft: '20px' }}>
           <img
             style={{ width: '100%', height: '100%', objectFit: 'contain', boxSizing: 'border-box' }}
@@ -737,6 +747,9 @@ const uploadFile = async (file: File | null, apiUrl: string, month: string, segm
         </div>
       </header>
 
+      {/* Spacer to push content below the fixed header */}
+      <div style={{ height: headerH }} aria-hidden />
+      
       {showUpdateForm && (
         <div className="modal-overlay">
           <div className="modal-content">
