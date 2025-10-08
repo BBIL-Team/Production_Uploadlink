@@ -170,6 +170,15 @@ const App: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    const saved = localStorage.getItem('activeTab');
+    if (saved === 'daily' || saved === 'monthly') setActiveTab(saved as 'daily' | 'monthly');
+  }, []);
+  
+  useEffect(() => {
+    localStorage.setItem('activeTab', activeTab);
+  }, [activeTab]);
+
   // Close context menu and dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -761,7 +770,7 @@ const uploadFile = async (file: File | null, apiUrl: string, month: string, segm
       )}
 
       <h1 className="app-title">
-        <u>BBIL Production Dashboard Update Interface</u>
+        <u>BBIL Production Dashboard – {activeTab === 'daily' ? 'Daily Update' : 'Monthly Update'}</u>
       </h1>
 
       {/* Navigation Bar */}
