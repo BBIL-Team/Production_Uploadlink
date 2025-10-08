@@ -781,7 +781,7 @@ const uploadFile = async (file: File | null, apiUrl: string, month: string, segm
           className={`tab-btn ${activeTab === 'monthly' ? 'active' : ''}`}
           onClick={() => setActiveTab('monthly')}
         >
-          Monthly Upload
+          Monthly Update
         </button>
         <button
           role="tab"
@@ -789,7 +789,7 @@ const uploadFile = async (file: File | null, apiUrl: string, month: string, segm
           className={`tab-btn ${activeTab === 'daily' ? 'active' : ''}`}
           onClick={() => setActiveTab('daily')}
         >
-          Daily Upload
+          Daily Update
         </button>
       </nav>
 
