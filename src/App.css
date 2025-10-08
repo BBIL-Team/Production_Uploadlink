@@ -945,3 +945,92 @@ html, body {
     justify-content: center;
   }
 }
+
+/* ========= DARK FOOTER ========= */
+.app-main {
+  /* footer palette (works for both monthly & daily themes) */
+  --footer-bg-1: #0f172a;              /* slate-900-ish */
+  --footer-bg-2: #0b1220;              /* deeper slate */
+  --footer-fg:   #e5e7eb;              /* light text */
+  --footer-muted:#cbd5e1;              /* secondary text */
+  --footer-br:   rgba(255,255,255,0.10);
+  --footer-card: rgba(255,255,255,0.06);
+  --footer-card-hover: rgba(255,255,255,0.10);
+}
+
+.app-main.daily-theme {
+  /* tiny indigo tilt in daily mode, still dark */
+  --footer-bg-1: #1b1b3a;
+  --footer-bg-2: #121227;
+}
+
+/* Footer container */
+.app-footer {
+  margin: 32px 16px 0;
+  padding: 20px 24px 28px;
+  color: var(--footer-fg);
+  background: linear-gradient(180deg, var(--footer-bg-1) 0%, var(--footer-bg-2) 100%);
+  border-top: 1px solid var(--footer-br);
+  border-radius: 16px 16px 0 0;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
+/* Small heading inside footer */
+.app-footer .footer-heading {
+  font-size: 14px;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  color: var(--footer-muted);
+  margin-bottom: 12px;
+}
+
+/* Actions layout */
+.footer-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .footer-actions { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 520px) {
+  .footer-actions { grid-template-columns: 1fr; }
+}
+
+/* Action tiles */
+.footer-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  text-decoration: none;
+  background: var(--footer-card);
+  color: var(--footer-fg);
+  border: 1px solid var(--footer-br);
+  border-radius: 12px;
+  font-weight: 600;
+  transition: transform 120ms ease, box-shadow 150ms ease, background 150ms ease, border-color 150ms ease;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.35);
+}
+
+.footer-link:hover {
+  background: var(--footer-card-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.35);
+  border-color: rgba(255,255,255,0.18);
+}
+
+.footer-link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(14, 140, 195, 0.45); /* brand-ish focus ring */
+  transform: translateY(-1px);
+}
+
+/* Text inside tiles */
+.footer-link span {
+  line-height: 1.1;
+}
+
+/* Optional: lighten emoji appearance a touch on dark bg */
+.footer-link::first-letter { filter: none; }
