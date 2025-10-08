@@ -3,6 +3,41 @@ import './App.css';
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { getCurrentUser, fetchUserAttributes, updateUserAttributes } from '@aws-amplify/auth';
 
+  // --- Footer link helpers (replace with your real values) ---
+  const DASHBOARD_URL = 'https://your-dashboard-url.example.com'; // TODO: replace
+  const SUPPORT_EMAIL = 'analytics@bharatbiotech.com';            // TODO: confirm or replace
+  const BA_PHONE_TEL  = '+914000000000';                          // TODO: replace with real phone in E.164
+
+  const reportSubject = 'Report a Problem – BBIL Production Dashboard';
+  const reportBodyRaw = `Hi Business Analytics Team,
+
+I'm facing an issue on the Production Dashboard.
+
+Details:
+- Username: ${userAttributes.username || 'Unknown'}
+- Phone (masked): ${userAttributes.phoneNumber || 'Not set'}
+- When: ${new Date().toLocaleString('en-IN')}
+- What I was doing:
+- Error message (if any):
+- Steps to reproduce:
+
+Thanks.`;
+
+  const callbackSubject = 'Request for a Call Back – BBIL Production Dashboard';
+  const callbackBodyRaw = `Hi Business Analytics Team,
+
+Please call me back regarding the Production Dashboard.
+
+- Name/Username: ${userAttributes.username || 'Unknown'}
+- Phone (masked): ${userAttributes.phoneNumber || 'Not set'}
+- Preferred time:
+
+Thanks.`;
+
+  const reportMailto   = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(reportSubject)}&body=${encodeURIComponent(reportBodyRaw)}`;
+  const callbackMailto = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(callbackSubject)}&body=${encodeURIComponent(callbackBodyRaw)}`;
+
+
 // Debug logging to console
 console.log('getCurrentUser:', getCurrentUser);
 console.log('fetchUserAttributes:', fetchUserAttributes);
@@ -1182,6 +1217,48 @@ const uploadFile = async (file: File | null, apiUrl: string, month: string, segm
           </div>
         </div>
       )}
+
+            {/* ===== Footer ===== */}
+      <footer className="app-footer" role="contentinfo" aria-label="Support and quick actions">
+        <div className="footer-heading">Need help?</div>
+
+        <nav className="footer-actions" aria-label="Footer actions">
+          <a
+            className="footer-link"
+            href={DASHBOARD_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Open the Dashboard in a new tab"
+          >
+            📊 <span>Dashboard Link</span>
+          </a>
+
+          <a
+            className="footer-link"
+            href={reportMailto}
+            aria-label="Report a problem via email"
+          >
+            🧰 <span>Report a Problem</span>
+          </a>
+
+          <a
+            className="footer-link"
+            href={`tel:${BA_PHONE_TEL}`}
+            aria-label="Call Business Analytics Department"
+          >
+            📞 <span>Call Business Analytics Dept</span>
+          </a>
+
+          <a
+            className="footer-link"
+            href={callbackMailto}
+            aria-label="Request a call back via email"
+          >
+            📥 <span>Request for a Call Back</span>
+          </a>
+        </nav>
+      </footer>
+
     </main>
   );
 };
