@@ -682,3 +682,65 @@ html, body {
     width: 100%;
   }
 }
+
+/* Top tab bar */
+.top-tabs {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 16px;
+  background: #f6f8fb;              /* soft neutral background */
+  border-radius: 12px;
+  border: 1px solid #e6eaf0;
+  margin: 0 0 24px 0;
+}
+
+/* Individual tab buttons */
+.tab-btn {
+  appearance: none;
+  border: 1px solid transparent;
+  background: #ffffff;
+  color: #264153;                    /* muted navy text */
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease, color 120ms ease, border-color 120ms ease;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+}
+
+.tab-btn:hover {
+  background: #f0f5f8;
+  border-color: #e3ebf2;
+}
+
+.tab-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(14, 140, 195, 0.25); /* focus ring in brand hue */
+}
+
+/* Active tab */
+.tab-btn.active {
+  background: linear-gradient(180deg, #10a6c5 0%, #0e8cc3 100%); /* teal → blue */
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 2px 6px rgba(14, 140, 195, 0.25);
+}
+
+/* Pressed feedback for non-active tabs */
+.tab-btn:not(.active):active {
+  transform: translateY(1px);
+}
+
+/* Small screens: make tabs wrap nicely */
+@media (max-width: 520px) {
+  .top-tabs {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .tab-btn {
+    flex: 1 1 auto;
+  }
+}
