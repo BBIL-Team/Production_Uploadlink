@@ -992,49 +992,50 @@ const uploadFile = async (file: File | null, apiUrl: string, month: string) => {
           </div>
         </div>
       ) : (
+        <div className="container">
         <div className="left-column">
-            {/* Segment A */}
-            <div className="upload-section">
-              <h2>📤 Daily Upload – Segment A</h2>
-              <div className="upload-form">
-                <input
-                  type="file"
-                  accept=".csv,.pdf,.xlsx,.xls,.doc,.docx"
-                  onChange={(e) => setDailyFileA(e.target.files?.[0] || null)}
-                  className="file-input"
-                  disabled={isUploading}
-                />
-                <button
-                  className="upload-btn"
-                  onClick={() => handleDailyUpload(dailyFileA)}
-                  disabled={isUploading}
-                >
-                  {isUploading ? 'Uploading...' : 'Submit File'}
-                </button>
-              </div>
-            </div>
-
-            {/* Segment B */}
-            <div className="upload-section" style={{ marginTop: '16px' }}>
-              <h2>📤 Daily Upload – Segment B</h2>
-              <div className="upload-form">
-                <input
-                  type="file"
-                  accept=".csv,.pdf,.xlsx,.xls,.doc,.docx"
-                  onChange={(e) => setDailyFileB(e.target.files?.[0] || null)}
-                  className="file-input"
-                  disabled={isUploading}
-                />
-                <button
-                  className="upload-btn"
-                  onClick={() => handleDailyUpload(dailyFileB)}
-                  disabled={isUploading}
-                >
-                  {isUploading ? 'Uploading...' : 'Submit File'}
-                </button>
-              </div>
+          {/* Segment A */}
+          <div className="upload-section">
+            <h2>📤 Daily Upload – Segment A</h2>
+            <div className="upload-form">
+              <input
+                type="file"
+                accept=".csv,.pdf,.xlsx,.xls,.doc,.docx"
+                onChange={(e) => setDailyFileA(e.target.files?.[0] || null)}
+                className="file-input"
+                disabled={isUploading}
+              />
+              <button
+                className="upload-btn"
+                onClick={() => handleDailyUpload(dailyFileA)}
+                disabled={isUploading}
+              >
+                {isUploading ? 'Uploading...' : 'Submit File'}
+              </button>
             </div>
           </div>
+    
+          {/* Segment B */}
+          <div className="upload-section" style={{ marginTop: '16px' }}>
+            <h2>📤 Daily Upload – Segment B</h2>
+            <div className="upload-form">
+              <input
+                type="file"
+                accept=".csv,.pdf,.xlsx,.xls,.doc,.docx"
+                onChange={(e) => setDailyFileB(e.target.files?.[0] || null)}
+                className="file-input"
+                disabled={isUploading}
+              />
+              <button
+                className="upload-btn"
+                onClick={() => handleDailyUpload(dailyFileB)}
+                disabled={isUploading}
+              >
+                {isUploading ? 'Uploading...' : 'Submit File'}
+              </button>
+            </div>
+          </div>
+        </div>
 
           <div className="file-list" style={{ position: 'relative' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
