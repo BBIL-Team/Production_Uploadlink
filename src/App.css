@@ -8,7 +8,7 @@ html, body {
 .app-main {
   max-width: 100%;
   min-height: calc(100vh - 470px);
-  background-color: #81d7ea;
+  background-color: var(--brand-bg);
   padding-top: 470px;
   box-sizing: border-box;
   overflow-x: hidden;
@@ -743,4 +743,120 @@ html, body {
   .tab-btn {
     flex: 1 1 auto;
   }
+}
+
+/* ========= THEME VARIABLES ========= */
+.app-main {
+  --brand-accent-1: #10a6c5;   /* monthly primary (teal) */
+  --brand-accent-2: #0e8cc3;   /* monthly secondary (blue) */
+  --brand-bg: #f6f8fb;
+  --ink: #264153;
+  --muted: #6c7a86;
+  --border: #e6eaf0;
+  --card-bg: #ffffff;
+}
+
+.app-main.daily-theme {
+  --brand-accent-1: #7b61ff;   /* daily primary (indigo) */
+  --brand-accent-2: #5b5bd6;   /* daily secondary */
+  --brand-bg: #f7f7ff;
+  --ink: #2b2b4d;
+  --border: #e6e7fb;
+  --card-bg: #ffffff;
+}
+
+
+/* Make common surfaces adapt */
+.top-tabs {
+  background: var(--brand-bg);
+  border: 1px solid var(--border);
+}
+
+/* Buttons inherit theme */
+.tab-btn {
+  color: var(--ink);
+}
+.tab-btn:hover {
+  background: #f0f4fa;
+  border-color: var(--border);
+}
+.tab-btn.active {
+  background: linear-gradient(180deg, var(--brand-accent-1) 0%, var(--brand-accent-2) 100%);
+  color: #fff;
+}
+
+/* ========= DAILY MODE BANNER ========= */
+.mode-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  margin: 8px 0 20px;
+  border: 1px dashed var(--brand-accent-2);
+  background: #ffffff;
+  border-radius: 12px;
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+.mode-banner .legend {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.mode-banner .pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 12px;
+  color: #fff;
+}
+.mode-banner .pill-ds { background: #109c7e; }  /* DS = green */
+.mode-banner .pill-dp { background: #e0832c; }  /* DP = orange */
+.mode-banner .dot { opacity: .5; }
+
+/* ========= DAILY SEGMENT ACCENTS ========= */
+.segment {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-left: 6px solid transparent;
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+.segment--ds { --segment-accent: #109c7e; }   /* DS green */
+.segment--dp { --segment-accent: #e0832c; }   /* DP orange */
+
+.segment.segment--ds { border-left-color: var(--segment-accent); }
+.segment.segment--dp { border-left-color: var(--segment-accent); }
+
+.segment .segment-title {
+  margin: 0 0 10px 0;
+  color: var(--ink);
+}
+
+.segment .upload-btn {
+  background: var(--segment-accent);
+  border: 1px solid var(--segment-accent);
+  color: #fff;
+  transition: transform 100ms ease, box-shadow 120ms ease, filter 120ms ease;
+}
+.segment .upload-btn:hover { filter: brightness(0.96); }
+.segment .upload-btn:active { transform: translateY(1px); }
+
+/* Optional: tint the daily left column a hair */
+.app-main.daily-theme .left-column {
+  background: linear-gradient(180deg, rgba(123, 97, 255, 0.03) 0%, rgba(91, 91, 214, 0.03) 100%);
+  border-radius: 14px;
+  padding: 8px;
+}
+
+.app-main.daily-theme .app-header {
+  background-color: #5b5bd6;
 }
