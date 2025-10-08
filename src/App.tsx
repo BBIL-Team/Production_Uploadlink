@@ -999,7 +999,7 @@ const uploadFile = async (file: File | null, apiUrl: string, month: string) => {
         <div className="left-column">
           {/* Segment A */}
           <div className="upload-section">
-            <h2>📤 Daily Upload – Segment A</h2>
+            <h2>📤 Daily Status – Drug Substance (DS)</h2>
             <div className="upload-form">
               <input
                 type="file"
@@ -1020,7 +1020,7 @@ const uploadFile = async (file: File | null, apiUrl: string, month: string) => {
     
           {/* Segment B */}
           <div className="upload-section" style={{ marginTop: '16px' }}>
-            <h2>📤 Daily Upload – Segment B</h2>
+            <h2>📤 Daily Status – Drug Product (DP)</h2>
             <div className="upload-form">
               <input
                 type="file"
