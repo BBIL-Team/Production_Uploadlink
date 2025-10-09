@@ -9,7 +9,7 @@ html, body {
   max-width: 100%;
   min-height: 100vh;
   background-color: var(--brand-bg);
-  padding-top: 0;           /* spacer handles this now */
+  padding-top: calc(var(--header-h) + 8px); /* space for fixed header */
   box-sizing: border-box;
   overflow-x: hidden;
 }
@@ -21,10 +21,13 @@ html, body {
   background-color: #008080;
   color: white;
   max-width: 100%;
-  padding: 4px;
-  position: sticky;   /* <-- stays at top but doesn't overlap content */
+  padding: 8px 12px;
+  position: fixed;   /* robust: always visible at top */
   top: 0;
-  z-index: 1000;
+  left: 0;
+  right: 0;
+  height: var(--header-h);
+  z-index: 1100;
   box-sizing: border-box;
 }
 
@@ -1028,4 +1031,9 @@ html, body {
 /* Optional: lighten emoji appearance a touch on dark bg */
 .footer-link::first-letter { filter: none; }
 
+ :root {
+   --header-h: 76px; /* tweak if you want a taller header */
+ }
 
+.tooltip { z-index: 3000; }
+.context-menu { z-index: 3000; }
