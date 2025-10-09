@@ -3,28 +3,7 @@ import './App.css';
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { getCurrentUser, fetchUserAttributes, updateUserAttributes } from '@aws-amplify/auth';
 
-// at top of component hooks
-const headerRef = useRef<HTMLElement | null>(null);
 
-useEffect(() => {
-  const el = headerRef.current;
-  if (!el) return;
-
-  const updateVar = () => {
-    const h = Math.ceil(el.getBoundingClientRect().height);
-    document.documentElement.style.setProperty('--header-h', `${h}px`);
-  };
-
-  updateVar(); // initial
-  const ro = new ResizeObserver(updateVar);
-  ro.observe(el);
-
-  window.addEventListener('resize', updateVar);
-  return () => {
-    ro.disconnect();
-    window.removeEventListener('resize', updateVar);
-  };
-}, []);
 
 // --- Footer link helpers (replace with your real values) ---
 const DASHBOARD_URL = 'https://your-dashboard-url.example.com'; // TODO: replace
@@ -724,6 +703,29 @@ Thanks.`;
     { key: 'fileKey', label: 'Download Link' },
   ];
 
+  // at top of component hooks
+const headerRef = useRef<HTMLElement | null>(null);
+
+useEffect(() => {
+  const el = headerRef.current;
+  if (!el) return;
+
+  const updateVar = () => {
+    const h = Math.ceil(el.getBoundingClientRect().height);
+    document.documentElement.style.setProperty('--header-h', `${h}px`);
+  };
+
+  updateVar(); // initial
+  const ro = new ResizeObserver(updateVar);
+  ro.observe(el);
+
+  window.addEventListener('resize', updateVar);
+  return () => {
+    ro.disconnect();
+    window.removeEventListener('resize', updateVar);
+  };
+}, []);
+  
   return (
       <>
         {/* Fixed header lives outside of main */}
