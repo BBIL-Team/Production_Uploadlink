@@ -112,10 +112,6 @@ const App: React.FC = () => {
   const [showMessageModal, setShowMessageModal] = useState<boolean>(false);
   const [modalMessage, setModalMessage] = useState<string>("");
   const [modalType, setModalType] = useState<'success' | 'error'>('success');
-  type FileRow = {
-    id: number; fileName: string; fileType: string; filesize: string;
-    dateUploaded: string; uploadedBy: string; fileKey: string;
-  };
   
   const [s3Files, setS3Files] = useState<FileRow[]>([]);
   const [sortColumn, setSortColumn] = useState<keyof FileRow | null>(null);
@@ -218,7 +214,12 @@ Thanks.`;
   // Handle hiding a column
   const handleHideColumn = () => {
     if (contextMenu.column) {
-      setHiddenColumns((prev) => [...prev, contextMenu.column]);
+      setHiddenColumns((prev) => {
+        const col = contextMenu.column;        // keyof FileRow | null
+        if (col === null) return prev;         // narrow: stop if null
+        if (prev.includes(col)) return prev;   // optional: avoid duplicates
+        return [...prev, col];                 // col is keyof FileRow here
+      });
       setContextMenu({ visible: false, x: 0, y: 0, column: null });
     }
   };
