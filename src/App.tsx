@@ -68,13 +68,25 @@ interface TooltipState {
   y: number;
 }
 
+type FileRow = {
+  id: number;
+  fileName: string;
+  fileType: string;
+  filesize: string;       // "123.4 KB"
+  dateUploaded: string;   // formatted date string
+  uploadedBy: string;
+  fileKey: string;
+};
+
+
 // Define the type for context menu state
 interface ContextMenuState {
   visible: boolean;
   x: number;
   y: number;
-  column: 'id' | 'fileName' | 'fileType' | 'filesize' | 'dateUploaded' | 'uploadedBy' | 'fileKey' | null;
+  column: keyof FileRow | null;
 }
+
 
 const App: React.FC = () => {
   const { signOut } = useAuthenticator();
@@ -100,12 +112,16 @@ const App: React.FC = () => {
   const [showMessageModal, setShowMessageModal] = useState<boolean>(false);
   const [modalMessage, setModalMessage] = useState<string>("");
   const [modalType, setModalType] = useState<'success' | 'error'>('success');
-  const [s3Files, setS3Files] = useState<
-    { id: number; fileName: string; fileType: string; filesize: string; dateUploaded: string; uploadedBy: string; fileKey: string }[]
-  >([]);
-  const [sortColumn, setSortColumn] = useState<keyof typeof s3Files[0] | ''>(''); 
+  type FileRow = {
+    id: number; fileName: string; fileType: string; filesize: string;
+    dateUploaded: string; uploadedBy: string; fileKey: string;
+  };
+  
+  const [s3Files, setS3Files] = useState<FileRow[]>([]);
+  const [sortColumn, setSortColumn] = useState<keyof FileRow | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [hiddenColumns, setHiddenColumns] = useState<(keyof typeof s3Files[0])[]>([]);
+  const [hiddenColumns, setHiddenColumns] = useState<Array<keyof FileRow>>([]);
+
   const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState<boolean>(false);
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
   const [fileNameToDelete, setFileNameToDelete] = useState<string | null>(null);
@@ -189,7 +205,7 @@ Thanks.`;
   };
 
   // Handle right-click to show context menu
-  const handleContextMenu = (e: React.MouseEvent<HTMLTableCellElement>, column: keyof typeof s3Files[0]) => {
+  const handleContextMenu = (e: React.MouseEvent<HTMLTableCellElement>, column: keyof FileRow) => {
     e.preventDefault();
     setContextMenu({
       visible: true,
@@ -202,10 +218,11 @@ Thanks.`;
   // Handle hiding a column
   const handleHideColumn = () => {
     if (contextMenu.column) {
-      setHiddenColumns((prev) => [...prev, contextMenu.column as keyof typeof s3Files[0]]);
+      setHiddenColumns((prev) => [...prev, contextMenu.column]);
       setContextMenu({ visible: false, x: 0, y: 0, column: null });
     }
   };
+
 
   useEffect(() => {
     const saved = localStorage.getItem('activeTab');
@@ -626,7 +643,7 @@ Thanks.`;
     setModalType('success');
   };
 
-  const handleSort = (column: keyof typeof s3Files[0]) => {
+  const handleSort = (column: keyof FileRow) => {
     const newDirection = sortColumn === column && sortDirection === 'asc' ? 'desc' : 'asc';
     setSortColumn(column);
     setSortDirection(newDirection);
@@ -664,7 +681,7 @@ Thanks.`;
 
 
   // Define table columns with their display names
-  const columns: { key: keyof typeof s3Files[0]; label: string }[] = [
+  const columns: Array<{ key: keyof FileRow; label: string }> = [
     { key: 'id', label: 'S.No.' },
     { key: 'fileName', label: 'File Name' },
     { key: 'fileType', label: 'File Type' },
@@ -677,7 +694,7 @@ Thanks.`;
   return (
       <>
         {/* Fixed header lives outside of main */}
-        <header className="app-header">
+        <header className={`app-header ${activeTab === 'daily' ? 'daily-theme' : ''}`}>
           <div style={{ width: '130px', height: '100%', overflow: 'hidden', borderRadius: '8px', marginLeft: '20px' }}>
             <img
               style={{ width: '100%', height: '100%', objectFit: 'contain', boxSizing: 'border-box' }}
@@ -739,37 +756,6 @@ Thanks.`;
           </div>
         </div>
       )}
-
-      <header className="app-header">
-        <div style={{ width: '130px', height: '100%', overflow: 'hidden', borderRadius: '8px', marginLeft: '20px' }}>
-          <img
-            style={{ width: '100%', height: '100%', objectFit: 'contain', boxSizing: 'border-box' }}
-            src="https://www.bharatbiotech.com/images/bharat-biotech-logo.jpg"
-            alt="Company Logo"
-          />
-        </div>
-        <div className="header-user-info">
-          {isLoading ? (
-            <span>Loading...</span>
-          ) : (
-            <div className="user-info-inner">
-              <span className="username">
-                {userAttributes.username ? (
-                  `Hi, ${userAttributes.username}`
-                ) : (
-                  <button className="update-username-btn" onClick={() => setShowUpdateForm(true)}>
-                    Update Username
-                  </button>
-                )}
-              </span>
-              <span className="phone-number">{userAttributes.phoneNumber || 'Phone: Not set'}</span>
-            </div>
-          )}
-          <button className="sign-out-btn" onClick={signOut}>
-            Sign out
-          </button>
-        </div>
-      </header>
 
       
       {showUpdateForm && (
@@ -1297,6 +1283,7 @@ Thanks.`;
       </footer>
 
     </main>
+    </> 
   );
 };
 
