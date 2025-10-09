@@ -122,7 +122,17 @@ const App: React.FC = () => {
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
   const [fileNameToDelete, setFileNameToDelete] = useState<string | null>(null);
   const [isDeleteOptionEnabled, setIsDeleteOptionEnabled] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'monthly' | 'daily'>('monthly'); // Default to monthly
+  // replace your current activeTab state line with this:
+  const [activeTab, setActiveTab] = useState<'monthly' | 'daily'>(() => {
+    try {
+      const saved =
+        typeof window !== 'undefined' ? localStorage.getItem('activeTab') : null;
+      return saved === 'daily' || saved === 'monthly' ? saved : 'monthly';
+    } catch {
+      return 'monthly';
+    }
+  });
+
   const dropdownRef = useRef<HTMLDivElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
@@ -224,11 +234,10 @@ Thanks.`;
     }
   };
 
-
   useEffect(() => {
-    const saved = localStorage.getItem('activeTab');
-    if (saved === 'daily' || saved === 'monthly') setActiveTab(saved as 'daily' | 'monthly');
-  }, []);
+    try { localStorage.setItem('activeTab', activeTab); } catch {}
+  }, [activeTab]);
+
   
   useEffect(() => {
     localStorage.setItem('activeTab', activeTab);
