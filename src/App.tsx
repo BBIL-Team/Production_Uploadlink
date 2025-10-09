@@ -3,6 +3,29 @@ import './App.css';
 import { useAuthenticator } from '@aws-amplify/ui-react';
 import { getCurrentUser, fetchUserAttributes, updateUserAttributes } from '@aws-amplify/auth';
 
+// at top of component hooks
+const headerRef = useRef<HTMLElement | null>(null);
+
+useEffect(() => {
+  const el = headerRef.current;
+  if (!el) return;
+
+  const updateVar = () => {
+    const h = Math.ceil(el.getBoundingClientRect().height);
+    document.documentElement.style.setProperty('--header-h', `${h}px`);
+  };
+
+  updateVar(); // initial
+  const ro = new ResizeObserver(updateVar);
+  ro.observe(el);
+
+  window.addEventListener('resize', updateVar);
+  return () => {
+    ro.disconnect();
+    window.removeEventListener('resize', updateVar);
+  };
+}, []);
+
 // --- Footer link helpers (replace with your real values) ---
 const DASHBOARD_URL = 'https://your-dashboard-url.example.com'; // TODO: replace
 const SUPPORT_EMAIL = 'analytics@bharatbiotech.com';            // TODO: confirm or replace
@@ -704,7 +727,7 @@ Thanks.`;
   return (
       <>
         {/* Fixed header lives outside of main */}
-        <header className={`app-header ${activeTab === 'daily' ? 'daily-theme' : ''}`}>
+        <header ref={headerRef} className={`app-header ${activeTab === 'daily' ? 'daily-theme' : ''}`}>
           <div style={{ width: '130px', height: '100%', overflow: 'hidden', borderRadius: '8px', marginLeft: '20px' }}>
             <img
               style={{ width: '100%', height: '100%', objectFit: 'contain', boxSizing: 'border-box' }}
