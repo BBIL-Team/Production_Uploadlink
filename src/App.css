@@ -15,7 +15,8 @@ html, body {
   background-color: var(--brand-bg);
   box-sizing: border-box;
   overflow-x: hidden;
-  padding-top: calc(var(--header-h) + 8px);
+  /* use live header height (+ safe-area for iOS) */
+  padding-top: calc(var(--header-h) + env(safe-area-inset-top, 0px) + 8px);
 }
 
 .app-header {
@@ -30,7 +31,7 @@ html, body {
   top: 0;
   left: 0;
   right: 0;
-  min-height: var(--header-h);  /* keep a floor, allow wrap */
+  /* let content define height; it will still be measured by the observer */
   z-index: 1100;
   box-sizing: border-box;
   overflow: hidden;          /* prevents header children from painting over the title */
