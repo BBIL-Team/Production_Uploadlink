@@ -675,6 +675,40 @@ Thanks.`;
   ];
 
   return (
+      <>
+        {/* Fixed header lives outside of main */}
+        <header className="app-header">
+          <div style={{ width: '130px', height: '100%', overflow: 'hidden', borderRadius: '8px', marginLeft: '20px' }}>
+            <img
+              style={{ width: '100%', height: '100%', objectFit: 'contain', boxSizing: 'border-box' }}
+              src="https://www.bharatbiotech.com/images/bharat-biotech-logo.jpg"
+              alt="Company Logo"
+            />
+          </div>
+          <div className="header-user-info">
+            {isLoading ? (
+              <span>Loading...</span>
+            ) : (
+              <div className="user-info-inner">
+                <span className="username">
+                  {userAttributes.username ? (
+                    `Hi, ${userAttributes.username}`
+                  ) : (
+                    <button className="update-username-btn" onClick={() => setShowUpdateForm(true)}>
+                      Update Username
+                    </button>
+                  )}
+                </span>
+                <span className="phone-number">{userAttributes.phoneNumber || 'Phone: Not set'}</span>
+              </div>
+            )}
+            <button className="sign-out-btn" onClick={signOut}>Sign out</button>
+          </div>
+        </header>
+    
+        {/* Spacer to push page content below the fixed header */}
+        <div className="header-spacer" aria-hidden />
+
     <main className={`app-main ${activeTab === 'daily' ? 'daily-theme' : ''}`}>
       {tooltip.visible && (
         <div
