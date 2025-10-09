@@ -733,8 +733,6 @@ Thanks.`;
           </div>
         </header>
     
-        {/* Spacer to push page content below the fixed header */}
-        <div className="header-spacer" aria-hidden />
 
     <main className={`app-main ${activeTab === 'daily' ? 'daily-theme' : ''}`}>
       {tooltip.visible && (
