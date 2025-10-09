@@ -13,7 +13,6 @@ html, body {
   max-width: 100%;
   min-height: 100vh;
   background-color: var(--brand-bg);
-  padding-top: calc(var(--header-h) + 8px); /* space for fixed header */
   box-sizing: border-box;
   overflow-x: hidden;
 }
@@ -36,6 +35,13 @@ html, body {
   overflow: hidden;          /* prevents header children from painting over the title */
   box-shadow: 0 2px 8px rgba(0,0,0,.12); /* optional: nice edge */
 }
+
+/* NEW: spacer right under the header */
+.header-spacer {
+  height: calc(var(--header-h) + 8px);  /* matches the little gap you wanted */
+}
+
+.app-header.daily-theme { background-color: #5b5bd6; }
 
 .header-logo {
   width: 100%;
@@ -221,7 +227,7 @@ html, body {
   font-size: 28px;
   margin: 10px 0;
   box-sizing: border-box;
-  margin-top: 12px;          /* ensures it sits clearly below the header edge */
+  margin-top: 8px;          /* ensures it sits clearly below the header edge */
   color: var(--ink);         /* makes sure it isn’t blending with background */
 }
 
