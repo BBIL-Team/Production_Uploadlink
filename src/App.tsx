@@ -80,20 +80,6 @@ const App: React.FC = () => {
   const { signOut } = useAuthenticator();
 
   // ✅ Moved INSIDE the component; ref typed for <header>
-  const headerRef = useRef<HTMLElement | null>(null);
-  const [headerH, setHeaderH] = useState(0);
-
-  useEffect(() => {
-    const sync = () => setHeaderH(headerRef.current?.offsetHeight ?? 0);
-    sync(); // initial
-    const ro = new ResizeObserver(sync);
-    if (headerRef.current) ro.observe(headerRef.current);
-    window.addEventListener('resize', sync);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('resize', sync);
-    };
-  }, []);
 
   const [file, setFile] = useState<File | null>(null);
   const [dailyFileA, setDailyFileA] = useState<File | null>(null);
@@ -720,7 +706,7 @@ Thanks.`;
         </div>
       )}
 
-      <header ref={headerRef} className="app-header">
+      <header className="app-header">
         <div style={{ width: '130px', height: '100%', overflow: 'hidden', borderRadius: '8px', marginLeft: '20px' }}>
           <img
             style={{ width: '100%', height: '100%', objectFit: 'contain', boxSizing: 'border-box' }}
@@ -751,8 +737,6 @@ Thanks.`;
         </div>
       </header>
 
-      {/* Spacer to push content below the fixed header */}
-      <div style={{ height: headerH }} aria-hidden />
       
       {showUpdateForm && (
         <div className="modal-overlay">
