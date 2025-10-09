@@ -1,3 +1,7 @@
+ :root {
+   --header-h: 76px; /* tweak if you want a taller header */
+ }
+
 html, body {
   margin: 0;
   padding: 0;
@@ -1031,9 +1035,6 @@ html, body {
 /* Optional: lighten emoji appearance a touch on dark bg */
 .footer-link::first-letter { filter: none; }
 
- :root {
-   --header-h: 76px; /* tweak if you want a taller header */
- }
 
 .tooltip { z-index: 3000; }
 .context-menu { z-index: 3000; }
