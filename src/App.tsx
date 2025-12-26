@@ -17,7 +17,8 @@ console.log('updateUserAttributes:', updateUserAttributes);
 
 // Hardcoded bucket and folder names
 const BUCKET_NAME = 'production-bbil';
-const FOLDER_NAME = 'Production_daily_upload_files_location/';
+const DAILY_FOLDER_NAME = 'Production_daily_upload_files_location/';
+const MONTHLY_FOLDER_NAME = 'Production_Upload_Files/';
 
 // Supported file extensions
 const SUPPORTED_EXTENSIONS = ['.csv', '.pdf', '.xlsx', '.xls', '.doc', '.docx'];
