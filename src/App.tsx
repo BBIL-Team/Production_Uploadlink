@@ -73,9 +73,9 @@ type FileRow = {
   id: number;
   fileName: string;
   fileType: string;
-  filesize: string;         // "123.4 KB"
-  dateUploaded: string;     // display string
-  dateUploadedTs: number;   // ✅ raw timestamp for sorting
+  filesize: string;       // "123.4 KB"
+  dateUploaded: string;   // formatted date string (display only)
+  dateUploadedTs: number; // ✅ numeric timestamp used for sorting
   uploadedBy: string;
   fileKey: string;
 };
@@ -279,7 +279,7 @@ Thanks.`;
       const data = await response.json();
       console.log('S3 files:', data);
 
-      const files = await Promise.all(
+      const filesRaw = await Promise.all(
         data.files
           .filter((file: { key: string }) => {
             const extension = (file.key.split('.').pop() || '').toLowerCase();
@@ -292,6 +292,8 @@ Thanks.`;
             const fileType = fileNameParts[fileNameParts.length - 1]?.toLowerCase() || '';
             const filesizeKB = (file.size / 1024).toFixed(1) + ' KB';
 
+            // ✅ use ISO timestamp for sorting; keep locale string only for display
+            const dateUploadedTs = new Date(file.lastModified).getTime();
             const dateUploaded = new Date(file.lastModified).toLocaleString('en-IN', {
               year: 'numeric',
               month: '2-digit',
@@ -304,32 +306,46 @@ Thanks.`;
 
             let uploadedBy = 'Unknown';
             try {
+              // keep fileName lookup (matches what you log on upload), but be tolerant in response field names
               const uploaderResponse = await fetch(
                 `https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/get-uploader?fileName=${encodeURIComponent(fullFileName)}`,
                 { method: 'GET', headers: { 'Content-Type': 'application/json' } }
               );
               if (uploaderResponse.ok) {
-                const uploaderData = await uploaderResponse.json();
-                uploadedBy = uploaderData.uploadedBy || 'Unknown';
+                const uploaderData = await uploaderResponse.json().catch(() => ({}));
+                // ✅ NEW: accept multiple field names (because your logger uses `user`)
+                uploadedBy =
+                  uploaderData.uploadedBy ||
+                  uploaderData.user ||
+                  uploaderData.username ||
+                  uploaderData.uploaded_by ||
+                  uploaderData.uploader ||
+                  'Unknown';
               }
             } catch (error) {
               console.error(`Error fetching uploader for ${fullFileName}:`, error);
             }
 
             return {
-              id: index + 1,
+              id: index + 1, // will be re-numbered after sorting
               fileName,
               fileType,
               filesize: filesizeKB,
               dateUploaded,
+              dateUploadedTs,
               uploadedBy,
               fileKey: file.key,
-            };
+            } as FileRow;
           })
       );
 
-      files.sort((a, b) => new Date(b.dateUploaded).getTime() - new Date(a.dateUploaded).getTime());
-      setS3Files(files);
+      // ✅ NEW: sort by timestamp (reliable)
+      const sorted = [...filesRaw].sort((a, b) => b.dateUploadedTs - a.dateUploadedTs);
+
+      // ✅ NEW: re-number S.No. after sorting so it matches the displayed order
+      const withIds = sorted.map((row, idx) => ({ ...row, id: idx + 1 }));
+
+      setS3Files(withIds);
       setSortColumn('dateUploaded');
       setSortDirection('desc');
     } catch (error) {
@@ -349,8 +365,8 @@ Thanks.`;
         const attributes = await fetchUserAttributes();
         console.log('User attributes:', attributes);
 
-        const username = attributes.preferred_username || attributes.email || '';
-        const phoneNumber = attributes.phone_number || '';
+        const username = (attributes as any).preferred_username || (attributes as any).email || '';
+        const phoneNumber = (attributes as any).phone_number || '';
         const maskedPhoneNumber =
           phoneNumber && phoneNumber.length >= 2
             ? `91${'x'.repeat(phoneNumber.length - 4)}${phoneNumber.slice(-2)}`
@@ -425,7 +441,7 @@ Thanks.`;
       const attributes = await fetchUserAttributes();
       setUserAttributes((prev) => ({
         ...prev,
-        username: attributes.preferred_username || prev.username,
+        username: (attributes as any).preferred_username || prev.username,
       }));
     } catch (error: any) {
       console.error('Error updating username:', error);
@@ -449,7 +465,7 @@ Thanks.`;
   };
 
   /**
-   * ✅ UPDATED: after a successful upload, log to /save-files with:
+   * after a successful upload, log to /save-files with:
    * - action: "upload"
    * - uploadType: "monthly" or "daily"
    * - segment (only for daily)
@@ -500,7 +516,7 @@ Thanks.`;
       setModalType('success');
       setShowMessageModal(true);
 
-      // ✅ NEW: log uploads using the same /save-files route + new lambda fields
+      // log uploads using /save-files
       try {
         const uploadType = monthForUpload === 'Daily' ? 'daily' : 'monthly';
 
@@ -511,10 +527,10 @@ Thanks.`;
             fileName: originalFileName,
             action: 'upload',
             user: userAttributes.username || 'Unknown',
-            uploadType,                 // ✅ added
-            segment: segment || undefined, // ✅ added (daily only)
+            uploadType,
+            segment: segment || undefined,
             month: uploadType === 'monthly'
-              ? (monthLabelForLog || monthForUpload)  // ✅ added (monthly only)
+              ? (monthLabelForLog || monthForUpload)
               : undefined,
           }),
         });
@@ -550,7 +566,7 @@ Thanks.`;
         'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink',
         monthName,
         undefined,
-        selectedMonth // ✅ log the full "Month Year" to DynamoDB
+        selectedMonth
       );
     }
   };
@@ -591,7 +607,7 @@ Thanks.`;
         link.click();
         document.body.removeChild(link);
 
-        // existing download logging (now we can also include uploadType if you want, but not required)
+        // download logging
         try {
           await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/save-files', {
             method: 'POST',
@@ -600,8 +616,6 @@ Thanks.`;
               fileName: fileKey.split('/').pop(),
               action: 'download',
               user: userAttributes.username || 'Unknown',
-              // optional:
-              // uploadType: activeTab, // "monthly" | "daily"
             }),
           });
         } catch (error) {
@@ -707,18 +721,21 @@ Thanks.`;
         return newDirection === 'asc' ? sizeA - sizeB : sizeB - sizeA;
       }
 
+      // ✅ NEW: use timestamp, not locale string
       if (column === 'dateUploaded') {
         return newDirection === 'asc'
-          ? new Date(valueA as string).getTime() - new Date(valueB as string).getTime()
-          : new Date(valueB as string).getTime() - new Date(valueA as string).getTime();
+          ? a.dateUploadedTs - b.dateUploadedTs
+          : b.dateUploadedTs - a.dateUploadedTs;
       }
 
       return newDirection === 'asc'
-        ? (valueA as string).localeCompare(valueB as string)
-        : (valueB as string).localeCompare(valueA as string);
+        ? String(valueA).localeCompare(String(valueB))
+        : String(valueB).localeCompare(String(valueA));
     });
 
-    setS3Files(sortedFiles);
+    // ✅ re-number after any sort so S.No. matches visible order
+    const withIds = sortedFiles.map((row, idx) => ({ ...row, id: idx + 1 }));
+    setS3Files(withIds);
   };
 
   // Define table columns with their display names
