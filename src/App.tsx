@@ -6,12 +6,7 @@ import { getCurrentUser, fetchUserAttributes, updateUserAttributes } from '@aws-
 // --- Footer link helpers (replace with your real values) ---
 const DASHBOARD_URL = 'https://your-dashboard-url.example.com'; // TODO: replace
 const SUPPORT_EMAIL = 'analytics@bharatbiotech.com';            // TODO: confirm or replace
-const BA_PHONE_TEL  = '+9140000000';                            // TODO: replace with real phone in E.164
-
-// Debug logging to console
-console.log('getCurrentUser:', getCurrentUser);
-console.log('fetchUserAttributes:', fetchUserAttributes);
-console.log('updateUserAttributes:', updateUserAttributes);
+const BA_PHONE_TEL  = '+914000000000';                         // TODO: replace with real phone in E.164
 
 // Hardcoded bucket and folder names
 const BUCKET_NAME = 'production-bbil';
@@ -19,10 +14,7 @@ const DAILY_FOLDER_NAME = 'Production_daily_upload_files_location/';
 const MONTHLY_FOLDER_NAME = 'Production_Upload_Files/';
 
 // ===== TEMP BACKFILL SWITCH =====
-// Set true only for one-time upload; set back to false afterwards.
 const BACKFILL_2025_MODE = true;
-
-// When backfill is enabled, allow these months only
 const BACKFILL_MONTHS_2025 = [
   "January 2025",
   "February 2025",
@@ -51,7 +43,6 @@ const getFinancialYearMonths = (currentDate: Date) => {
   const currentYear = currentDate.getFullYear();
   const currentDay = currentDate.getDate();
 
-  // Financial year: April (currentYear) to March (currentYear + 1)
   const financialYearStartYear = currentMonth >= 3 ? currentYear : currentYear - 1;
   const financialYearEndYear = financialYearStartYear + 1;
 
@@ -105,7 +96,21 @@ interface ContextMenuState {
   x: number;
   y: number;
   column: keyof FileRow | null;
-}
+};
+
+// ✅ helper: file -> base64 (no multipart boundary ever)
+const fileToBase64 = (f: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onerror = () => reject(new Error('Failed to read file'));
+    r.onload = () => {
+      const res = String(r.result || '');
+      // res is like: data:<mime>;base64,<payload>
+      const base64 = res.includes(',') ? res.split(',')[1] : '';
+      resolve(base64);
+    };
+    r.readAsDataURL(f);
+  });
 
 const App: React.FC = () => {
   const { signOut } = useAuthenticator();
@@ -153,19 +158,6 @@ const App: React.FC = () => {
       return 'monthly';
     }
   });
-
-  // ✅ NEW: Allow Backfill toggle (admin-only) + persistence
-  const [allowBackfill, setAllowBackfill] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('allowBackfill') === 'true';
-    } catch {
-      return false;
-    }
-  });
-
-  useEffect(() => {
-    try { localStorage.setItem('allowBackfill', String(allowBackfill)); } catch {}
-  }, [allowBackfill]);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
@@ -215,47 +207,23 @@ Thanks.`;
     column: null,
   });
 
-  // Handle mouse enter to show tooltip
   const handleMouseEnter = (e: React.MouseEvent<HTMLTableCellElement>, content: string) => {
-    setTooltip({
-      visible: true,
-      content,
-      x: e.clientX,
-      y: e.clientY,
-    });
+    setTooltip({ visible: true, content, x: e.clientX, y: e.clientY });
   };
 
-  // Handle mouse move to update tooltip position
   const handleMouseMove = (e: React.MouseEvent<HTMLTableCellElement>) => {
-    setTooltip((prev) => ({
-      ...prev,
-      x: e.clientX,
-      y: e.clientY,
-    }));
+    setTooltip((prev) => ({ ...prev, x: e.clientX, y: e.clientY }));
   };
 
-  // Handle mouse leave to hide tooltip
   const handleMouseLeave = () => {
-    setTooltip({
-      visible: false,
-      content: '',
-      x: 0,
-      y: 0,
-    });
+    setTooltip({ visible: false, content: '', x: 0, y: 0 });
   };
 
-  // Handle right-click to show context menu
   const handleContextMenu = (e: React.MouseEvent<HTMLTableCellElement>, column: keyof FileRow) => {
     e.preventDefault();
-    setContextMenu({
-      visible: true,
-      x: e.clientX,
-      y: e.clientY,
-      column,
-    });
+    setContextMenu({ visible: true, x: e.clientX, y: e.clientY, column });
   };
 
-  // Handle hiding a column
   const handleHideColumn = () => {
     if (contextMenu.column) {
       setHiddenColumns((prev) => {
@@ -272,7 +240,6 @@ Thanks.`;
     try { localStorage.setItem('activeTab', activeTab); } catch {}
   }, [activeTab]);
 
-  // Close context menu and dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (contextMenuRef.current && !contextMenuRef.current.contains(event.target as Node)) {
@@ -298,19 +265,12 @@ Thanks.`;
 
       const response = await fetch(
         `https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/list-files?${queryParams.toString()}`,
-        {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        }
+        { method: 'GET', headers: { 'Content-Type': 'application/json' } }
       );
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch S3 files: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`Failed to fetch S3 files: ${response.status}`);
 
       const data = await response.json();
-      console.log('S3 files:', data);
-
       const filesRaw = await Promise.all(
         (data.files || [])
           .filter((file: { key: string }) => {
@@ -351,9 +311,7 @@ Thanks.`;
                   uploaderData.uploader ||
                   'Unknown';
               }
-            } catch (error) {
-              console.error(`Error fetching uploader for ${fullFileName}:`, error);
-            }
+            } catch {}
 
             return {
               id: index + 1,
@@ -382,14 +340,12 @@ Thanks.`;
     }
   };
 
-  // Fetch user attributes and S3 files on mount
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         setLoading(true);
         await getCurrentUser();
         const attributes = await fetchUserAttributes();
-        console.log('User attributes:', attributes);
 
         const username = (attributes as any).preferred_username || (attributes as any).email || '';
         const phoneNumber = (attributes as any).phone_number || '';
@@ -412,13 +368,11 @@ Thanks.`;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Reload table when switching tabs (monthly vs daily)
   useEffect(() => {
     loadS3Files(activeTab);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
-  // Manage body scroll when modal is open
   useEffect(() => {
     if (showMessageModal || showUpdateForm || isUploading || showConfirmDeleteModal) {
       const scrollY = window.scrollY;
@@ -442,7 +396,6 @@ Thanks.`;
     };
   }, [showMessageModal, showUpdateForm, isUploading, showConfirmDeleteModal]);
 
-  // Handle username update
   const handleUpdateUsername = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUsername.trim()) {
@@ -453,9 +406,7 @@ Thanks.`;
     }
     try {
       await updateUserAttributes({
-        userAttributes: {
-          preferred_username: newUsername.trim(),
-        },
+        userAttributes: { preferred_username: newUsername.trim() },
       });
       setUserAttributes((prev) => ({ ...prev, username: newUsername.trim() }));
       setShowUpdateForm(false);
@@ -480,9 +431,7 @@ Thanks.`;
   const validateFile = (f: File | null): boolean => {
     if (f) {
       const extension = (f.name.split('.').pop() || '').toLowerCase();
-      if (SUPPORTED_EXTENSIONS.includes(`.${extension}`)) {
-        return true;
-      }
+      if (SUPPORTED_EXTENSIONS.includes(`.${extension}`)) return true;
     }
     setModalMessage("Please upload a valid file (.csv, .pdf, .xlsx, .xls, .doc, .docx).");
     setModalType('error');
@@ -490,6 +439,13 @@ Thanks.`;
     return false;
   };
 
+  /**
+   * ✅ ROLLBACK UPLOAD: JSON + base64 (NO multipart boundary)
+   * Sends:
+   * {
+   *   fileName, month, segment, username, mimeType, fileBase64
+   * }
+   */
   const uploadFile = async (
     f: File | null,
     apiUrl: string,
@@ -506,24 +462,26 @@ Thanks.`;
 
     const originalFileName = f.name;
 
-    const formData = new FormData();
-    formData.append('file', f);
-    formData.append('month', monthForUpload);
-    if (segment) formData.append('segment', segment);
-    formData.append('fileName', originalFileName);
-    formData.append('username', userAttributes.username || 'Unknown');
-
-    // ✅ NEW: send backfill info to backend (for future switch)
-    if (monthLabelForLog) formData.append('monthLabel', monthLabelForLog);
-    formData.append('allowBackfill', allowBackfill ? 'true' : 'false');
-
     try {
       setIsUploading(true);
       setUploadKey((prev) => prev + 1);
 
+      const fileBase64 = await fileToBase64(f);
+
+      const payload = {
+        fileName: originalFileName,
+        month: monthForUpload,
+        monthLabel: monthLabelForLog || '',
+        segment: segment || '',
+        username: userAttributes.username || 'Unknown',
+        mimeType: f.type || 'application/octet-stream',
+        fileBase64,
+      };
+
       const uploadResponse = await fetch(apiUrl, {
-        method: "POST",
-        body: formData,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
 
       if (!uploadResponse.ok) {
@@ -539,22 +497,15 @@ Thanks.`;
       setModalType('success');
       setShowMessageModal(true);
 
-      // ✅ NEW: log using S3 basename (so "Uploaded By" resolves)
+      // log uploads using /save-files (kept same)
       try {
         const uploadType = monthForUpload === 'Daily' ? 'daily' : 'monthly';
-
-        const savedBasename =
-          uploadType === 'monthly' && allowBackfill
-            ? `${String(monthLabelForLog || monthForUpload).trim().replace(/\s+/g, '_')}_Planned_vs_Achieved_.csv`
-            : uploadType === 'monthly'
-              ? 'current_file.csv'
-              : originalFileName; // daily (kept as original filename in your system)
 
         await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/save-files', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            fileName: savedBasename,                 // ✅ important
+            fileName: originalFileName,
             action: 'upload',
             user: userAttributes.username || 'Unknown',
             uploadType,
@@ -562,7 +513,6 @@ Thanks.`;
             month: uploadType === 'monthly'
               ? (monthLabelForLog || monthForUpload)
               : undefined,
-            allowBackfill: uploadType === 'monthly' ? allowBackfill : undefined,
           }),
         });
       } catch (error) {
@@ -591,7 +541,6 @@ Thanks.`;
       return;
     }
 
-    // ✅ enforce backfill-month dropdown list when BACKFILL_2025_MODE is ON
     if (BACKFILL_2025_MODE && !BACKFILL_MONTHS_2025.includes(selectedMonth)) {
       setModalMessage("Please select an allowed month (Jan 2025 to Nov 2025) for backfill.");
       setModalType('error');
@@ -600,7 +549,7 @@ Thanks.`;
     }
 
     if (validateFile(file)) {
-      const monthName = selectedMonth.split(' ')[0]; // backend expects month name only (current behavior)
+      const monthName = selectedMonth.split(' ')[0]; // backend expects month name only (your current behavior)
       uploadFile(
         file,
         'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink',
@@ -647,7 +596,6 @@ Thanks.`;
         link.click();
         document.body.removeChild(link);
 
-        // download logging
         try {
           await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/save-files', {
             method: 'POST',
@@ -658,9 +606,7 @@ Thanks.`;
               user: userAttributes.username || 'Unknown',
             }),
           });
-        } catch (error) {
-          console.error('Error saving download action:', error);
-        }
+        } catch {}
 
         setModalMessage(`Downloaded ${fileKey.split('/').pop()} successfully!`);
         setModalType('success');
@@ -776,7 +722,6 @@ Thanks.`;
     setS3Files(withIds);
   };
 
-  // Define table columns with their display names
   const columns: Array<{ key: keyof FileRow; label: string }> = [
     { key: 'id', label: 'S.No.' },
     { key: 'fileName', label: 'File Name' },
@@ -787,7 +732,6 @@ Thanks.`;
     { key: 'fileKey', label: 'Download Link' },
   ];
 
-  // header height CSS var
   const headerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -799,7 +743,7 @@ Thanks.`;
       document.documentElement.style.setProperty('--header-h', `${h}px`);
     };
 
-    updateVar(); // initial
+    updateVar();
     const ro = new ResizeObserver(updateVar);
     ro.observe(el);
 
@@ -810,12 +754,8 @@ Thanks.`;
     };
   }, []);
 
-  // ✅ same admin check as delete option
-  const isAdmin = (userAttributes.username || '').toLowerCase() === 'manika5170@bharatbiotech.com';
-
   return (
     <>
-      {/* Fixed header lives outside of main */}
       <header ref={headerRef} className={`app-header ${activeTab === 'daily' ? 'daily-theme' : ''}`}>
         <div style={{ width: '130px', height: '100%', overflow: 'hidden', borderRadius: '8px', marginLeft: '20px' }}>
           <img
@@ -847,29 +787,14 @@ Thanks.`;
 
       <main className={`app-main ${activeTab === 'daily' ? 'daily-theme' : ''}`}>
         {tooltip.visible && (
-          <div
-            className="tooltip"
-            style={{
-              left: `${tooltip.x + 10}px`,
-              top: `${tooltip.y + 10}px`,
-            }}
-          >
+          <div className="tooltip" style={{ left: `${tooltip.x + 10}px`, top: `${tooltip.y + 10}px` }}>
             {tooltip.content}
           </div>
         )}
 
         {contextMenu.visible && (
-          <div
-            ref={contextMenuRef}
-            className="context-menu"
-            style={{
-              left: `${contextMenu.x}px`,
-              top: `${contextMenu.y}px`,
-            }}
-          >
-            <div className="context-menu-item" onClick={handleHideColumn}>
-              Hide Column
-            </div>
+          <div ref={contextMenuRef} className="context-menu" style={{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }}>
+            <div className="context-menu-item" onClick={handleHideColumn}>Hide Column</div>
           </div>
         )}
 
@@ -887,9 +812,7 @@ Thanks.`;
                 />
                 <div className="modal-buttons">
                   <button type="submit" className="submit-btn">Submit</button>
-                  <button type="button" className="cancel-btn" onClick={() => setShowUpdateForm(false)}>
-                    Cancel
-                  </button>
+                  <button type="button" className="cancel-btn" onClick={() => setShowUpdateForm(false)}>Cancel</button>
                 </div>
               </form>
             </div>
@@ -941,7 +864,6 @@ Thanks.`;
           <u>BBIL Production Dashboard – {activeTab === 'daily' ? 'Daily Update' : 'Monthly Update'}</u>
         </h1>
 
-        {/* Navigation Bar */}
         <nav className="top-tabs" role="tablist" aria-label="Upload views">
           <button
             role="tab"
@@ -961,7 +883,6 @@ Thanks.`;
           </button>
         </nav>
 
-        {/* Daily-only banner */}
         {activeTab === 'daily' && (
           <div className="mode-banner" role="status">
             You’re in <strong>Daily Update</strong> mode. Choose the correct segment below:
@@ -973,7 +894,6 @@ Thanks.`;
           </div>
         )}
 
-        {/* Conditional Rendering Based on Active Tab */}
         {activeTab === 'monthly' ? (
           <div className="container">
             <div className="left-column">
@@ -1062,189 +982,7 @@ Thanks.`;
             <div className="file-list" style={{ position: 'relative' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                 <h2 style={{ margin: 0, marginRight: '10px' }}>📋 List of Files Submitted</h2>
-
-                {isAdmin && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <label
-                      className="delete-option-label"
-                      style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer' }}
-                    >
-                      <input
-                        type="checkbox"
-                        className="delete-option-checkbox"
-                        checked={isDeleteOptionEnabled}
-                        onChange={(e) => setIsDeleteOptionEnabled(e.target.checked)}
-                        aria-checked={isDeleteOptionEnabled}
-                        aria-label="Toggle delete option"
-                      />
-                      Delete Option
-                    </label>
-
-                    {/* ✅ NEW: Allow Backfill toggle (same admin users as delete) */}
-                    <label
-                      className="delete-option-label"
-                      style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer', gap: '8px' }}
-                      title="When ON, monthly uploads are saved as Month_Year file (backfill mode). When OFF, normal current_file behavior."
-                    >
-                      <input
-                        type="checkbox"
-                        className="delete-option-checkbox"
-                        checked={allowBackfill}
-                        onChange={(e) => setAllowBackfill(e.target.checked)}
-                        aria-checked={allowBackfill}
-                        aria-label="Toggle allow backfill"
-                      />
-                      Allow Backfill
-                    </label>
-                  </div>
-                )}
-              </div>
-
-              <div className="table-container">
-                <table className="file-table">
-                  <thead>
-                    <tr>
-                      {columns.map((col) => (
-                        !hiddenColumns.includes(col.key) && (
-                          <th
-                            key={col.key}
-                            onClick={() => handleSort(col.key)}
-                            onContextMenu={(e) => handleContextMenu(e, col.key)}
-                            className={sortColumn === col.key ? `sorted-${sortDirection}` : ''}
-                          >
-                            {col.label}
-                          </th>
-                        )
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {s3Files.length === 0 ? (
-                      <tr>
-                        <td colSpan={columns.length - hiddenColumns.length} style={{ textAlign: 'center' }}>
-                          No files found.
-                        </td>
-                      </tr>
-                    ) : (
-                      s3Files.map((row) => (
-                        <tr key={row.id}>
-                          {!hiddenColumns.includes('id') && <td>{row.id}</td>}
-                          {!hiddenColumns.includes('fileName') && (
-                            <td
-                              data-full-text={row.fileName}
-                              onMouseEnter={(e) => handleMouseEnter(e, row.fileName)}
-                              onMouseMove={handleMouseMove}
-                              onMouseLeave={handleMouseLeave}
-                              className="tooltip-target"
-                            >
-                              {row.fileName}
-                            </td>
-                          )}
-                          {!hiddenColumns.includes('fileType') && <td>{row.fileType}</td>}
-                          {!hiddenColumns.includes('filesize') && <td>{row.filesize}</td>}
-                          {!hiddenColumns.includes('dateUploaded') && (
-                            <td
-                              data-full-text={row.dateUploaded}
-                              onMouseEnter={(e) => handleMouseEnter(e, row.dateUploaded)}
-                              onMouseMove={handleMouseMove}
-                              onMouseLeave={handleMouseLeave}
-                              className="tooltip-target"
-                            >
-                              {row.dateUploaded}
-                            </td>
-                          )}
-                          {!hiddenColumns.includes('uploadedBy') && <td>{row.uploadedBy}</td>}
-                          {!hiddenColumns.includes('fileKey') && (
-                            <td>
-                              <a
-                                href="#"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  downloadFile(row.fileKey);
-                                }}
-                                className="download-link"
-                              >
-                                Download
-                              </a>
-
-                              {isAdmin && isDeleteOptionEnabled && (
-                                <>
-                                  {' / '}
-                                  <a
-                                    href="#"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      setFileToDelete(row.fileKey);
-                                      setFileNameToDelete(row.fileName);
-                                      setShowConfirmDeleteModal(true);
-                                    }}
-                                    className="download-link"
-                                    aria-label={`Delete file ${row.fileName}`}
-                                  >
-                                    Delete
-                                  </a>
-                                </>
-                              )}
-                            </td>
-                          )}
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="container">
-            <div className="left-column">
-              {/* Segment A */}
-              <div className="upload-section segment segment--ds">
-                <h2>📤 Daily Status – Drug Substance (DS)</h2>
-                <div className="upload-form">
-                  <input
-                    type="file"
-                    accept=".csv,.pdf,.xlsx,.xls,.doc,.docx"
-                    onChange={(e) => setDailyFileA(e.target.files?.[0] || null)}
-                    className="file-input"
-                    disabled={isUploading}
-                  />
-                  <button
-                    className="upload-btn"
-                    onClick={() => handleDailyUpload(dailyFileA, 'DS')}
-                    disabled={isUploading}
-                  >
-                    {isUploading ? 'Uploading...' : 'Submit File'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Segment B */}
-              <div className="upload-section segment segment--dp" style={{ marginTop: '16px' }}>
-                <h2>📤 Daily Status – Drug Product (DP)</h2>
-                <div className="upload-form">
-                  <input
-                    type="file"
-                    accept=".csv,.pdf,.xlsx,.xls,.doc,.docx"
-                    onChange={(e) => setDailyFileB(e.target.files?.[0] || null)}
-                    className="file-input"
-                    disabled={isUploading}
-                  />
-                  <button
-                    className="upload-btn"
-                    onClick={() => handleDailyUpload(dailyFileB, 'DP')}
-                    disabled={isUploading}
-                  >
-                    {isUploading ? 'Uploading...' : 'Submit File'}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="file-list" style={{ position: 'relative' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <h2 style={{ margin: 0, marginRight: '10px' }}>📋 List of Files Submitted</h2>
-                {isAdmin && (
+                {userAttributes.username?.toLowerCase() === 'manika5170@bharatbiotech.com' && (
                   <label
                     className="delete-option-label"
                     style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer' }}
@@ -1329,7 +1067,159 @@ Thanks.`;
                                 Download
                               </a>
 
-                              {isAdmin && isDeleteOptionEnabled && (
+                              {userAttributes.username?.toLowerCase() === 'manika5170@bharatbiotech.com' && isDeleteOptionEnabled && (
+                                <>
+                                  {' / '}
+                                  <a
+                                    href="#"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      setFileToDelete(row.fileKey);
+                                      setFileNameToDelete(row.fileName);
+                                      setShowConfirmDeleteModal(true);
+                                    }}
+                                    className="download-link"
+                                    aria-label={`Delete file ${row.fileName}`}
+                                  >
+                                    Delete
+                                  </a>
+                                </>
+                              )}
+                            </td>
+                          )}
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="container">
+            <div className="left-column">
+              <div className="upload-section segment segment--ds">
+                <h2>📤 Daily Status – Drug Substance (DS)</h2>
+                <div className="upload-form">
+                  <input
+                    type="file"
+                    accept=".csv,.pdf,.xlsx,.xls,.doc,.docx"
+                    onChange={(e) => setDailyFileA(e.target.files?.[0] || null)}
+                    className="file-input"
+                    disabled={isUploading}
+                  />
+                  <button className="upload-btn" onClick={() => handleDailyUpload(dailyFileA, 'DS')} disabled={isUploading}>
+                    {isUploading ? 'Uploading...' : 'Submit File'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="upload-section segment segment--dp" style={{ marginTop: '16px' }}>
+                <h2>📤 Daily Status – Drug Product (DP)</h2>
+                <div className="upload-form">
+                  <input
+                    type="file"
+                    accept=".csv,.pdf,.xlsx,.xls,.doc,.docx"
+                    onChange={(e) => setDailyFileB(e.target.files?.[0] || null)}
+                    className="file-input"
+                    disabled={isUploading}
+                  />
+                  <button className="upload-btn" onClick={() => handleDailyUpload(dailyFileB, 'DP')} disabled={isUploading}>
+                    {isUploading ? 'Uploading...' : 'Submit File'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="file-list" style={{ position: 'relative' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <h2 style={{ margin: 0, marginRight: '10px' }}>📋 List of Files Submitted</h2>
+                {userAttributes.username?.toLowerCase() === 'manika5170@bharatbiotech.com' && (
+                  <label
+                    className="delete-option-label"
+                    style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer' }}
+                  >
+                    <input
+                      type="checkbox"
+                      className="delete-option-checkbox"
+                      checked={isDeleteOptionEnabled}
+                      onChange={(e) => setIsDeleteOptionEnabled(e.target.checked)}
+                      aria-checked={isDeleteOptionEnabled}
+                      aria-label="Toggle delete option"
+                    />
+                    Delete Option
+                  </label>
+                )}
+              </div>
+
+              <div className="table-container">
+                <table className="file-table">
+                  <thead>
+                    <tr>
+                      {columns.map((col) => (
+                        !hiddenColumns.includes(col.key) && (
+                          <th
+                            key={col.key}
+                            onClick={() => handleSort(col.key)}
+                            onContextMenu={(e) => handleContextMenu(e, col.key)}
+                            className={sortColumn === col.key ? `sorted-${sortDirection}` : ''}
+                          >
+                            {col.label}
+                          </th>
+                        )
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {s3Files.length === 0 ? (
+                      <tr>
+                        <td colSpan={columns.length - hiddenColumns.length} style={{ textAlign: 'center' }}>
+                          No files found.
+                        </td>
+                      </tr>
+                    ) : (
+                      s3Files.map((row) => (
+                        <tr key={row.id}>
+                          {!hiddenColumns.includes('id') && <td>{row.id}</td>}
+                          {!hiddenColumns.includes('fileName') && (
+                            <td
+                              data-full-text={row.fileName}
+                              onMouseEnter={(e) => handleMouseEnter(e, row.fileName)}
+                              onMouseMove={handleMouseMove}
+                              onMouseLeave={handleMouseLeave}
+                              className="tooltip-target"
+                            >
+                              {row.fileName}
+                            </td>
+                          )}
+                          {!hiddenColumns.includes('fileType') && <td>{row.fileType}</td>}
+                          {!hiddenColumns.includes('filesize') && <td>{row.filesize}</td>}
+                          {!hiddenColumns.includes('dateUploaded') && (
+                            <td
+                              data-full-text={row.dateUploaded}
+                              onMouseEnter={(e) => handleMouseEnter(e, row.dateUploaded)}
+                              onMouseMove={handleMouseMove}
+                              onMouseLeave={handleMouseLeave}
+                              className="tooltip-target"
+                            >
+                              {row.dateUploaded}
+                            </td>
+                          )}
+                          {!hiddenColumns.includes('uploadedBy') && <td>{row.uploadedBy}</td>}
+                          {!hiddenColumns.includes('fileKey') && (
+                            <td>
+                              <a
+                                href="#"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  downloadFile(row.fileKey);
+                                }}
+                                className="download-link"
+                              >
+                                Download
+                              </a>
+
+                              {userAttributes.username?.toLowerCase() === 'manika5170@bharatbiotech.com' && isDeleteOptionEnabled && (
                                 <>
                                   {' / '}
                                   <a
@@ -1359,30 +1249,20 @@ Thanks.`;
           </div>
         )}
 
-        {/* ===== Footer ===== */}
         <footer className="app-footer" role="contentinfo" aria-label="Support and quick actions">
           <div className="footer-heading">Need help?</div>
 
           <nav className="footer-actions" aria-label="Footer actions">
-            <a
-              className="footer-link"
-              href={DASHBOARD_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Open the Dashboard in a new tab"
-            >
+            <a className="footer-link" href={DASHBOARD_URL} target="_blank" rel="noopener noreferrer">
               📊 <span>Dashboard Link</span>
             </a>
-
-            <a className="footer-link" href={reportMailto} aria-label="Report a problem via email">
+            <a className="footer-link" href={reportMailto}>
               🧰 <span>Report a Problem</span>
             </a>
-
-            <a className="footer-link" href={`tel:${BA_PHONE_TEL}`} aria-label="Call Business Analytics Department">
+            <a className="footer-link" href={`tel:${BA_PHONE_TEL}`}>
               📞 <span>Call Business Analytics Dept</span>
             </a>
-
-            <a className="footer-link" href={callbackMailto} aria-label="Request a call back via email">
+            <a className="footer-link" href={callbackMailto}>
               📥 <span>Request for a Call Back</span>
             </a>
           </nav>
