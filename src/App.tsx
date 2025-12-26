@@ -73,8 +73,9 @@ type FileRow = {
   id: number;
   fileName: string;
   fileType: string;
-  filesize: string;       // "123.4 KB"
-  dateUploaded: string;   // formatted date string
+  filesize: string;         // "123.4 KB"
+  dateUploaded: string;     // display string
+  dateUploadedTs: number;   // ✅ raw timestamp for sorting
   uploadedBy: string;
   fileKey: string;
 };
