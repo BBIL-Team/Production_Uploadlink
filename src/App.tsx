@@ -6,7 +6,7 @@ import { getCurrentUser, fetchUserAttributes, updateUserAttributes } from '@aws-
 // --- Footer link helpers (replace with your real values) ---
 const DASHBOARD_URL = 'https://your-dashboard-url.example.com'; // TODO: replace
 const SUPPORT_EMAIL = 'analytics@bharatbiotech.com';            // TODO: confirm or replace
-const BA_PHONE_TEL  = '+9140000000';                            // TODO: replace with real phone in E.164
+const BA_PHONE_TEL  = '+914000000000';                         // TODO: replace with real phone in E.164
 
 // Debug logging to console
 console.log('getCurrentUser:', getCurrentUser);
@@ -18,25 +18,6 @@ const BUCKET_NAME = 'production-bbil';
 const DAILY_FOLDER_NAME = 'Production_daily_upload_files_location/';
 const MONTHLY_FOLDER_NAME = 'Production_Upload_Files/';
 
-// ===== TEMP BACKFILL SWITCH =====
-// Set true only for one-time upload; set back to false afterwards.
-const BACKFILL_2025_MODE = true;
-
-// When backfill is enabled, allow these months only
-const BACKFILL_MONTHS_2025 = [
-  "January 2025",
-  "February 2025",
-  "March 2025",
-  "April 2025",
-  "May 2025",
-  "June 2025",
-  "July 2025",
-  "August 2025",
-  "September 2025",
-  "October 2025",
-  "November 2025",
-];
-
 // Supported file extensions
 const SUPPORTED_EXTENSIONS = ['.csv', '.pdf', '.xlsx', '.xls', '.doc', '.docx'];
 
@@ -45,39 +26,66 @@ const months = [
   "July", "August", "September", "October", "November", "December"
 ];
 
-// Function to get financial year months (previous month if <= 6th, current month, remaining months)
-const getFinancialYearMonths = (currentDate: Date) => {
-  const currentMonth = currentDate.getMonth(); // 0-based
-  const currentYear = currentDate.getFullYear();
-  const currentDay = currentDate.getDate();
+// ===== Helpers for month dropdown =====
+const monthLabel = (d: Date) => `${months[d.getMonth()]} ${d.getFullYear()}`;
 
-  // Financial year: April (currentYear) to March (currentYear + 1)
-  const financialYearStartYear = currentMonth >= 3 ? currentYear : currentYear - 1;
-  const financialYearEndYear = financialYearStartYear + 1;
+const addMonths = (d: Date, delta: number) => {
+  const x = new Date(d);
+  x.setDate(1);
+  x.setMonth(x.getMonth() + delta);
+  return x;
+};
 
-  const result: string[] = [];
+// Count business days (Mon–Fri) from month start up to "today" (inclusive)
+const businessDaysSinceMonthStart = (today: Date) => {
+  const start = new Date(today.getFullYear(), today.getMonth(), 1);
+  const end = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-  // Previous month (only if day <= 6)
-  if (currentDay <= 6) {
-    const prevMonthDate = new Date(currentDate);
-    prevMonthDate.setMonth(currentMonth - 1);
-    const prevMonth = prevMonthDate.getMonth();
-    const prevMonthYear = prevMonthDate.getFullYear();
-    result.push(`${months[prevMonth]} ${prevMonthYear}`);
+  let count = 0;
+  const cur = new Date(start);
+
+  while (cur <= end) {
+    const day = cur.getDay(); // 0 Sun, 6 Sat
+    if (day !== 0 && day !== 6) count += 1;
+    cur.setDate(cur.getDate() + 1);
+  }
+  return count;
+};
+
+// When allowBackfill is OFF:
+// - show prev month only if within first 7 business days of current month
+// - show current month + next 4 months
+const getNormalModeMonths = (today: Date) => {
+  const options: string[] = [];
+  const bizDays = businessDaysSinceMonthStart(today);
+
+  if (bizDays <= 7) {
+    options.push(monthLabel(addMonths(today, -1)));
   }
 
-  // Current month
-  result.push(`${months[currentMonth]} ${currentYear}`);
-
-  // Remaining months: from currentMonth + 1 to March
-  for (let month = currentMonth + 1; month <= 11; month++) {
-    result.push(`${months[month]} ${financialYearStartYear}`);
-  }
-  for (let month = 0; month <= 2; month++) {
-    result.push(`${months[month]} ${financialYearEndYear}`);
+  for (let i = 0; i <= 4; i++) {
+    options.push(monthLabel(addMonths(today, i)));
   }
 
-  return result;
+  // de-dupe just in case
+  return Array.from(new Set(options));
+};
+
+// When allowBackfill is ON:
+// - show rolling last 36 months (including current month), newest first
+const getBackfillMonthsLast3Years = (today: Date) => {
+  const base = new Date(today);
+  base.setDate(1);
+
+  const out: string[] = [];
+  for (let i = 0; i < 36; i++) {
+    out.push(monthLabel(addMonths(base, -i)));
+  }
+  return out; // already newest -> oldest
+};
+
+const getDropdownMonths = (today: Date, allowBackfill: boolean) => {
+  return allowBackfill ? getBackfillMonthsLast3Years(today) : getNormalModeMonths(today);
 };
 
 // Define the type for tooltip state
@@ -145,6 +153,9 @@ const App: React.FC = () => {
   const [fileNameToDelete, setFileNameToDelete] = useState<string | null>(null);
   const [isDeleteOptionEnabled, setIsDeleteOptionEnabled] = useState<boolean>(false);
 
+  // ✅ NEW: Allow backfill toggle (manager-controlled)
+  const [allowBackfill, setAllowBackfill] = useState<boolean>(false);
+
   const [activeTab, setActiveTab] = useState<'monthly' | 'daily'>(() => {
     try {
       const saved = typeof window !== 'undefined' ? localStorage.getItem('activeTab') : null;
@@ -153,19 +164,6 @@ const App: React.FC = () => {
       return 'monthly';
     }
   });
-
-  // ✅ NEW: Allow Backfill toggle (admin-only) + persistence
-  const [allowBackfill, setAllowBackfill] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('allowBackfill') === 'true';
-    } catch {
-      return false;
-    }
-  });
-
-  useEffect(() => {
-    try { localStorage.setItem('allowBackfill', String(allowBackfill)); } catch {}
-  }, [allowBackfill]);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
@@ -312,7 +310,7 @@ Thanks.`;
       console.log('S3 files:', data);
 
       const filesRaw = await Promise.all(
-        (data.files || [])
+        data.files
           .filter((file: { key: string }) => {
             const extension = (file.key.split('.').pop() || '').toLowerCase();
             return SUPPORTED_EXTENSIONS.includes(`.${extension}`);
@@ -418,6 +416,17 @@ Thanks.`;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
+  // ✅ NEW: When allowBackfill toggles, auto-close dropdown and reset selected month if no longer valid
+  useEffect(() => {
+    setIsDropdownOpen(false);
+    if (!selectedMonth) return;
+
+    const opts = getDropdownMonths(new Date(), allowBackfill);
+    if (!opts.includes(selectedMonth)) {
+      setSelectedMonth("");
+    }
+  }, [allowBackfill]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Manage body scroll when modal is open
   useEffect(() => {
     if (showMessageModal || showUpdateForm || isUploading || showConfirmDeleteModal) {
@@ -490,6 +499,13 @@ Thanks.`;
     return false;
   };
 
+  /**
+   * after a successful upload, log to /save-files with:
+   * - action: "upload"
+   * - uploadType: "monthly" or "daily"
+   * - segment (only for daily)
+   * - month (recommended for monthly; we pass monthLabel if available)
+   */
   const uploadFile = async (
     f: File | null,
     apiUrl: string,
@@ -513,9 +529,9 @@ Thanks.`;
     formData.append('fileName', originalFileName);
     formData.append('username', userAttributes.username || 'Unknown');
 
-    // ✅ NEW: send backfill info to backend (for future switch)
+    // ✅ NEW: send allowBackfill + selected Month Year (so backend can decide naming)
+    formData.append('allowBackfill', String(allowBackfill));
     if (monthLabelForLog) formData.append('monthLabel', monthLabelForLog);
-    formData.append('allowBackfill', allowBackfill ? 'true' : 'false');
 
     try {
       setIsUploading(true);
@@ -539,22 +555,15 @@ Thanks.`;
       setModalType('success');
       setShowMessageModal(true);
 
-      // ✅ NEW: log using S3 basename (so "Uploaded By" resolves)
+      // log uploads using /save-files
       try {
         const uploadType = monthForUpload === 'Daily' ? 'daily' : 'monthly';
-
-        const savedBasename =
-          uploadType === 'monthly' && allowBackfill
-            ? `${String(monthLabelForLog || monthForUpload).trim().replace(/\s+/g, '_')}_Planned_vs_Achieved_.csv`
-            : uploadType === 'monthly'
-              ? 'current_file.csv'
-              : originalFileName; // daily (kept as original filename in your system)
 
         await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/save-files', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            fileName: savedBasename,                 // ✅ important
+            fileName: originalFileName,
             action: 'upload',
             user: userAttributes.username || 'Unknown',
             uploadType,
@@ -562,7 +571,7 @@ Thanks.`;
             month: uploadType === 'monthly'
               ? (monthLabelForLog || monthForUpload)
               : undefined,
-            allowBackfill: uploadType === 'monthly' ? allowBackfill : undefined,
+            allowBackfill, // optional extra log
           }),
         });
       } catch (error) {
@@ -590,17 +599,8 @@ Thanks.`;
       setShowMessageModal(true);
       return;
     }
-
-    // ✅ enforce backfill-month dropdown list when BACKFILL_2025_MODE is ON
-    if (BACKFILL_2025_MODE && !BACKFILL_MONTHS_2025.includes(selectedMonth)) {
-      setModalMessage("Please select an allowed month (Jan 2025 to Nov 2025) for backfill.");
-      setModalType('error');
-      setShowMessageModal(true);
-      return;
-    }
-
     if (validateFile(file)) {
-      const monthName = selectedMonth.split(' ')[0]; // backend expects month name only (current behavior)
+      const monthName = selectedMonth.split(' ')[0]; // backend expects month name only (today)
       uploadFile(
         file,
         'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink',
@@ -810,8 +810,8 @@ Thanks.`;
     };
   }, []);
 
-  // ✅ same admin check as delete option
-  const isAdmin = (userAttributes.username || '').toLowerCase() === 'manika5170@bharatbiotech.com';
+  // ✅ same privileged users as delete option
+  const isPrivilegedUser = userAttributes.username?.toLowerCase() === 'manika5170@bharatbiotech.com';
 
   return (
     <>
@@ -1006,6 +1006,30 @@ Thanks.`;
 
               <div className="upload-section">
                 <h2>📤 Upload File</h2>
+
+                {/* ✅ NEW: Allow Backfill toggle (privileged users only) */}
+                {isPrivilegedUser && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                    <label
+                      className="delete-option-label"
+                      style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer' }}
+                    >
+                      <input
+                        type="checkbox"
+                        className="delete-option-checkbox"
+                        checked={allowBackfill}
+                        onChange={(e) => setAllowBackfill(e.target.checked)}
+                        aria-checked={allowBackfill}
+                        aria-label="Toggle allow backfill"
+                      />
+                      Allow Backfill
+                    </label>
+                    <span style={{ fontSize: '13px', color: '#666' }}>
+                      {allowBackfill ? 'Showing last 3 years' : 'Showing prev (if within 7 business days) + current + next 4'}
+                    </span>
+                  </div>
+                )}
+
                 <div className="upload-form">
                   <input
                     type="file"
@@ -1031,7 +1055,7 @@ Thanks.`;
                     </div>
                     {isDropdownOpen && (
                       <ul className="dropdown-menu">
-                        {(BACKFILL_2025_MODE ? BACKFILL_MONTHS_2025 : getFinancialYearMonths(new Date())).map((monthYear) => (
+                        {getDropdownMonths(new Date(), allowBackfill).map((monthYear) => (
                           <li
                             key={monthYear}
                             className={`dropdown-item ${selectedMonth === monthYear ? 'selected' : ''}`}
@@ -1062,189 +1086,7 @@ Thanks.`;
             <div className="file-list" style={{ position: 'relative' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                 <h2 style={{ margin: 0, marginRight: '10px' }}>📋 List of Files Submitted</h2>
-
-                {isAdmin && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <label
-                      className="delete-option-label"
-                      style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer' }}
-                    >
-                      <input
-                        type="checkbox"
-                        className="delete-option-checkbox"
-                        checked={isDeleteOptionEnabled}
-                        onChange={(e) => setIsDeleteOptionEnabled(e.target.checked)}
-                        aria-checked={isDeleteOptionEnabled}
-                        aria-label="Toggle delete option"
-                      />
-                      Delete Option
-                    </label>
-
-                    {/* ✅ NEW: Allow Backfill toggle (same admin users as delete) */}
-                    <label
-                      className="delete-option-label"
-                      style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer', gap: '8px' }}
-                      title="When ON, monthly uploads are saved as Month_Year file (backfill mode). When OFF, normal current_file behavior."
-                    >
-                      <input
-                        type="checkbox"
-                        className="delete-option-checkbox"
-                        checked={allowBackfill}
-                        onChange={(e) => setAllowBackfill(e.target.checked)}
-                        aria-checked={allowBackfill}
-                        aria-label="Toggle allow backfill"
-                      />
-                      Allow Backfill
-                    </label>
-                  </div>
-                )}
-              </div>
-
-              <div className="table-container">
-                <table className="file-table">
-                  <thead>
-                    <tr>
-                      {columns.map((col) => (
-                        !hiddenColumns.includes(col.key) && (
-                          <th
-                            key={col.key}
-                            onClick={() => handleSort(col.key)}
-                            onContextMenu={(e) => handleContextMenu(e, col.key)}
-                            className={sortColumn === col.key ? `sorted-${sortDirection}` : ''}
-                          >
-                            {col.label}
-                          </th>
-                        )
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {s3Files.length === 0 ? (
-                      <tr>
-                        <td colSpan={columns.length - hiddenColumns.length} style={{ textAlign: 'center' }}>
-                          No files found.
-                        </td>
-                      </tr>
-                    ) : (
-                      s3Files.map((row) => (
-                        <tr key={row.id}>
-                          {!hiddenColumns.includes('id') && <td>{row.id}</td>}
-                          {!hiddenColumns.includes('fileName') && (
-                            <td
-                              data-full-text={row.fileName}
-                              onMouseEnter={(e) => handleMouseEnter(e, row.fileName)}
-                              onMouseMove={handleMouseMove}
-                              onMouseLeave={handleMouseLeave}
-                              className="tooltip-target"
-                            >
-                              {row.fileName}
-                            </td>
-                          )}
-                          {!hiddenColumns.includes('fileType') && <td>{row.fileType}</td>}
-                          {!hiddenColumns.includes('filesize') && <td>{row.filesize}</td>}
-                          {!hiddenColumns.includes('dateUploaded') && (
-                            <td
-                              data-full-text={row.dateUploaded}
-                              onMouseEnter={(e) => handleMouseEnter(e, row.dateUploaded)}
-                              onMouseMove={handleMouseMove}
-                              onMouseLeave={handleMouseLeave}
-                              className="tooltip-target"
-                            >
-                              {row.dateUploaded}
-                            </td>
-                          )}
-                          {!hiddenColumns.includes('uploadedBy') && <td>{row.uploadedBy}</td>}
-                          {!hiddenColumns.includes('fileKey') && (
-                            <td>
-                              <a
-                                href="#"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  downloadFile(row.fileKey);
-                                }}
-                                className="download-link"
-                              >
-                                Download
-                              </a>
-
-                              {isAdmin && isDeleteOptionEnabled && (
-                                <>
-                                  {' / '}
-                                  <a
-                                    href="#"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      setFileToDelete(row.fileKey);
-                                      setFileNameToDelete(row.fileName);
-                                      setShowConfirmDeleteModal(true);
-                                    }}
-                                    className="download-link"
-                                    aria-label={`Delete file ${row.fileName}`}
-                                  >
-                                    Delete
-                                  </a>
-                                </>
-                              )}
-                            </td>
-                          )}
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="container">
-            <div className="left-column">
-              {/* Segment A */}
-              <div className="upload-section segment segment--ds">
-                <h2>📤 Daily Status – Drug Substance (DS)</h2>
-                <div className="upload-form">
-                  <input
-                    type="file"
-                    accept=".csv,.pdf,.xlsx,.xls,.doc,.docx"
-                    onChange={(e) => setDailyFileA(e.target.files?.[0] || null)}
-                    className="file-input"
-                    disabled={isUploading}
-                  />
-                  <button
-                    className="upload-btn"
-                    onClick={() => handleDailyUpload(dailyFileA, 'DS')}
-                    disabled={isUploading}
-                  >
-                    {isUploading ? 'Uploading...' : 'Submit File'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Segment B */}
-              <div className="upload-section segment segment--dp" style={{ marginTop: '16px' }}>
-                <h2>📤 Daily Status – Drug Product (DP)</h2>
-                <div className="upload-form">
-                  <input
-                    type="file"
-                    accept=".csv,.pdf,.xlsx,.xls,.doc,.docx"
-                    onChange={(e) => setDailyFileB(e.target.files?.[0] || null)}
-                    className="file-input"
-                    disabled={isUploading}
-                  />
-                  <button
-                    className="upload-btn"
-                    onClick={() => handleDailyUpload(dailyFileB, 'DP')}
-                    disabled={isUploading}
-                  >
-                    {isUploading ? 'Uploading...' : 'Submit File'}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="file-list" style={{ position: 'relative' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <h2 style={{ margin: 0, marginRight: '10px' }}>📋 List of Files Submitted</h2>
-                {isAdmin && (
+                {isPrivilegedUser && (
                   <label
                     className="delete-option-label"
                     style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer' }}
@@ -1329,7 +1171,169 @@ Thanks.`;
                                 Download
                               </a>
 
-                              {isAdmin && isDeleteOptionEnabled && (
+                              {isPrivilegedUser && isDeleteOptionEnabled && (
+                                <>
+                                  {' / '}
+                                  <a
+                                    href="#"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      setFileToDelete(row.fileKey);
+                                      setFileNameToDelete(row.fileName);
+                                      setShowConfirmDeleteModal(true);
+                                    }}
+                                    className="download-link"
+                                    aria-label={`Delete file ${row.fileName}`}
+                                  >
+                                    Delete
+                                  </a>
+                                </>
+                              )}
+                            </td>
+                          )}
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="container">
+            <div className="left-column">
+              {/* Segment A */}
+              <div className="upload-section segment segment--ds">
+                <h2>📤 Daily Status – Drug Substance (DS)</h2>
+                <div className="upload-form">
+                  <input
+                    type="file"
+                    accept=".csv,.pdf,.xlsx,.xls,.doc,.docx"
+                    onChange={(e) => setDailyFileA(e.target.files?.[0] || null)}
+                    className="file-input"
+                    disabled={isUploading}
+                  />
+                  <button
+                    className="upload-btn"
+                    onClick={() => handleDailyUpload(dailyFileA, 'DS')}
+                    disabled={isUploading}
+                  >
+                    {isUploading ? 'Uploading...' : 'Submit File'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Segment B */}
+              <div className="upload-section segment segment--dp" style={{ marginTop: '16px' }}>
+                <h2>📤 Daily Status – Drug Product (DP)</h2>
+                <div className="upload-form">
+                  <input
+                    type="file"
+                    accept=".csv,.pdf,.xlsx,.xls,.doc,.docx"
+                    onChange={(e) => setDailyFileB(e.target.files?.[0] || null)}
+                    className="file-input"
+                    disabled={isUploading}
+                  />
+                  <button
+                    className="upload-btn"
+                    onClick={() => handleDailyUpload(dailyFileB, 'DP')}
+                    disabled={isUploading}
+                  >
+                    {isUploading ? 'Uploading...' : 'Submit File'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="file-list" style={{ position: 'relative' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <h2 style={{ margin: 0, marginRight: '10px' }}>📋 List of Files Submitted</h2>
+                {isPrivilegedUser && (
+                  <label
+                    className="delete-option-label"
+                    style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer' }}
+                  >
+                    <input
+                      type="checkbox"
+                      className="delete-option-checkbox"
+                      checked={isDeleteOptionEnabled}
+                      onChange={(e) => setIsDeleteOptionEnabled(e.target.checked)}
+                      aria-checked={isDeleteOptionEnabled}
+                      aria-label="Toggle delete option"
+                    />
+                    Delete Option
+                  </label>
+                )}
+              </div>
+
+              <div className="table-container">
+                <table className="file-table">
+                  <thead>
+                    <tr>
+                      {columns.map((col) => (
+                        !hiddenColumns.includes(col.key) && (
+                          <th
+                            key={col.key}
+                            onClick={() => handleSort(col.key)}
+                            onContextMenu={(e) => handleContextMenu(e, col.key)}
+                            className={sortColumn === col.key ? `sorted-${sortDirection}` : ''}
+                          >
+                            {col.label}
+                          </th>
+                        )
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {s3Files.length === 0 ? (
+                      <tr>
+                        <td colSpan={columns.length - hiddenColumns.length} style={{ textAlign: 'center' }}>
+                          No files found.
+                        </td>
+                      </tr>
+                    ) : (
+                      s3Files.map((row) => (
+                        <tr key={row.id}>
+                          {!hiddenColumns.includes('id') && <td>{row.id}</td>}
+                          {!hiddenColumns.includes('fileName') && (
+                            <td
+                              data-full-text={row.fileName}
+                              onMouseEnter={(e) => handleMouseEnter(e, row.fileName)}
+                              onMouseMove={handleMouseMove}
+                              onMouseLeave={handleMouseLeave}
+                              className="tooltip-target"
+                            >
+                              {row.fileName}
+                            </td>
+                          )}
+                          {!hiddenColumns.includes('fileType') && <td>{row.fileType}</td>}
+                          {!hiddenColumns.includes('filesize') && <td>{row.filesize}</td>}
+                          {!hiddenColumns.includes('dateUploaded') && (
+                            <td
+                              data-full-text={row.dateUploaded}
+                              onMouseEnter={(e) => handleMouseEnter(e, row.dateUploaded)}
+                              onMouseMove={handleMouseMove}
+                              onMouseLeave={handleMouseLeave}
+                              className="tooltip-target"
+                            >
+                              {row.dateUploaded}
+                            </td>
+                          )}
+                          {!hiddenColumns.includes('uploadedBy') && <td>{row.uploadedBy}</td>}
+                          {!hiddenColumns.includes('fileKey') && (
+                            <td>
+                              <a
+                                href="#"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  downloadFile(row.fileKey);
+                                }}
+                                className="download-link"
+                              >
+                                Download
+                              </a>
+
+                              {isPrivilegedUser && isDeleteOptionEnabled && (
                                 <>
                                   {' / '}
                                   <a
