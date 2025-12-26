@@ -449,6 +449,9 @@ const loadS3Files = async (tabOverride?: 'monthly' | 'daily') => {
 
     fetchUserData();
     loadS3Files();
+    useEffect(() => {
+      loadS3Files(activeTab);
+    }, [activeTab]);
   }, []);
 
   // Manage body scroll when modal is open
