@@ -6,7 +6,7 @@ import { getCurrentUser, fetchUserAttributes, updateUserAttributes } from '@aws-
 // --- Footer link helpers (replace with your real values) ---
 const DASHBOARD_URL = 'https://your-dashboard-url.example.com'; // TODO: replace
 const SUPPORT_EMAIL = 'analytics@bharatbiotech.com';            // TODO: confirm or replace
-const BA_PHONE_TEL  = '+914000000000';                         // TODO: replace with real phone in E.164
+const BA_PHONE_TEL  = '+9140000000';                            // TODO: replace with real phone in E.164
 
 // Debug logging to console
 console.log('getCurrentUser:', getCurrentUser);
@@ -94,7 +94,7 @@ type FileRow = {
   fileType: string;
   filesize: string;       // "123.4 KB"
   dateUploaded: string;   // formatted date string (display only)
-  dateUploadedTs: number; // ✅ numeric timestamp used for sorting
+  dateUploadedTs: number; // numeric timestamp used for sorting
   uploadedBy: string;
   fileKey: string;
 };
@@ -153,6 +153,19 @@ const App: React.FC = () => {
       return 'monthly';
     }
   });
+
+  // ✅ NEW: Allow Backfill toggle (admin-only) + persistence
+  const [allowBackfill, setAllowBackfill] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('allowBackfill') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem('allowBackfill', String(allowBackfill)); } catch {}
+  }, [allowBackfill]);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
@@ -299,7 +312,7 @@ Thanks.`;
       console.log('S3 files:', data);
 
       const filesRaw = await Promise.all(
-        data.files
+        (data.files || [])
           .filter((file: { key: string }) => {
             const extension = (file.key.split('.').pop() || '').toLowerCase();
             return SUPPORTED_EXTENSIONS.includes(`.${extension}`);
@@ -311,7 +324,6 @@ Thanks.`;
             const fileType = fileNameParts[fileNameParts.length - 1]?.toLowerCase() || '';
             const filesizeKB = (file.size / 1024).toFixed(1) + ' KB';
 
-            // ✅ use ISO timestamp for sorting; keep locale string only for display
             const dateUploadedTs = new Date(file.lastModified).getTime();
             const dateUploaded = new Date(file.lastModified).toLocaleString('en-IN', {
               year: 'numeric',
@@ -325,14 +337,12 @@ Thanks.`;
 
             let uploadedBy = 'Unknown';
             try {
-              // keep fileName lookup (matches what you log on upload), but be tolerant in response field names
               const uploaderResponse = await fetch(
                 `https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/get-uploader?fileName=${encodeURIComponent(fullFileName)}`,
                 { method: 'GET', headers: { 'Content-Type': 'application/json' } }
               );
               if (uploaderResponse.ok) {
                 const uploaderData = await uploaderResponse.json().catch(() => ({}));
-                // ✅ NEW: accept multiple field names (because your logger uses `user`)
                 uploadedBy =
                   uploaderData.uploadedBy ||
                   uploaderData.user ||
@@ -346,7 +356,7 @@ Thanks.`;
             }
 
             return {
-              id: index + 1, // will be re-numbered after sorting
+              id: index + 1,
               fileName,
               fileType,
               filesize: filesizeKB,
@@ -358,10 +368,7 @@ Thanks.`;
           })
       );
 
-      // ✅ NEW: sort by timestamp (reliable)
       const sorted = [...filesRaw].sort((a, b) => b.dateUploadedTs - a.dateUploadedTs);
-
-      // ✅ NEW: re-number S.No. after sorting so it matches the displayed order
       const withIds = sorted.map((row, idx) => ({ ...row, id: idx + 1 }));
 
       setS3Files(withIds);
@@ -483,13 +490,6 @@ Thanks.`;
     return false;
   };
 
-  /**
-   * after a successful upload, log to /save-files with:
-   * - action: "upload"
-   * - uploadType: "monthly" or "daily"
-   * - segment (only for daily)
-   * - month (recommended for monthly; we pass monthLabel if available)
-   */
   const uploadFile = async (
     f: File | null,
     apiUrl: string,
@@ -513,6 +513,10 @@ Thanks.`;
     formData.append('fileName', originalFileName);
     formData.append('username', userAttributes.username || 'Unknown');
 
+    // ✅ NEW: send backfill info to backend (for future switch)
+    if (monthLabelForLog) formData.append('monthLabel', monthLabelForLog);
+    formData.append('allowBackfill', allowBackfill ? 'true' : 'false');
+
     try {
       setIsUploading(true);
       setUploadKey((prev) => prev + 1);
@@ -535,15 +539,22 @@ Thanks.`;
       setModalType('success');
       setShowMessageModal(true);
 
-      // log uploads using /save-files
+      // ✅ NEW: log using S3 basename (so "Uploaded By" resolves)
       try {
         const uploadType = monthForUpload === 'Daily' ? 'daily' : 'monthly';
+
+        const savedBasename =
+          uploadType === 'monthly' && allowBackfill
+            ? `${String(monthLabelForLog || monthForUpload).trim().replace(/\s+/g, '_')}_Planned_vs_Achieved_.csv`
+            : uploadType === 'monthly'
+              ? 'current_file.csv'
+              : originalFileName; // daily (kept as original filename in your system)
 
         await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/save-files', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            fileName: originalFileName,
+            fileName: savedBasename,                 // ✅ important
             action: 'upload',
             user: userAttributes.username || 'Unknown',
             uploadType,
@@ -551,6 +562,7 @@ Thanks.`;
             month: uploadType === 'monthly'
               ? (monthLabelForLog || monthForUpload)
               : undefined,
+            allowBackfill: uploadType === 'monthly' ? allowBackfill : undefined,
           }),
         });
       } catch (error) {
@@ -578,8 +590,17 @@ Thanks.`;
       setShowMessageModal(true);
       return;
     }
+
+    // ✅ enforce backfill-month dropdown list when BACKFILL_2025_MODE is ON
+    if (BACKFILL_2025_MODE && !BACKFILL_MONTHS_2025.includes(selectedMonth)) {
+      setModalMessage("Please select an allowed month (Jan 2025 to Nov 2025) for backfill.");
+      setModalType('error');
+      setShowMessageModal(true);
+      return;
+    }
+
     if (validateFile(file)) {
-      const monthName = selectedMonth.split(' ')[0]; // backend expects month name only
+      const monthName = selectedMonth.split(' ')[0]; // backend expects month name only (current behavior)
       uploadFile(
         file,
         'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink',
@@ -740,7 +761,6 @@ Thanks.`;
         return newDirection === 'asc' ? sizeA - sizeB : sizeB - sizeA;
       }
 
-      // ✅ NEW: use timestamp, not locale string
       if (column === 'dateUploaded') {
         return newDirection === 'asc'
           ? a.dateUploadedTs - b.dateUploadedTs
@@ -752,7 +772,6 @@ Thanks.`;
         : String(valueB).localeCompare(String(valueA));
     });
 
-    // ✅ re-number after any sort so S.No. matches visible order
     const withIds = sortedFiles.map((row, idx) => ({ ...row, id: idx + 1 }));
     setS3Files(withIds);
   };
@@ -790,6 +809,9 @@ Thanks.`;
       window.removeEventListener('resize', updateVar);
     };
   }, []);
+
+  // ✅ same admin check as delete option
+  const isAdmin = (userAttributes.username || '').toLowerCase() === 'manika5170@bharatbiotech.com';
 
   return (
     <>
@@ -1040,21 +1062,41 @@ Thanks.`;
             <div className="file-list" style={{ position: 'relative' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                 <h2 style={{ margin: 0, marginRight: '10px' }}>📋 List of Files Submitted</h2>
-                {userAttributes.username?.toLowerCase() === 'manika5170@bharatbiotech.com' && (
-                  <label
-                    className="delete-option-label"
-                    style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer' }}
-                  >
-                    <input
-                      type="checkbox"
-                      className="delete-option-checkbox"
-                      checked={isDeleteOptionEnabled}
-                      onChange={(e) => setIsDeleteOptionEnabled(e.target.checked)}
-                      aria-checked={isDeleteOptionEnabled}
-                      aria-label="Toggle delete option"
-                    />
-                    Delete Option
-                  </label>
+
+                {isAdmin && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <label
+                      className="delete-option-label"
+                      style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer' }}
+                    >
+                      <input
+                        type="checkbox"
+                        className="delete-option-checkbox"
+                        checked={isDeleteOptionEnabled}
+                        onChange={(e) => setIsDeleteOptionEnabled(e.target.checked)}
+                        aria-checked={isDeleteOptionEnabled}
+                        aria-label="Toggle delete option"
+                      />
+                      Delete Option
+                    </label>
+
+                    {/* ✅ NEW: Allow Backfill toggle (same admin users as delete) */}
+                    <label
+                      className="delete-option-label"
+                      style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer', gap: '8px' }}
+                      title="When ON, monthly uploads are saved as Month_Year file (backfill mode). When OFF, normal current_file behavior."
+                    >
+                      <input
+                        type="checkbox"
+                        className="delete-option-checkbox"
+                        checked={allowBackfill}
+                        onChange={(e) => setAllowBackfill(e.target.checked)}
+                        aria-checked={allowBackfill}
+                        aria-label="Toggle allow backfill"
+                      />
+                      Allow Backfill
+                    </label>
+                  </div>
                 )}
               </div>
 
@@ -1125,7 +1167,7 @@ Thanks.`;
                                 Download
                               </a>
 
-                              {userAttributes.username?.toLowerCase() === 'manika5170@bharatbiotech.com' && isDeleteOptionEnabled && (
+                              {isAdmin && isDeleteOptionEnabled && (
                                 <>
                                   {' / '}
                                   <a
@@ -1202,7 +1244,7 @@ Thanks.`;
             <div className="file-list" style={{ position: 'relative' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                 <h2 style={{ margin: 0, marginRight: '10px' }}>📋 List of Files Submitted</h2>
-                {userAttributes.username?.toLowerCase() === 'manika5170@bharatbiotech.com' && (
+                {isAdmin && (
                   <label
                     className="delete-option-label"
                     style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer' }}
@@ -1287,7 +1329,7 @@ Thanks.`;
                                 Download
                               </a>
 
-                              {userAttributes.username?.toLowerCase() === 'manika5170@bharatbiotech.com' && isDeleteOptionEnabled && (
+                              {isAdmin && isDeleteOptionEnabled && (
                                 <>
                                   {' / '}
                                   <a
