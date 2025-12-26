@@ -18,6 +18,25 @@ const BUCKET_NAME = 'production-bbil';
 const DAILY_FOLDER_NAME = 'Production_daily_upload_files_location/';
 const MONTHLY_FOLDER_NAME = 'Production_Upload_Files/';
 
+// ===== TEMP BACKFILL SWITCH =====
+// Set true only for one-time upload; set back to false afterwards.
+const BACKFILL_2025_MODE = true;
+
+// When backfill is enabled, allow these months only
+const BACKFILL_MONTHS_2025 = [
+  "January 2025",
+  "February 2025",
+  "March 2025",
+  "April 2025",
+  "May 2025",
+  "June 2025",
+  "July 2025",
+  "August 2025",
+  "September 2025",
+  "October 2025",
+  "November 2025",
+];
+
 // Supported file extensions
 const SUPPORTED_EXTENSIONS = ['.csv', '.pdf', '.xlsx', '.xls', '.doc', '.docx'];
 
@@ -990,7 +1009,7 @@ Thanks.`;
                     </div>
                     {isDropdownOpen && (
                       <ul className="dropdown-menu">
-                        {getFinancialYearMonths(new Date()).map((monthYear) => (
+                        {(BACKFILL_2025_MODE ? BACKFILL_MONTHS_2025 : getFinancialYearMonths(new Date())).map((monthYear) => (
                           <li
                             key={monthYear}
                             className={`dropdown-item ${selectedMonth === monthYear ? 'selected' : ''}`}
