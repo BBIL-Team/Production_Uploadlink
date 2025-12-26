@@ -14,7 +14,7 @@ const DAILY_FOLDER_NAME = 'Production_daily_upload_files_location/';
 const MONTHLY_FOLDER_NAME = 'Production_Upload_Files/';
 
 // ===== TEMP BACKFILL SWITCH =====
-const BACKFILL_2025_MODE = true;
+const BACKFILL_2025_MODE = false;
 const BACKFILL_MONTHS_2025 = [
   "January 2025",
   "February 2025",
