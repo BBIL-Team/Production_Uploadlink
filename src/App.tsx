@@ -5,8 +5,8 @@ import { getCurrentUser, fetchUserAttributes, updateUserAttributes } from '@aws-
 
 // --- Footer link helpers (replace with your real values) ---
 const DASHBOARD_URL = 'https://your-dashboard-url.example.com'; // TODO: replace
-const SUPPORT_EMAIL = 'analytics@bharatbiotech.com';            // TODO: confirm or replace
-const BA_PHONE_TEL  = '+914000000000';                          // TODO: replace with real phone in E.164
+const SUPPORT_EMAIL = 'analytics@bharatbiotech.com'; // TODO: confirm or replace
+const BA_PHONE_TEL = '+914000000000'; // TODO: replace with real phone in E.164
 
 // ====== APIs ======
 const API_BASE = 'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1';
@@ -30,8 +30,18 @@ const MONTHLY_FOLDER_NAME = 'Production_Upload_Files/';
 const SUPPORTED_EXTENSIONS = ['.csv', '.pdf', '.xlsx', '.xls', '.doc', '.docx'];
 
 const months = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
 // Tooltip state
@@ -47,7 +57,7 @@ type FileRow = {
   fileName: string;
   fileType: string;
   filesize: string;
-  dateUploaded: string;   // display
+  dateUploaded: string; // display
   dateUploadedTs: number; // sorting
   uploadedBy: string;
   fileKey: string;
@@ -179,7 +189,9 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-    try { localStorage.setItem('activeTab', activeTab); } catch {}
+    try {
+      localStorage.setItem('activeTab', activeTab);
+    } catch {}
   }, [activeTab]);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -211,8 +223,12 @@ Please call me back regarding the Production Dashboard.
 
 Thanks.`;
 
-  const reportMailto = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(reportSubject)}&body=${encodeURIComponent(reportBodyRaw)}`;
-  const callbackMailto = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(callbackSubject)}&body=${encodeURIComponent(callbackBodyRaw)}`;
+  const reportMailto = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(reportSubject)}&body=${encodeURIComponent(
+    reportBodyRaw
+  )}`;
+  const callbackMailto = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(callbackSubject)}&body=${encodeURIComponent(
+    callbackBodyRaw
+  )}`;
 
   const [tooltip, setTooltip] = useState<TooltipState>({ visible: false, content: '', x: 0, y: 0 });
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({ visible: false, x: 0, y: 0, column: null });
@@ -358,13 +374,30 @@ Thanks.`;
   const [allowBackfill, setAllowBackfill] = useState<boolean>(false);
   const [isBackfillLoaded, setIsBackfillLoaded] = useState<boolean>(false);
 
+  // ✅ Normalize username for header
+  const getXUser = () => String(userAttributes.username || '').trim();
+
   const fetchAllowBackfill = async () => {
     try {
       const res = await fetchWithTimeout(
         `${API_SETTINGS}?settingKey=allowBackfill`,
-        { method: 'GET', mode: 'cors', credentials: 'omit' },
+        {
+          method: 'GET',
+          headers: {
+            // Not required by lambda for GET, but harmless + helps consistency
+            'X-User': getXUser(),
+          },
+          mode: 'cors',
+          credentials: 'omit',
+        },
         15000
       );
+
+      if (!res.ok) {
+        const body = await readResponseBody(res);
+        throw new Error(body || `GET /settings failed (HTTP ${res.status})`);
+      }
+
       const data = await res.json().catch(() => ({}));
       setAllowBackfill(Boolean(data?.valueBool));
     } catch (e) {
@@ -376,14 +409,24 @@ Thanks.`;
   };
 
   const updateAllowBackfill = async (nextValue: boolean) => {
+    // optimistic UI (optional) — comment these 2 lines if you don’t want optimistic updates
+    const prev = allowBackfill;
+    setAllowBackfill(nextValue);
+
     try {
+      const xUser = getXUser();
+      if (!xUser) {
+        throw new Error('Missing username (X-User). Please login again.');
+      }
+
       const res = await fetchWithTimeout(
         API_SETTINGS,
         {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            'X-User': userAttributes.username || 'unknown',
+            // ✅ This is REQUIRED by your BBIL_Settings lambda for admin auth
+            'X-User': xUser,
           },
           body: JSON.stringify({
             settingKey: 'allowBackfill',
@@ -400,16 +443,22 @@ Thanks.`;
         throw new Error(body || `PUT /settings failed (HTTP ${res.status})`);
       }
 
-      setAllowBackfill(nextValue);
+      // Keep state in sync with backend response (in case backend changes it)
+      const data = await res.json().catch(() => ({}));
+      if (typeof data?.valueBool === 'boolean') setAllowBackfill(Boolean(data.valueBool));
     } catch (e: any) {
       console.error('updateAllowBackfill failed', e);
+
+      // revert optimistic update
+      setAllowBackfill(prev);
+
       setModalMessage(`Failed to update backfill setting: ${e?.message || 'Unknown error'}`);
       setModalType('error');
       setShowMessageModal(true);
     }
   };
 
-  // Fetch user attributes and initial table + settings
+  // Fetch user attributes and initial table
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -420,9 +469,7 @@ Thanks.`;
         const username = attributes?.preferred_username || attributes?.email || '';
         const phoneNumber = attributes?.phone_number || '';
         const maskedPhoneNumber =
-          phoneNumber && phoneNumber.length >= 2
-            ? `91${'x'.repeat(phoneNumber.length - 4)}${phoneNumber.slice(-2)}`
-            : '';
+          phoneNumber && phoneNumber.length >= 2 ? `91${'x'.repeat(phoneNumber.length - 4)}${phoneNumber.slice(-2)}` : '';
 
         setUserAttributes({ username, phoneNumber: maskedPhoneNumber });
       } catch (error) {
@@ -435,9 +482,15 @@ Thanks.`;
 
     fetchUserData();
     loadS3Files(activeTab);
-    fetchAllowBackfill();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ✅ Fetch allowBackfill only AFTER we have username (fixes “Failed to fetch” / 403 confusion)
+  useEffect(() => {
+    if (!userAttributes.username) return;
+    fetchAllowBackfill();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userAttributes.username]);
 
   // Reload table when switching tabs
   useEffect(() => {
@@ -526,9 +579,11 @@ Thanks.`;
     formData.append('month', monthForUpload);
     if (segment) formData.append('segment', segment);
     formData.append('fileName', originalFileName);
+
+    // keep as username (your python lambda reads fields.get("username"))
     formData.append('username', userAttributes.username || 'Unknown');
 
-    // ✅ backfill info for backend (safe even if backend ignores)
+    // ✅ backfill info for backend
     formData.append('allowBackfill', allowBackfill ? 'true' : 'false');
     if (monthLabelForLog) formData.append('monthLabel', monthLabelForLog);
 
@@ -562,12 +617,16 @@ Thanks.`;
 
       const uploadType = monthForUpload === 'Daily' ? 'daily' : 'monthly';
 
+      // NOTE: your python lambda writes:
+      //  - backfill -> "{Dec_2025}_Planned_vs_Achieved.csv"
+      //  - normal -> "current_file.csv"
+      // So log names should match that.
       const savedBasename =
         uploadType === 'monthly' && allowBackfill
-          ? `${String(monthLabelForLog || '').trim().replace(/\s+/g, '_')}_Planned_vs_Achieved_.csv`
+          ? `${String(monthLabelForLog || '').trim().replace(/\s+/g, '_')}_Planned_vs_Achieved.csv`
           : uploadType === 'monthly'
-            ? 'current_file.csv'
-            : originalFileName;
+          ? 'current_file.csv'
+          : originalFileName;
 
       // Upload log (best effort)
       try {
@@ -600,7 +659,7 @@ Thanks.`;
       const msg =
         error?.name === 'AbortError'
           ? 'Upload timed out (network slow or API not responding).'
-          : (error?.message || 'Failed to fetch');
+          : error?.message || 'Failed to fetch';
 
       setModalMessage(`An error occurred while uploading the file: ${msg}`);
       setModalType('error');
@@ -653,7 +712,11 @@ Thanks.`;
 
       const dataText = await res.text().catch(() => '');
       let data: any = {};
-      try { data = dataText ? JSON.parse(dataText) : {}; } catch { data = { raw: dataText }; }
+      try {
+        data = dataText ? JSON.parse(dataText) : {};
+      } catch {
+        data = { raw: dataText };
+      }
 
       if (res.ok && data.presigned_url) {
         const link = document.createElement('a');
@@ -780,14 +843,10 @@ Thanks.`;
       }
 
       if (column === 'dateUploaded') {
-        return newDirection === 'asc'
-          ? a.dateUploadedTs - b.dateUploadedTs
-          : b.dateUploadedTs - a.dateUploadedTs;
+        return newDirection === 'asc' ? a.dateUploadedTs - b.dateUploadedTs : b.dateUploadedTs - a.dateUploadedTs;
       }
 
-      return newDirection === 'asc'
-        ? String(valueA).localeCompare(String(valueB))
-        : String(valueB).localeCompare(String(valueA));
+      return newDirection === 'asc' ? String(valueA).localeCompare(String(valueB)) : String(valueB).localeCompare(String(valueA));
     });
 
     const withIds = sortedFiles.map((row, idx) => ({ ...row, id: idx + 1 }));
@@ -853,7 +912,9 @@ Thanks.`;
               <span className="phone-number">{userAttributes.phoneNumber || 'Phone: Not set'}</span>
             </div>
           )}
-          <button className="sign-out-btn" onClick={signOut}>Sign out</button>
+          <button className="sign-out-btn" onClick={signOut}>
+            Sign out
+          </button>
         </div>
       </header>
 
@@ -866,7 +927,9 @@ Thanks.`;
 
         {contextMenu.visible && (
           <div ref={contextMenuRef} className="context-menu" style={{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }}>
-            <div className="context-menu-item" onClick={handleHideColumn}>Hide Column</div>
+            <div className="context-menu-item" onClick={handleHideColumn}>
+              Hide Column
+            </div>
           </div>
         )}
 
@@ -883,7 +946,9 @@ Thanks.`;
                   className="username-input"
                 />
                 <div className="modal-buttons">
-                  <button type="submit" className="submit-btn">Submit</button>
+                  <button type="submit" className="submit-btn">
+                    Submit
+                  </button>
                   <button type="button" className="cancel-btn" onClick={() => setShowUpdateForm(false)}>
                     Cancel
                   </button>
@@ -900,10 +965,10 @@ Thanks.`;
                 {modalType === 'success' ? '✅' : '❌'}
               </span>
               <h3 className="modal-title">{modalType === 'success' ? 'Success' : 'Error'}</h3>
-              <p className={`message-text ${modalType === 'success' ? 'success-text' : 'error-text'}`}>
-                {modalMessage}
-              </p>
-              <button className="ok-btn" onClick={closeMessageModal}>OK</button>
+              <p className={`message-text ${modalType === 'success' ? 'success-text' : 'error-text'}`}>{modalMessage}</p>
+              <button className="ok-btn" onClick={closeMessageModal}>
+                OK
+              </button>
             </div>
           </div>
         )}
@@ -913,11 +978,15 @@ Thanks.`;
             <div className="modal-content">
               <h3 className="modal-title">Confirm Deletion</h3>
               <p className="message-text">
-                Are you sure you want to delete the file "{fileNameToDelete}"? This action cannot be undone.
+                Are you sure you want to delete the file &quot;{fileNameToDelete}&quot;? This action cannot be undone.
               </p>
               <div className="modal-buttons" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <button className="submit-btn" onClick={handleConfirmDelete}>Confirm</button>
-                <button className="cancel-btn" onClick={handleCancelDelete}>Cancel</button>
+                <button className="submit-btn" onClick={handleConfirmDelete}>
+                  Confirm
+                </button>
+                <button className="cancel-btn" onClick={handleCancelDelete}>
+                  Cancel
+                </button>
               </div>
             </div>
           </div>
@@ -961,8 +1030,7 @@ Thanks.`;
           <div className="mode-banner" role="status">
             You’re in <strong>Daily Update</strong> mode. Choose the correct segment below:
             <span className="legend">
-              <span className="pill pill-ds">DS</span> Drug Substance
-              <span className="dot">•</span>
+              <span className="pill pill-ds">DS</span> Drug Substance <span className="dot">•</span>{' '}
               <span className="pill pill-dp">DP</span> Drug Product
             </span>
           </div>
@@ -1079,7 +1147,14 @@ Thanks.`;
 
                     <label
                       className="delete-option-label"
-                      style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer', gap: '8px' }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        fontSize: '16px',
+                        color: '#333',
+                        cursor: 'pointer',
+                        gap: '8px',
+                      }}
                       title="Global setting (applies to all users). ON = last 3 years. OFF = limited window."
                     >
                       <input
@@ -1101,18 +1176,19 @@ Thanks.`;
                 <table className="file-table">
                   <thead>
                     <tr>
-                      {columns.map((col) => (
-                        !hiddenColumns.includes(col.key) && (
-                          <th
-                            key={col.key}
-                            onClick={() => handleSort(col.key)}
-                            onContextMenu={(e) => handleContextMenu(e, col.key)}
-                            className={sortColumn === col.key ? `sorted-${sortDirection}` : ''}
-                          >
-                            {col.label}
-                          </th>
-                        )
-                      ))}
+                      {columns.map(
+                        (col) =>
+                          !hiddenColumns.includes(col.key) && (
+                            <th
+                              key={col.key}
+                              onClick={() => handleSort(col.key)}
+                              onContextMenu={(e) => handleContextMenu(e, col.key)}
+                              className={sortColumn === col.key ? `sorted-${sortDirection}` : ''}
+                            >
+                              {col.label}
+                            </th>
+                          )
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -1155,7 +1231,10 @@ Thanks.`;
                             <td>
                               <a
                                 href="#"
-                                onClick={(e) => { e.preventDefault(); downloadFile(row.fileKey); }}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  downloadFile(row.fileKey);
+                                }}
                                 className="download-link"
                               >
                                 Download
@@ -1249,18 +1328,19 @@ Thanks.`;
                 <table className="file-table">
                   <thead>
                     <tr>
-                      {columns.map((col) => (
-                        !hiddenColumns.includes(col.key) && (
-                          <th
-                            key={col.key}
-                            onClick={() => handleSort(col.key)}
-                            onContextMenu={(e) => handleContextMenu(e, col.key)}
-                            className={sortColumn === col.key ? `sorted-${sortDirection}` : ''}
-                          >
-                            {col.label}
-                          </th>
-                        )
-                      ))}
+                      {columns.map(
+                        (col) =>
+                          !hiddenColumns.includes(col.key) && (
+                            <th
+                              key={col.key}
+                              onClick={() => handleSort(col.key)}
+                              onContextMenu={(e) => handleContextMenu(e, col.key)}
+                              className={sortColumn === col.key ? `sorted-${sortDirection}` : ''}
+                            >
+                              {col.label}
+                            </th>
+                          )
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -1303,7 +1383,10 @@ Thanks.`;
                             <td>
                               <a
                                 href="#"
-                                onClick={(e) => { e.preventDefault(); downloadFile(row.fileKey); }}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  downloadFile(row.fileKey);
+                                }}
                                 className="download-link"
                               >
                                 Download
