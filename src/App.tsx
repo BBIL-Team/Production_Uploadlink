@@ -6,37 +6,28 @@ import { getCurrentUser, fetchUserAttributes, updateUserAttributes } from '@aws-
 // --- Footer link helpers (replace with your real values) ---
 const DASHBOARD_URL = 'https://your-dashboard-url.example.com'; // TODO: replace
 const SUPPORT_EMAIL = 'analytics@bharatbiotech.com';            // TODO: confirm or replace
-const BA_PHONE_TEL  = '+9140000000';                            // TODO: replace with real phone in E.164
+const BA_PHONE_TEL  = '+914000000000';                          // TODO: replace with real phone in E.164
+
+// ====== APIs ======
+const API_LIST_FILES = 'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/list-files';
+const API_GET_UPLOADER = 'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/get-uploader';
+const API_SAVE_FILES = 'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/save-files';
+const API_PRESIGNED = 'https://e3blv3dko6.execute-api.ap-south-1.amazonaws.com/P1/presigned_urls';
+
+const API_MONTHLY_UPLOAD = 'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink';
+const API_DAILY_UPLOAD = 'https://1whw41i19a.execute-api.ap-south-1.amazonaws.com/S1/Production_DailyUpload';
 
 // Hardcoded bucket and folder names
 const BUCKET_NAME = 'production-bbil';
 const DAILY_FOLDER_NAME = 'Production_daily_upload_files_location/';
 const MONTHLY_FOLDER_NAME = 'Production_Upload_Files/';
 
-// ===== TEMP BACKFILL SWITCH =====
-// If true, monthly dropdown is restricted to BACKFILL_MONTHS_2025.
-const BACKFILL_2025_MODE = true;
-
-const BACKFILL_MONTHS_2025 = [
-  "January 2025",
-  "February 2025",
-  "March 2025",
-  "April 2025",
-  "May 2025",
-  "June 2025",
-  "July 2025",
-  "August 2025",
-  "September 2025",
-  "October 2025",
-  "November 2025",
-];
-
 // Supported file extensions
 const SUPPORTED_EXTENSIONS = ['.csv', '.pdf', '.xlsx', '.xls', '.doc', '.docx'];
 
 const months = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December"
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
 // Function to get financial year months (previous month if <= 6th, current month, remaining months)
@@ -64,17 +55,13 @@ const getFinancialYearMonths = (currentDate: Date) => {
   result.push(`${months[currentMonth]} ${currentYear}`);
 
   // Remaining months: from currentMonth + 1 to March
-  for (let month = currentMonth + 1; month <= 11; month++) {
-    result.push(`${months[month]} ${financialYearStartYear}`);
-  }
-  for (let month = 0; month <= 2; month++) {
-    result.push(`${months[month]} ${financialYearEndYear}`);
-  }
+  for (let m = currentMonth + 1; m <= 11; m++) result.push(`${months[m]} ${financialYearStartYear}`);
+  for (let m = 0; m <= 2; m++) result.push(`${months[m]} ${financialYearEndYear}`);
 
   return result;
 };
 
-// Define the type for tooltip state
+// Tooltip state
 interface TooltipState {
   visible: boolean;
   content: string;
@@ -86,20 +73,43 @@ type FileRow = {
   id: number;
   fileName: string;
   fileType: string;
-  filesize: string;       // "123.4 KB"
-  dateUploaded: string;   // formatted date string (display only)
-  dateUploadedTs: number; // numeric timestamp used for sorting
+  filesize: string;
+  dateUploaded: string;   // display
+  dateUploadedTs: number; // sorting
   uploadedBy: string;
   fileKey: string;
 };
 
-// Define the type for context menu state
+// Context menu state
 interface ContextMenuState {
   visible: boolean;
   x: number;
   y: number;
   column: keyof FileRow | null;
-};
+}
+
+// Helper: fetch with timeout (prevents demo hangs)
+async function fetchWithTimeout(input: RequestInfo, init: RequestInit = {}, timeoutMs = 25000) {
+  const controller = new AbortController();
+  const id = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    window.clearTimeout(id);
+  }
+}
+
+// Helper: best-effort parse error body
+async function readResponseBody(res: Response) {
+  const text = await res.text().catch(() => '');
+  if (!text) return '';
+  try {
+    const json = JSON.parse(text);
+    return json?.message || json?.error || text;
+  } catch {
+    return text;
+  }
+}
 
 const App: React.FC = () => {
   const { signOut } = useAuthenticator();
@@ -107,8 +117,9 @@ const App: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [dailyFileA, setDailyFileA] = useState<File | null>(null);
   const [dailyFileB, setDailyFileB] = useState<File | null>(null);
-  const [selectedMonth, setSelectedMonth] = useState<string>("");
-  const [displayedMonth, setDisplayedMonth] = useState<string>("");
+
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
+  const [displayedMonth, setDisplayedMonth] = useState<string>('');
   const [year, setYear] = useState<number>(2025);
 
   const [userAttributes, setUserAttributes] = useState<{ username?: string; phoneNumber?: string }>({
@@ -117,7 +128,7 @@ const App: React.FC = () => {
   });
 
   const [showUpdateForm, setShowUpdateForm] = useState<boolean>(false);
-  const [newUsername, setNewUsername] = useState<string>("");
+  const [newUsername, setNewUsername] = useState<string>('');
   const [isLoading, setLoading] = useState(true);
 
   const [isUploading, setIsUploading] = useState<boolean>(false);
@@ -126,7 +137,7 @@ const App: React.FC = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
 
   const [showMessageModal, setShowMessageModal] = useState<boolean>(false);
-  const [modalMessage, setModalMessage] = useState<string>("");
+  const [modalMessage, setModalMessage] = useState<string>('');
   const [modalType, setModalType] = useState<'success' | 'error'>('success');
 
   const [s3Files, setS3Files] = useState<FileRow[]>([]);
@@ -148,18 +159,9 @@ const App: React.FC = () => {
     }
   });
 
-  // ✅ Allow Backfill toggle (admin-only UI) + persistence
-  const [allowBackfill, setAllowBackfill] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('allowBackfill') === 'true';
-    } catch {
-      return false;
-    }
-  });
-
   useEffect(() => {
-    try { localStorage.setItem('allowBackfill', String(allowBackfill)); } catch {}
-  }, [allowBackfill]);
+    try { localStorage.setItem('activeTab', activeTab); } catch {}
+  }, [activeTab]);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
@@ -193,31 +195,16 @@ Thanks.`;
   const reportMailto = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(reportSubject)}&body=${encodeURIComponent(reportBodyRaw)}`;
   const callbackMailto = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(callbackSubject)}&body=${encodeURIComponent(callbackBodyRaw)}`;
 
-  const [tooltip, setTooltip] = useState<TooltipState>({
-    visible: false,
-    content: '',
-    x: 0,
-    y: 0,
-  });
-
-  const [contextMenu, setContextMenu] = useState<ContextMenuState>({
-    visible: false,
-    x: 0,
-    y: 0,
-    column: null,
-  });
+  const [tooltip, setTooltip] = useState<TooltipState>({ visible: false, content: '', x: 0, y: 0 });
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>({ visible: false, x: 0, y: 0, column: null });
 
   const handleMouseEnter = (e: React.MouseEvent<HTMLTableCellElement>, content: string) => {
     setTooltip({ visible: true, content, x: e.clientX, y: e.clientY });
   };
-
   const handleMouseMove = (e: React.MouseEvent<HTMLTableCellElement>) => {
     setTooltip((prev) => ({ ...prev, x: e.clientX, y: e.clientY }));
   };
-
-  const handleMouseLeave = () => {
-    setTooltip({ visible: false, content: '', x: 0, y: 0 });
-  };
+  const handleMouseLeave = () => setTooltip({ visible: false, content: '', x: 0, y: 0 });
 
   const handleContextMenu = (e: React.MouseEvent<HTMLTableCellElement>, column: keyof FileRow) => {
     e.preventDefault();
@@ -236,10 +223,7 @@ Thanks.`;
     }
   };
 
-  useEffect(() => {
-    try { localStorage.setItem('activeTab', activeTab); } catch {}
-  }, [activeTab]);
-
+  // Close context menu and dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (contextMenuRef.current && !contextMenuRef.current.contains(event.target as Node)) {
@@ -263,30 +247,34 @@ Thanks.`;
         folder_name: folderToUse,
       });
 
-      const response = await fetch(
-        `https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/list-files?${queryParams.toString()}`,
-        { method: 'GET', headers: { 'Content-Type': 'application/json' } }
+      const response = await fetchWithTimeout(
+        `${API_LIST_FILES}?${queryParams.toString()}`,
+        { method: 'GET', headers: { 'Content-Type': 'application/json' }, mode: 'cors', credentials: 'omit' },
+        25000
       );
 
-      if (!response.ok) throw new Error(`Failed to fetch S3 files: ${response.status}`);
+      if (!response.ok) {
+        const body = await readResponseBody(response);
+        throw new Error(`Failed to fetch S3 files (${response.status}): ${body || response.statusText}`);
+      }
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       const filesRaw = await Promise.all(
         (data.files || [])
-          .filter((file: { key: string }) => {
-            const extension = (file.key.split('.').pop() || '').toLowerCase();
+          .filter((f: { key: string }) => {
+            const extension = (f.key.split('.').pop() || '').toLowerCase();
             return SUPPORTED_EXTENSIONS.includes(`.${extension}`);
           })
-          .map(async (file: { key: string; size: number; lastModified: string }, index: number) => {
-            const fullFileName = file.key.split('/').pop() || '';
+          .map(async (f: { key: string; size: number; lastModified: string }, index: number) => {
+            const fullFileName = f.key.split('/').pop() || '';
             const fileNameParts = fullFileName.split('.');
             const fileName = fileNameParts.slice(0, -1).join('.');
             const fileType = fileNameParts[fileNameParts.length - 1]?.toLowerCase() || '';
-            const filesizeKB = (file.size / 1024).toFixed(1) + ' KB';
+            const filesizeKB = (f.size / 1024).toFixed(1) + ' KB';
 
-            const dateUploadedTs = new Date(file.lastModified).getTime();
-            const dateUploaded = new Date(file.lastModified).toLocaleString('en-IN', {
+            const dateUploadedTs = new Date(f.lastModified).getTime();
+            const dateUploaded = new Date(f.lastModified).toLocaleString('en-IN', {
               year: 'numeric',
               month: '2-digit',
               day: '2-digit',
@@ -298,9 +286,10 @@ Thanks.`;
 
             let uploadedBy = 'Unknown';
             try {
-              const uploaderResponse = await fetch(
-                `https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/get-uploader?fileName=${encodeURIComponent(fullFileName)}`,
-                { method: 'GET', headers: { 'Content-Type': 'application/json' } }
+              const uploaderResponse = await fetchWithTimeout(
+                `${API_GET_UPLOADER}?fileName=${encodeURIComponent(fullFileName)}`,
+                { method: 'GET', headers: { 'Content-Type': 'application/json' }, mode: 'cors', credentials: 'omit' },
+                20000
               );
               if (uploaderResponse.ok) {
                 const uploaderData = await uploaderResponse.json().catch(() => ({}));
@@ -312,8 +301,8 @@ Thanks.`;
                   uploaderData.uploader ||
                   'Unknown';
               }
-            } catch (error) {
-              console.error(`Error fetching uploader for ${fullFileName}:`, error);
+            } catch {
+              // keep Unknown
             }
 
             return {
@@ -324,7 +313,7 @@ Thanks.`;
               dateUploaded,
               dateUploadedTs,
               uploadedBy,
-              fileKey: file.key,
+              fileKey: f.key,
             } as FileRow;
           })
       );
@@ -335,23 +324,24 @@ Thanks.`;
       setS3Files(withIds);
       setSortColumn('dateUploaded');
       setSortDirection('desc');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching S3 files:', error);
-      setModalMessage('Failed to load files from server.');
+      setModalMessage(error?.message || 'Failed to load files from server.');
       setModalType('error');
       setShowMessageModal(true);
     }
   };
 
+  // Fetch user attributes and initial table
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         setLoading(true);
         await getCurrentUser();
-        const attributes = await fetchUserAttributes();
+        const attributes: any = await fetchUserAttributes();
 
-        const username = (attributes as any).preferred_username || (attributes as any).email || '';
-        const phoneNumber = (attributes as any).phone_number || '';
+        const username = attributes?.preferred_username || attributes?.email || '';
+        const phoneNumber = attributes?.phone_number || '';
         const maskedPhoneNumber =
           phoneNumber && phoneNumber.length >= 2
             ? `91${'x'.repeat(phoneNumber.length - 4)}${phoneNumber.slice(-2)}`
@@ -371,11 +361,13 @@ Thanks.`;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Reload table when switching tabs
   useEffect(() => {
     loadS3Files(activeTab);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
+  // Manage body scroll when modal is open
   useEffect(() => {
     if (showMessageModal || showUpdateForm || isUploading || showConfirmDeleteModal) {
       const scrollY = window.scrollY;
@@ -408,24 +400,16 @@ Thanks.`;
       return;
     }
     try {
-      await updateUserAttributes({
-        userAttributes: { preferred_username: newUsername.trim() },
-      });
+      await updateUserAttributes({ userAttributes: { preferred_username: newUsername.trim() } });
       setUserAttributes((prev) => ({ ...prev, username: newUsername.trim() }));
       setShowUpdateForm(false);
       setNewUsername('');
       setModalMessage('Username updated successfully!');
       setModalType('success');
       setShowMessageModal(true);
-
-      const attributes = await fetchUserAttributes();
-      setUserAttributes((prev) => ({
-        ...prev,
-        username: (attributes as any).preferred_username || prev.username,
-      }));
     } catch (error: any) {
       console.error('Error updating username:', error);
-      setModalMessage(`Failed to update username: ${error.message || 'Unknown error'}`);
+      setModalMessage(`Failed to update username: ${error?.message || 'Unknown error'}`);
       setModalType('error');
       setShowMessageModal(true);
     }
@@ -436,17 +420,12 @@ Thanks.`;
       const extension = (f.name.split('.').pop() || '').toLowerCase();
       if (SUPPORTED_EXTENSIONS.includes(`.${extension}`)) return true;
     }
-    setModalMessage("Please upload a valid file (.csv, .pdf, .xlsx, .xls, .doc, .docx).");
+    setModalMessage('Please upload a valid file (.csv, .pdf, .xlsx, .xls, .doc, .docx).');
     setModalType('error');
     setShowMessageModal(true);
     return false;
   };
 
-  /**
-   * ✅ FIX FOR DEMO:
-   * Upload RAW file body (NOT multipart) so WebKit boundary can never appear in CSV.
-   * We send metadata via headers.
-   */
   const uploadFile = async (
     f: File | null,
     apiUrl: string,
@@ -455,7 +434,7 @@ Thanks.`;
     monthLabelForLog?: string
   ) => {
     if (!f) {
-      setModalMessage("Please select a file to upload.");
+      setModalMessage('Please select a file to upload.');
       setModalType('error');
       setShowMessageModal(true);
       return;
@@ -463,88 +442,83 @@ Thanks.`;
 
     const originalFileName = f.name;
 
+    // IMPORTANT: multipart/form-data
+    const formData = new FormData();
+    formData.append('file', f);
+    formData.append('month', monthForUpload);
+    if (segment) formData.append('segment', segment);
+    formData.append('fileName', originalFileName);
+    formData.append('username', userAttributes.username || 'Unknown');
+
     try {
       setIsUploading(true);
       setUploadKey((prev) => prev + 1);
 
-      const uploadResponse = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          // send raw file bytes; backend should read body as the file
-          'Content-Type': f.type || 'application/octet-stream',
-
-          // metadata (safe even if backend ignores)
-          'X-File-Name': originalFileName,
-          'X-Username': userAttributes.username || 'Unknown',
-          'X-Month': monthForUpload,
-          'X-Month-Label': monthLabelForLog || '',
-          'X-Segment': segment || '',
-          'X-Allow-Backfill': allowBackfill ? 'true' : 'false',
+      const res = await fetchWithTimeout(
+        apiUrl,
+        {
+          method: 'POST',
+          body: formData,
+          mode: 'cors',
+          credentials: 'omit',
+          // DO NOT set Content-Type manually for FormData.
         },
-        body: f, // ✅ raw file
-      });
+        45000
+      );
 
-      if (!uploadResponse.ok) {
-        const errorText = await uploadResponse.text().catch(() => '');
-        let message = `Failed to upload file: ${uploadResponse.status} ${uploadResponse.statusText}`;
-        try {
-          const parsed = JSON.parse(errorText || '{}');
-          message = parsed.message || parsed.error || message;
-        } catch {
-          if (errorText) message = errorText;
-        }
-        setModalMessage(message);
+      if (!res.ok) {
+        const body = await readResponseBody(res);
+        setModalMessage(body || `Failed to upload file (HTTP ${res.status})`);
         setModalType('error');
         setShowMessageModal(true);
         return;
       }
 
-      const uploadDataText = await uploadResponse.text().catch(() => '');
-      let successMsg = "File uploaded successfully!";
-      try {
-        const parsed = JSON.parse(uploadDataText || '{}');
-        successMsg = parsed.message || successMsg;
-      } catch {}
-
-      setModalMessage(successMsg);
+      const uploadData = await res.json().catch(() => ({}));
+      setModalMessage(uploadData.message || 'File uploaded successfully!');
       setModalType('success');
       setShowMessageModal(true);
 
-      // ✅ log upload (kept from your latest version)
+      // Upload log (non-blocking best effort)
       try {
         const uploadType = monthForUpload === 'Daily' ? 'daily' : 'monthly';
-
-        // keep basename logic from your latest code
-        const savedBasename =
-          uploadType === 'monthly' && allowBackfill
-            ? `${String(monthLabelForLog || monthForUpload).trim().replace(/\s+/g, '_')}_Planned_vs_Achieved_.csv`
-            : uploadType === 'monthly'
-              ? 'current_file.csv'
-              : originalFileName;
-
-        await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/save-files', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fileName: savedBasename,
-            action: 'upload',
-            user: userAttributes.username || 'Unknown',
-            uploadType,
-            segment: segment || undefined,
-            month: uploadType === 'monthly'
-              ? (monthLabelForLog || monthForUpload)
-              : undefined,
-            allowBackfill: uploadType === 'monthly' ? allowBackfill : undefined,
-          }),
-        });
-      } catch (error) {
-        console.error('Error saving upload log to DynamoDB:', error);
+        await fetchWithTimeout(
+          API_SAVE_FILES,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fileName: originalFileName,
+              action: 'upload',
+              user: userAttributes.username || 'Unknown',
+              uploadType,
+              segment: segment || undefined,
+              month: uploadType === 'monthly' ? (monthLabelForLog || monthForUpload) : undefined,
+            }),
+            mode: 'cors',
+            credentials: 'omit',
+          },
+          20000
+        );
+      } catch (e) {
+        console.warn('Upload saved, but failed to save upload log:', e);
       }
 
       await loadS3Files(activeTab);
     } catch (error: any) {
-      console.error("Error:", error);
-      setModalMessage(`An error occurred while uploading the file: ${error.message || 'Unknown error'}`);
+      console.error('Upload error:', error);
+
+      // Most common for “Failed to fetch”
+      // - CORS blocked
+      // - API URL wrong / stage down
+      // - Network/DNS
+      // - Mixed content (http inside https) — not your case since URLs are https
+      const msg =
+        error?.name === 'AbortError'
+          ? 'Upload timed out (network slow or API not responding).'
+          : (error?.message || 'Failed to fetch');
+
+      setModalMessage(`An error occurred while uploading the file: ${msg}`);
       setModalType('error');
       setShowMessageModal(true);
     } finally {
@@ -554,61 +528,50 @@ Thanks.`;
 
   const handleMonthlyUpload = () => {
     if (!selectedMonth) {
-      setModalMessage("Please select the correct month.");
-      setModalType('error');
-      setShowMessageModal(true);
-      return;
-    }
-
-    // enforce backfill-month dropdown list when BACKFILL_2025_MODE is ON
-    if (BACKFILL_2025_MODE && !BACKFILL_MONTHS_2025.includes(selectedMonth)) {
-      setModalMessage("Please select an allowed month (Jan 2025 to Nov 2025) for backfill.");
+      setModalMessage('Please select the correct month.');
       setModalType('error');
       setShowMessageModal(true);
       return;
     }
 
     if (validateFile(file)) {
-      const monthName = selectedMonth.split(' ')[0]; // backend expects month name only (current behavior)
-      uploadFile(
-        file,
-        'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink',
-        monthName,
-        undefined,
-        selectedMonth
-      );
+      const monthName = selectedMonth.split(' ')[0]; // backend expects month name only
+      uploadFile(file, API_MONTHLY_UPLOAD, monthName, undefined, selectedMonth);
     }
   };
 
   const handleDailyUpload = (f: File | null, segment: 'DS' | 'DP') => {
     if (validateFile(f)) {
-      uploadFile(
-        f,
-        'https://1whw41i19a.execute-api.ap-south-1.amazonaws.com/S1/Production_DailyUpload',
-        'Daily',
-        segment
-      );
+      uploadFile(f, API_DAILY_UPLOAD, 'Daily', segment);
     }
   };
 
-  const downloadFile = async (key: string, isMonth: boolean = false) => {
+  const downloadFile = async (key: string, isMonth = false) => {
     try {
       const fileKey = isMonth ? `Production_Sample_Files/${key}_Sample_File.csv` : key;
 
-      const response = await fetch('https://e3blv3dko6.execute-api.ap-south-1.amazonaws.com/P1/presigned_urls', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bucket_name: BUCKET_NAME,
-          file_key: fileKey,
-          action: 'download',
-          isSample: isMonth
-        }),
-      });
+      const res = await fetchWithTimeout(
+        API_PRESIGNED,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bucket_name: BUCKET_NAME,
+            file_key: fileKey,
+            action: 'download',
+            isSample: isMonth,
+          }),
+          mode: 'cors',
+          credentials: 'omit',
+        },
+        25000
+      );
 
-      const data = await response.json().catch(() => ({}));
+      const dataText = await res.text().catch(() => '');
+      let data: any = {};
+      try { data = dataText ? JSON.parse(dataText) : {}; } catch { data = { raw: dataText }; }
 
-      if (response.ok && data.presigned_url) {
+      if (res.ok && data.presigned_url) {
         const link = document.createElement('a');
         link.href = data.presigned_url;
         link.download = fileKey.split('/').pop() || 'download';
@@ -616,29 +579,36 @@ Thanks.`;
         link.click();
         document.body.removeChild(link);
 
+        // Best-effort download logging
         try {
-          await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/save-files', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              fileName: fileKey.split('/').pop(),
-              action: 'download',
-              user: userAttributes.username || 'Unknown',
-            }),
-          });
+          await fetchWithTimeout(
+            API_SAVE_FILES,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                fileName: fileKey.split('/').pop(),
+                action: 'download',
+                user: userAttributes.username || 'Unknown',
+              }),
+              mode: 'cors',
+              credentials: 'omit',
+            },
+            15000
+          );
         } catch {}
 
         setModalMessage(`Downloaded ${fileKey.split('/').pop()} successfully!`);
         setModalType('success');
         setShowMessageModal(true);
       } else {
-        setModalMessage(`Error: ${data.error || 'Failed to fetch download link'} (Status: ${response.status})`);
+        const errMsg = data?.error || data?.message || dataText || `HTTP ${res.status}`;
+        setModalMessage(`Error: ${errMsg}`);
         setModalType('error');
         setShowMessageModal(true);
       }
     } catch (error: any) {
-      console.error('Download error:', error);
-      setModalMessage(`An error occurred while fetching the download link: ${error.message}`);
+      setModalMessage(`An error occurred while fetching the download link: ${error?.message || 'Unknown error'}`);
       setModalType('error');
       setShowMessageModal(true);
     }
@@ -646,30 +616,31 @@ Thanks.`;
 
   const deleteFile = async (key: string) => {
     try {
-      const response = await fetch('https://e3blv3dko6.execute-api.ap-south-1.amazonaws.com/P1/presigned_urls', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          bucket_name: BUCKET_NAME,
-          file_key: key,
-          action: 'delete',
-        }),
-      });
+      const res = await fetchWithTimeout(
+        API_PRESIGNED,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bucket_name: BUCKET_NAME, file_key: key, action: 'delete' }),
+          mode: 'cors',
+          credentials: 'omit',
+        },
+        25000
+      );
 
-      if (response.ok) {
+      if (res.ok) {
         setModalMessage(`File ${key.split('/').pop()} deleted successfully!`);
         setModalType('success');
         setShowMessageModal(true);
         await loadS3Files(activeTab);
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        setModalMessage(`Failed to delete file: ${errorData.message || response.statusText}`);
+        const body = await readResponseBody(res);
+        setModalMessage(`Failed to delete file: ${body || res.statusText}`);
         setModalType('error');
         setShowMessageModal(true);
       }
     } catch (error: any) {
-      console.error('Delete error:', error);
-      setModalMessage(`An error occurred while deleting the file: ${error.message || 'Unknown error'}`);
+      setModalMessage(`An error occurred while deleting the file: ${error?.message || 'Unknown error'}`);
       setModalType('error');
       setShowMessageModal(true);
     }
@@ -690,8 +661,8 @@ Thanks.`;
     setFileNameToDelete(null);
   };
 
-  const handlePreviousYear = () => setYear((prevYear) => prevYear - 1);
-  const handleNextYear = () => setYear((prevYear) => prevYear + 1);
+  const handlePreviousYear = () => setYear((prev) => prev - 1);
+  const handleNextYear = () => setYear((prev) => prev + 1);
 
   const toggleDropdown = () => setIsDropdownOpen((prev) => !prev);
 
@@ -752,8 +723,8 @@ Thanks.`;
     { key: 'fileKey', label: 'Download Link' },
   ];
 
+  // header height CSS var
   const headerRef = useRef<HTMLElement | null>(null);
-
   useEffect(() => {
     const el = headerRef.current;
     if (!el) return;
@@ -774,7 +745,6 @@ Thanks.`;
     };
   }, []);
 
-  // ✅ same admin check as delete option
   const isAdmin = (userAttributes.username || '').toLowerCase() === 'manika5170@bharatbiotech.com';
 
   return (
@@ -835,7 +805,9 @@ Thanks.`;
                 />
                 <div className="modal-buttons">
                   <button type="submit" className="submit-btn">Submit</button>
-                  <button type="button" className="cancel-btn" onClick={() => setShowUpdateForm(false)}>Cancel</button>
+                  <button type="button" className="cancel-btn" onClick={() => setShowUpdateForm(false)}>
+                    Cancel
+                  </button>
                 </div>
               </form>
             </div>
@@ -957,7 +929,6 @@ Thanks.`;
                     className="file-input"
                     disabled={isUploading}
                   />
-
                   <div className="custom-dropdown" ref={dropdownRef}>
                     <div
                       className={`dropdown-toggle ${isDropdownOpen ? 'open' : ''}`}
@@ -973,10 +944,9 @@ Thanks.`;
                       <span>{selectedMonth || 'Select Month'}</span>
                       <span className="dropdown-arrow"></span>
                     </div>
-
                     {isDropdownOpen && (
                       <ul className="dropdown-menu">
-                        {(BACKFILL_2025_MODE ? BACKFILL_MONTHS_2025 : getFinancialYearMonths(new Date())).map((monthYear) => (
+                        {getFinancialYearMonths(new Date()).map((monthYear) => (
                           <li
                             key={monthYear}
                             className={`dropdown-item ${selectedMonth === monthYear ? 'selected' : ''}`}
@@ -1010,38 +980,20 @@ Thanks.`;
                 <h2 style={{ margin: 0, marginRight: '10px' }}>📋 List of Files Submitted</h2>
 
                 {isAdmin && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <label
-                      className="delete-option-label"
-                      style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer' }}
-                    >
-                      <input
-                        type="checkbox"
-                        className="delete-option-checkbox"
-                        checked={isDeleteOptionEnabled}
-                        onChange={(e) => setIsDeleteOptionEnabled(e.target.checked)}
-                        aria-checked={isDeleteOptionEnabled}
-                        aria-label="Toggle delete option"
-                      />
-                      Delete Option
-                    </label>
-
-                    <label
-                      className="delete-option-label"
-                      style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer', gap: '8px' }}
-                      title="When ON, monthly uploads are saved as Month_Year file (backfill mode). When OFF, normal current_file behavior."
-                    >
-                      <input
-                        type="checkbox"
-                        className="delete-option-checkbox"
-                        checked={allowBackfill}
-                        onChange={(e) => setAllowBackfill(e.target.checked)}
-                        aria-checked={allowBackfill}
-                        aria-label="Toggle allow backfill"
-                      />
-                      Allow Backfill
-                    </label>
-                  </div>
+                  <label
+                    className="delete-option-label"
+                    style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer' }}
+                  >
+                    <input
+                      type="checkbox"
+                      className="delete-option-checkbox"
+                      checked={isDeleteOptionEnabled}
+                      onChange={(e) => setIsDeleteOptionEnabled(e.target.checked)}
+                      aria-checked={isDeleteOptionEnabled}
+                      aria-label="Toggle delete option"
+                    />
+                    Delete Option
+                  </label>
                 )}
               </div>
 
@@ -1103,10 +1055,7 @@ Thanks.`;
                             <td>
                               <a
                                 href="#"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  downloadFile(row.fileKey);
-                                }}
+                                onClick={(e) => { e.preventDefault(); downloadFile(row.fileKey); }}
                                 className="download-link"
                               >
                                 Download
@@ -1124,7 +1073,6 @@ Thanks.`;
                                       setShowConfirmDeleteModal(true);
                                     }}
                                     className="download-link"
-                                    aria-label={`Delete file ${row.fileName}`}
                                   >
                                     Delete
                                   </a>
@@ -1153,11 +1101,7 @@ Thanks.`;
                     className="file-input"
                     disabled={isUploading}
                   />
-                  <button
-                    className="upload-btn"
-                    onClick={() => handleDailyUpload(dailyFileA, 'DS')}
-                    disabled={isUploading}
-                  >
+                  <button className="upload-btn" onClick={() => handleDailyUpload(dailyFileA, 'DS')} disabled={isUploading}>
                     {isUploading ? 'Uploading...' : 'Submit File'}
                   </button>
                 </div>
@@ -1173,11 +1117,7 @@ Thanks.`;
                     className="file-input"
                     disabled={isUploading}
                   />
-                  <button
-                    className="upload-btn"
-                    onClick={() => handleDailyUpload(dailyFileB, 'DP')}
-                    disabled={isUploading}
-                  >
+                  <button className="upload-btn" onClick={() => handleDailyUpload(dailyFileB, 'DP')} disabled={isUploading}>
                     {isUploading ? 'Uploading...' : 'Submit File'}
                   </button>
                 </div>
@@ -1263,10 +1203,7 @@ Thanks.`;
                             <td>
                               <a
                                 href="#"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  downloadFile(row.fileKey);
-                                }}
+                                onClick={(e) => { e.preventDefault(); downloadFile(row.fileKey); }}
                                 className="download-link"
                               >
                                 Download
@@ -1284,7 +1221,6 @@ Thanks.`;
                                       setShowConfirmDeleteModal(true);
                                     }}
                                     className="download-link"
-                                    aria-label={`Delete file ${row.fileName}`}
                                   >
                                     Delete
                                   </a>
@@ -1304,16 +1240,20 @@ Thanks.`;
 
         <footer className="app-footer" role="contentinfo" aria-label="Support and quick actions">
           <div className="footer-heading">Need help?</div>
+
           <nav className="footer-actions" aria-label="Footer actions">
             <a className="footer-link" href={DASHBOARD_URL} target="_blank" rel="noopener noreferrer">
               📊 <span>Dashboard Link</span>
             </a>
+
             <a className="footer-link" href={reportMailto}>
               🧰 <span>Report a Problem</span>
             </a>
+
             <a className="footer-link" href={`tel:${BA_PHONE_TEL}`}>
               📞 <span>Call Business Analytics Dept</span>
             </a>
+
             <a className="footer-link" href={callbackMailto}>
               📥 <span>Request for a Call Back</span>
             </a>
