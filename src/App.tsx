@@ -34,25 +34,6 @@ const months = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-// ===================== (LEGACY) BACKFILL CONFIG =====================
-// Keeping these so nothing breaks, but the dropdown is now controlled by backend setting allowBackfill.
-// BACKFILL_2025_MODE / BACKFILL_MONTHS_2025 are no longer enforced.
-// You can delete later if you want.
-const BACKFILL_2025_MODE = true;
-const BACKFILL_MONTHS_2025 = [
-  'January 2025',
-  'February 2025',
-  'March 2025',
-  'April 2025',
-  'May 2025',
-  'June 2025',
-  'July 2025',
-  'August 2025',
-  'September 2025',
-  'October 2025',
-  'November 2025',
-];
-
 // Tooltip state
 interface TooltipState {
   visible: boolean;
@@ -402,7 +383,6 @@ Thanks.`;
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            // optional; if your lambda reads this header, it can set updatedBy
             'X-User': userAttributes.username || 'unknown',
           },
           body: JSON.stringify({
@@ -563,7 +543,6 @@ Thanks.`;
           body: formData,
           mode: 'cors',
           credentials: 'omit',
-          // DO NOT set Content-Type manually for FormData.
         },
         45000
       );
@@ -581,8 +560,6 @@ Thanks.`;
       setModalType('success');
       setShowMessageModal(true);
 
-      // ✅ For "Uploaded By" to resolve, log the SAME basename that ends up in S3.
-      // Adjust this if your backend uses a different naming rule.
       const uploadType = monthForUpload === 'Daily' ? 'daily' : 'monthly';
 
       const savedBasename =
@@ -640,9 +617,6 @@ Thanks.`;
       setShowMessageModal(true);
       return;
     }
-
-    // ✅ No longer restrict by BACKFILL_MONTHS_2025; dropdown itself is controlled by allowBackfill.
-    // If you still want strict Jan-Nov 2025 restriction, re-enable your old check here.
 
     if (validateFile(file)) {
       const monthName = selectedMonth.split(' ')[0]; // backend expects month name only (keep current behavior)
@@ -770,9 +744,6 @@ Thanks.`;
     setFileToDelete(null);
     setFileNameToDelete(null);
   };
-
-  const handlePreviousYear = () => setYear((prev) => prev - 1);
-  const handleNextYear = () => setYear((prev) => prev + 1);
 
   const toggleDropdown = () => setIsDropdownOpen((prev) => !prev);
 
