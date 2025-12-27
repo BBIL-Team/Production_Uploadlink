@@ -9,12 +9,16 @@ const SUPPORT_EMAIL = 'analytics@bharatbiotech.com';            // TODO: confirm
 const BA_PHONE_TEL  = '+914000000000';                          // TODO: replace with real phone in E.164
 
 // ====== APIs ======
-const API_LIST_FILES = 'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/list-files';
-const API_GET_UPLOADER = 'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/get-uploader';
-const API_SAVE_FILES = 'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/save-files';
+const API_BASE = 'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1';
+
+const API_LIST_FILES = `${API_BASE}/list-files`;
+const API_GET_UPLOADER = `${API_BASE}/get-uploader`;
+const API_SAVE_FILES = `${API_BASE}/save-files`;
+const API_SETTINGS = `${API_BASE}/settings`;
+
 const API_PRESIGNED = 'https://e3blv3dko6.execute-api.ap-south-1.amazonaws.com/P1/presigned_urls';
 
-const API_MONTHLY_UPLOAD = 'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink';
+const API_MONTHLY_UPLOAD = `${API_BASE}/Production_Uploadlink`;
 const API_DAILY_UPLOAD = 'https://1whw41i19a.execute-api.ap-south-1.amazonaws.com/S1/Production_DailyUpload';
 
 // Hardcoded bucket and folder names
@@ -30,12 +34,11 @@ const months = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-// ===================== BACKFILL CONFIG =====================
-// Turn ON only when you need backfill UI restrictions (optional).
-// If you want backfill capability always available via toggle, keep true.
+// ===================== (LEGACY) BACKFILL CONFIG =====================
+// Keeping these so nothing breaks, but the dropdown is now controlled by backend setting allowBackfill.
+// BACKFILL_2025_MODE / BACKFILL_MONTHS_2025 are no longer enforced.
+// You can delete later if you want.
 const BACKFILL_2025_MODE = true;
-
-// Allowed months for backfill mode (dropdown list)
 const BACKFILL_MONTHS_2025 = [
   'January 2025',
   'February 2025',
@@ -49,37 +52,6 @@ const BACKFILL_MONTHS_2025 = [
   'October 2025',
   'November 2025',
 ];
-
-// Function to get financial year months (previous month if <= 6th, current month, remaining months)
-const getFinancialYearMonths = (currentDate: Date) => {
-  const currentMonth = currentDate.getMonth(); // 0-based
-  const currentYear = currentDate.getFullYear();
-  const currentDay = currentDate.getDate();
-
-  // Financial year: April (currentYear) to March (currentYear + 1)
-  const financialYearStartYear = currentMonth >= 3 ? currentYear : currentYear - 1;
-  const financialYearEndYear = financialYearStartYear + 1;
-
-  const result: string[] = [];
-
-  // Previous month (only if day <= 6)
-  if (currentDay <= 6) {
-    const prevMonthDate = new Date(currentDate);
-    prevMonthDate.setMonth(currentMonth - 1);
-    const prevMonth = prevMonthDate.getMonth();
-    const prevMonthYear = prevMonthDate.getFullYear();
-    result.push(`${months[prevMonth]} ${prevMonthYear}`);
-  }
-
-  // Current month
-  result.push(`${months[currentMonth]} ${currentYear}`);
-
-  // Remaining months: from currentMonth + 1 to March
-  for (let m = currentMonth + 1; m <= 11; m++) result.push(`${months[m]} ${financialYearStartYear}`);
-  for (let m = 0; m <= 2; m++) result.push(`${months[m]} ${financialYearEndYear}`);
-
-  return result;
-};
 
 // Tooltip state
 interface TooltipState {
@@ -130,6 +102,52 @@ async function readResponseBody(res: Response) {
     return text;
   }
 }
+
+// ✅ Month label helpers
+const formatMonthYear = (d: Date) => `${months[d.getMonth()]} ${d.getFullYear()}`;
+
+// ✅ last 36 months including current month
+const getLast36Months = (currentDate: Date) => {
+  const out: string[] = [];
+  const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+  for (let i = 0; i < 36; i++) {
+    out.push(formatMonthYear(d));
+    d.setMonth(d.getMonth() - 1);
+  }
+  return out;
+};
+
+// ✅ show: current month + next 4 months
+// plus previous month ONLY if today is within first 7 business days of current month
+const getNextMonthsWindow = (currentDate: Date) => {
+  const out: string[] = [];
+
+  // compute first 7 business days (Mon-Fri) of current month
+  const firstOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+  let businessDays = 0;
+  let thresholdDate = new Date(firstOfMonth);
+  while (businessDays < 7) {
+    const day = thresholdDate.getDay(); // 0 Sun, 6 Sat
+    if (day !== 0 && day !== 6) businessDays++;
+    if (businessDays < 7) thresholdDate.setDate(thresholdDate.getDate() + 1);
+  }
+
+  // if currentDate <= thresholdDate, include previous month
+  if (currentDate <= thresholdDate) {
+    const prev = new Date(firstOfMonth);
+    prev.setMonth(prev.getMonth() - 1);
+    out.push(formatMonthYear(prev));
+  }
+
+  // current + next 4
+  const d = new Date(firstOfMonth);
+  for (let i = 0; i < 5; i++) {
+    out.push(formatMonthYear(d));
+    d.setMonth(d.getMonth() + 1);
+  }
+
+  return Array.from(new Set(out));
+};
 
 const App: React.FC = () => {
   const { signOut } = useAuthenticator();
@@ -352,7 +370,66 @@ Thanks.`;
     }
   };
 
-  // Fetch user attributes and initial table
+  // ✅ Admin check (same as delete)
+  const isAdmin = (userAttributes.username || '').toLowerCase() === 'manika5170@bharatbiotech.com';
+
+  // ✅ Global backfill setting from backend (applies across all users/laptops)
+  const [allowBackfill, setAllowBackfill] = useState<boolean>(false);
+  const [isBackfillLoaded, setIsBackfillLoaded] = useState<boolean>(false);
+
+  const fetchAllowBackfill = async () => {
+    try {
+      const res = await fetchWithTimeout(
+        `${API_SETTINGS}?settingKey=allowBackfill`,
+        { method: 'GET', mode: 'cors', credentials: 'omit' },
+        15000
+      );
+      const data = await res.json().catch(() => ({}));
+      setAllowBackfill(Boolean(data?.valueBool));
+    } catch (e) {
+      console.error('fetchAllowBackfill failed', e);
+      setAllowBackfill(false);
+    } finally {
+      setIsBackfillLoaded(true);
+    }
+  };
+
+  const updateAllowBackfill = async (nextValue: boolean) => {
+    try {
+      const res = await fetchWithTimeout(
+        API_SETTINGS,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            // optional; if your lambda reads this header, it can set updatedBy
+            'X-User': userAttributes.username || 'unknown',
+          },
+          body: JSON.stringify({
+            settingKey: 'allowBackfill',
+            valueBool: nextValue,
+          }),
+          mode: 'cors',
+          credentials: 'omit',
+        },
+        20000
+      );
+
+      if (!res.ok) {
+        const body = await readResponseBody(res);
+        throw new Error(body || `PUT /settings failed (HTTP ${res.status})`);
+      }
+
+      setAllowBackfill(nextValue);
+    } catch (e: any) {
+      console.error('updateAllowBackfill failed', e);
+      setModalMessage(`Failed to update backfill setting: ${e?.message || 'Unknown error'}`);
+      setModalType('error');
+      setShowMessageModal(true);
+    }
+  };
+
+  // Fetch user attributes and initial table + settings
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -378,6 +455,7 @@ Thanks.`;
 
     fetchUserData();
     loadS3Files(activeTab);
+    fetchAllowBackfill();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -445,18 +523,6 @@ Thanks.`;
     setShowMessageModal(true);
     return false;
   };
-
-  // ✅ Admin check (same as delete)
-  const isAdmin = (userAttributes.username || '').toLowerCase() === 'manika5170@bharatbiotech.com';
-
-  // ✅ Allow Backfill toggle (admin-only). Stored locally for convenience.
-  // NOTE: This is per-device; true “across laptops/users” should be enforced on backend.
-  const [allowBackfill, setAllowBackfill] = useState<boolean>(() => {
-    try { return localStorage.getItem('allowBackfill') === 'true'; } catch { return false; }
-  });
-  useEffect(() => {
-    try { localStorage.setItem('allowBackfill', String(allowBackfill)); } catch {}
-  }, [allowBackfill]);
 
   const uploadFile = async (
     f: File | null,
@@ -575,13 +641,8 @@ Thanks.`;
       return;
     }
 
-    // ✅ If backfill is ON, enforce allowed list (when BACKFILL_2025_MODE is ON)
-    if (allowBackfill && BACKFILL_2025_MODE && !BACKFILL_MONTHS_2025.includes(selectedMonth)) {
-      setModalMessage('Please select an allowed month (Jan 2025 to Nov 2025) for backfill.');
-      setModalType('error');
-      setShowMessageModal(true);
-      return;
-    }
+    // ✅ No longer restrict by BACKFILL_MONTHS_2025; dropdown itself is controlled by allowBackfill.
+    // If you still want strict Jan-Nov 2025 restriction, re-enable your old check here.
 
     if (validateFile(file)) {
       const monthName = selectedMonth.split(' ')[0]; // backend expects month name only (keep current behavior)
@@ -942,9 +1003,9 @@ Thanks.`;
               <div className="calendar-section">
                 <h2>Sample File Download Segment</h2>
                 <div className="year-navigation">
-                  <button onClick={handlePreviousYear}>{'\u003C'}</button>
+                  <button onClick={() => setYear((prev) => prev - 1)}>{'\u003C'}</button>
                   <h2>{year}</h2>
-                  <button onClick={handleNextYear}>{'\u003E'}</button>
+                  <button onClick={() => setYear((prev) => prev + 1)}>{'\u003E'}</button>
                 </div>
                 <div className="months-grid">
                   {months.map((m) => (
@@ -995,7 +1056,7 @@ Thanks.`;
 
                     {isDropdownOpen && (
                       <ul className="dropdown-menu">
-                        {(allowBackfill && BACKFILL_2025_MODE ? BACKFILL_MONTHS_2025 : getFinancialYearMonths(new Date())).map((monthYear) => (
+                        {(allowBackfill ? getLast36Months(new Date()) : getNextMonthsWindow(new Date())).map((monthYear) => (
                           <li
                             key={monthYear}
                             className={`dropdown-item ${selectedMonth === monthYear ? 'selected' : ''}`}
@@ -1048,13 +1109,14 @@ Thanks.`;
                     <label
                       className="delete-option-label"
                       style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer', gap: '8px' }}
-                      title="When ON, monthly uploads are saved as Month_Year file (backfill mode). When OFF, normal current_file behavior."
+                      title="Global setting (applies to all users). ON = last 3 years. OFF = limited window."
                     >
                       <input
                         type="checkbox"
                         className="delete-option-checkbox"
                         checked={allowBackfill}
-                        onChange={(e) => setAllowBackfill(e.target.checked)}
+                        onChange={(e) => updateAllowBackfill(e.target.checked)}
+                        disabled={!isBackfillLoaded}
                         aria-checked={allowBackfill}
                         aria-label="Toggle allow backfill"
                       />
