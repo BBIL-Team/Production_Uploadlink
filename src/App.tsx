@@ -6,7 +6,7 @@ import { getCurrentUser, fetchUserAttributes, updateUserAttributes } from '@aws-
 // --- Footer link helpers (replace with your real values) ---
 const DASHBOARD_URL = 'https://your-dashboard-url.example.com'; // TODO: replace
 const SUPPORT_EMAIL = 'analytics@bharatbiotech.com';            // TODO: confirm or replace
-const BA_PHONE_TEL  = '+914000000000';                         // TODO: replace with real phone in E.164
+const BA_PHONE_TEL  = '+9140000000';                            // TODO: replace with real phone in E.164
 
 // Hardcoded bucket and folder names
 const BUCKET_NAME = 'production-bbil';
@@ -14,7 +14,9 @@ const DAILY_FOLDER_NAME = 'Production_daily_upload_files_location/';
 const MONTHLY_FOLDER_NAME = 'Production_Upload_Files/';
 
 // ===== TEMP BACKFILL SWITCH =====
-const BACKFILL_2025_MODE = false;
+// If true, monthly dropdown is restricted to BACKFILL_MONTHS_2025.
+const BACKFILL_2025_MODE = true;
+
 const BACKFILL_MONTHS_2025 = [
   "January 2025",
   "February 2025",
@@ -43,6 +45,7 @@ const getFinancialYearMonths = (currentDate: Date) => {
   const currentYear = currentDate.getFullYear();
   const currentDay = currentDate.getDate();
 
+  // Financial year: April (currentYear) to March (currentYear + 1)
   const financialYearStartYear = currentMonth >= 3 ? currentYear : currentYear - 1;
   const financialYearEndYear = financialYearStartYear + 1;
 
@@ -98,20 +101,6 @@ interface ContextMenuState {
   column: keyof FileRow | null;
 };
 
-// ✅ helper: file -> base64 (no multipart boundary ever)
-const fileToBase64 = (f: File): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onerror = () => reject(new Error('Failed to read file'));
-    r.onload = () => {
-      const res = String(r.result || '');
-      // res is like: data:<mime>;base64,<payload>
-      const base64 = res.includes(',') ? res.split(',')[1] : '';
-      resolve(base64);
-    };
-    r.readAsDataURL(f);
-  });
-
 const App: React.FC = () => {
   const { signOut } = useAuthenticator();
 
@@ -159,6 +148,19 @@ const App: React.FC = () => {
     }
   });
 
+  // ✅ Allow Backfill toggle (admin-only UI) + persistence
+  const [allowBackfill, setAllowBackfill] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('allowBackfill') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem('allowBackfill', String(allowBackfill)); } catch {}
+  }, [allowBackfill]);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
@@ -191,7 +193,6 @@ Thanks.`;
   const reportMailto = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(reportSubject)}&body=${encodeURIComponent(reportBodyRaw)}`;
   const callbackMailto = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(callbackSubject)}&body=${encodeURIComponent(callbackBodyRaw)}`;
 
-  // Tooltip state
   const [tooltip, setTooltip] = useState<TooltipState>({
     visible: false,
     content: '',
@@ -199,7 +200,6 @@ Thanks.`;
     y: 0,
   });
 
-  // Context menu state
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
     visible: false,
     x: 0,
@@ -271,6 +271,7 @@ Thanks.`;
       if (!response.ok) throw new Error(`Failed to fetch S3 files: ${response.status}`);
 
       const data = await response.json();
+
       const filesRaw = await Promise.all(
         (data.files || [])
           .filter((file: { key: string }) => {
@@ -311,7 +312,9 @@ Thanks.`;
                   uploaderData.uploader ||
                   'Unknown';
               }
-            } catch {}
+            } catch (error) {
+              console.error(`Error fetching uploader for ${fullFileName}:`, error);
+            }
 
             return {
               id: index + 1,
@@ -440,11 +443,9 @@ Thanks.`;
   };
 
   /**
-   * ✅ ROLLBACK UPLOAD: JSON + base64 (NO multipart boundary)
-   * Sends:
-   * {
-   *   fileName, month, segment, username, mimeType, fileBase64
-   * }
+   * ✅ FIX FOR DEMO:
+   * Upload RAW file body (NOT multipart) so WebKit boundary can never appear in CSV.
+   * We send metadata via headers.
    */
   const uploadFile = async (
     f: File | null,
@@ -466,46 +467,66 @@ Thanks.`;
       setIsUploading(true);
       setUploadKey((prev) => prev + 1);
 
-      const fileBase64 = await fileToBase64(f);
-
-      const payload = {
-        fileName: originalFileName,
-        month: monthForUpload,
-        monthLabel: monthLabelForLog || '',
-        segment: segment || '',
-        username: userAttributes.username || 'Unknown',
-        mimeType: f.type || 'application/octet-stream',
-        fileBase64,
-      };
-
       const uploadResponse = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        method: "POST",
+        headers: {
+          // send raw file bytes; backend should read body as the file
+          'Content-Type': f.type || 'application/octet-stream',
+
+          // metadata (safe even if backend ignores)
+          'X-File-Name': originalFileName,
+          'X-Username': userAttributes.username || 'Unknown',
+          'X-Month': monthForUpload,
+          'X-Month-Label': monthLabelForLog || '',
+          'X-Segment': segment || '',
+          'X-Allow-Backfill': allowBackfill ? 'true' : 'false',
+        },
+        body: f, // ✅ raw file
       });
 
       if (!uploadResponse.ok) {
-        const errorData = await uploadResponse.json().catch(() => ({}));
-        setModalMessage(errorData.message || errorData.error || `Failed to upload file: ${uploadResponse.statusText}`);
+        const errorText = await uploadResponse.text().catch(() => '');
+        let message = `Failed to upload file: ${uploadResponse.status} ${uploadResponse.statusText}`;
+        try {
+          const parsed = JSON.parse(errorText || '{}');
+          message = parsed.message || parsed.error || message;
+        } catch {
+          if (errorText) message = errorText;
+        }
+        setModalMessage(message);
         setModalType('error');
         setShowMessageModal(true);
         return;
       }
 
-      const uploadData = await uploadResponse.json().catch(() => ({}));
-      setModalMessage(uploadData.message || "File uploaded successfully!");
+      const uploadDataText = await uploadResponse.text().catch(() => '');
+      let successMsg = "File uploaded successfully!";
+      try {
+        const parsed = JSON.parse(uploadDataText || '{}');
+        successMsg = parsed.message || successMsg;
+      } catch {}
+
+      setModalMessage(successMsg);
       setModalType('success');
       setShowMessageModal(true);
 
-      // log uploads using /save-files (kept same)
+      // ✅ log upload (kept from your latest version)
       try {
         const uploadType = monthForUpload === 'Daily' ? 'daily' : 'monthly';
+
+        // keep basename logic from your latest code
+        const savedBasename =
+          uploadType === 'monthly' && allowBackfill
+            ? `${String(monthLabelForLog || monthForUpload).trim().replace(/\s+/g, '_')}_Planned_vs_Achieved_.csv`
+            : uploadType === 'monthly'
+              ? 'current_file.csv'
+              : originalFileName;
 
         await fetch('https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/save-files', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            fileName: originalFileName,
+            fileName: savedBasename,
             action: 'upload',
             user: userAttributes.username || 'Unknown',
             uploadType,
@@ -513,13 +534,11 @@ Thanks.`;
             month: uploadType === 'monthly'
               ? (monthLabelForLog || monthForUpload)
               : undefined,
+            allowBackfill: uploadType === 'monthly' ? allowBackfill : undefined,
           }),
         });
       } catch (error) {
         console.error('Error saving upload log to DynamoDB:', error);
-        setModalMessage(`${uploadData.message || "File uploaded successfully!"} However, failed to save upload details.`);
-        setModalType('error');
-        setShowMessageModal(true);
       }
 
       await loadS3Files(activeTab);
@@ -541,6 +560,7 @@ Thanks.`;
       return;
     }
 
+    // enforce backfill-month dropdown list when BACKFILL_2025_MODE is ON
     if (BACKFILL_2025_MODE && !BACKFILL_MONTHS_2025.includes(selectedMonth)) {
       setModalMessage("Please select an allowed month (Jan 2025 to Nov 2025) for backfill.");
       setModalType('error');
@@ -549,7 +569,7 @@ Thanks.`;
     }
 
     if (validateFile(file)) {
-      const monthName = selectedMonth.split(' ')[0]; // backend expects month name only (your current behavior)
+      const monthName = selectedMonth.split(' ')[0]; // backend expects month name only (current behavior)
       uploadFile(
         file,
         'https://djtdjzbdtj.execute-api.ap-south-1.amazonaws.com/P1/Production_Uploadlink',
@@ -754,6 +774,9 @@ Thanks.`;
     };
   }, []);
 
+  // ✅ same admin check as delete option
+  const isAdmin = (userAttributes.username || '').toLowerCase() === 'manika5170@bharatbiotech.com';
+
   return (
     <>
       <header ref={headerRef} className={`app-header ${activeTab === 'daily' ? 'daily-theme' : ''}`}>
@@ -934,6 +957,7 @@ Thanks.`;
                     className="file-input"
                     disabled={isUploading}
                   />
+
                   <div className="custom-dropdown" ref={dropdownRef}>
                     <div
                       className={`dropdown-toggle ${isDropdownOpen ? 'open' : ''}`}
@@ -949,6 +973,7 @@ Thanks.`;
                       <span>{selectedMonth || 'Select Month'}</span>
                       <span className="dropdown-arrow"></span>
                     </div>
+
                     {isDropdownOpen && (
                       <ul className="dropdown-menu">
                         {(BACKFILL_2025_MODE ? BACKFILL_MONTHS_2025 : getFinancialYearMonths(new Date())).map((monthYear) => (
@@ -972,6 +997,7 @@ Thanks.`;
                       </ul>
                     )}
                   </div>
+
                   <button className="upload-btn" onClick={handleMonthlyUpload} disabled={isUploading}>
                     {isUploading ? 'Uploading...' : 'Submit File'}
                   </button>
@@ -982,21 +1008,40 @@ Thanks.`;
             <div className="file-list" style={{ position: 'relative' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                 <h2 style={{ margin: 0, marginRight: '10px' }}>📋 List of Files Submitted</h2>
-                {userAttributes.username?.toLowerCase() === 'manika5170@bharatbiotech.com' && (
-                  <label
-                    className="delete-option-label"
-                    style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer' }}
-                  >
-                    <input
-                      type="checkbox"
-                      className="delete-option-checkbox"
-                      checked={isDeleteOptionEnabled}
-                      onChange={(e) => setIsDeleteOptionEnabled(e.target.checked)}
-                      aria-checked={isDeleteOptionEnabled}
-                      aria-label="Toggle delete option"
-                    />
-                    Delete Option
-                  </label>
+
+                {isAdmin && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <label
+                      className="delete-option-label"
+                      style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer' }}
+                    >
+                      <input
+                        type="checkbox"
+                        className="delete-option-checkbox"
+                        checked={isDeleteOptionEnabled}
+                        onChange={(e) => setIsDeleteOptionEnabled(e.target.checked)}
+                        aria-checked={isDeleteOptionEnabled}
+                        aria-label="Toggle delete option"
+                      />
+                      Delete Option
+                    </label>
+
+                    <label
+                      className="delete-option-label"
+                      style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer', gap: '8px' }}
+                      title="When ON, monthly uploads are saved as Month_Year file (backfill mode). When OFF, normal current_file behavior."
+                    >
+                      <input
+                        type="checkbox"
+                        className="delete-option-checkbox"
+                        checked={allowBackfill}
+                        onChange={(e) => setAllowBackfill(e.target.checked)}
+                        aria-checked={allowBackfill}
+                        aria-label="Toggle allow backfill"
+                      />
+                      Allow Backfill
+                    </label>
+                  </div>
                 )}
               </div>
 
@@ -1067,7 +1112,7 @@ Thanks.`;
                                 Download
                               </a>
 
-                              {userAttributes.username?.toLowerCase() === 'manika5170@bharatbiotech.com' && isDeleteOptionEnabled && (
+                              {isAdmin && isDeleteOptionEnabled && (
                                 <>
                                   {' / '}
                                   <a
@@ -1108,7 +1153,11 @@ Thanks.`;
                     className="file-input"
                     disabled={isUploading}
                   />
-                  <button className="upload-btn" onClick={() => handleDailyUpload(dailyFileA, 'DS')} disabled={isUploading}>
+                  <button
+                    className="upload-btn"
+                    onClick={() => handleDailyUpload(dailyFileA, 'DS')}
+                    disabled={isUploading}
+                  >
                     {isUploading ? 'Uploading...' : 'Submit File'}
                   </button>
                 </div>
@@ -1124,7 +1173,11 @@ Thanks.`;
                     className="file-input"
                     disabled={isUploading}
                   />
-                  <button className="upload-btn" onClick={() => handleDailyUpload(dailyFileB, 'DP')} disabled={isUploading}>
+                  <button
+                    className="upload-btn"
+                    onClick={() => handleDailyUpload(dailyFileB, 'DP')}
+                    disabled={isUploading}
+                  >
                     {isUploading ? 'Uploading...' : 'Submit File'}
                   </button>
                 </div>
@@ -1134,7 +1187,7 @@ Thanks.`;
             <div className="file-list" style={{ position: 'relative' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                 <h2 style={{ margin: 0, marginRight: '10px' }}>📋 List of Files Submitted</h2>
-                {userAttributes.username?.toLowerCase() === 'manika5170@bharatbiotech.com' && (
+                {isAdmin && (
                   <label
                     className="delete-option-label"
                     style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer' }}
@@ -1219,7 +1272,7 @@ Thanks.`;
                                 Download
                               </a>
 
-                              {userAttributes.username?.toLowerCase() === 'manika5170@bharatbiotech.com' && isDeleteOptionEnabled && (
+                              {isAdmin && isDeleteOptionEnabled && (
                                 <>
                                   {' / '}
                                   <a
@@ -1251,7 +1304,6 @@ Thanks.`;
 
         <footer className="app-footer" role="contentinfo" aria-label="Support and quick actions">
           <div className="footer-heading">Need help?</div>
-
           <nav className="footer-actions" aria-label="Footer actions">
             <a className="footer-link" href={DASHBOARD_URL} target="_blank" rel="noopener noreferrer">
               📊 <span>Dashboard Link</span>
