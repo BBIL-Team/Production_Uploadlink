@@ -30,6 +30,26 @@ const months = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
+// ===================== BACKFILL CONFIG =====================
+// Turn ON only when you need backfill UI restrictions (optional).
+// If you want backfill capability always available via toggle, keep true.
+const BACKFILL_2025_MODE = true;
+
+// Allowed months for backfill mode (dropdown list)
+const BACKFILL_MONTHS_2025 = [
+  'January 2025',
+  'February 2025',
+  'March 2025',
+  'April 2025',
+  'May 2025',
+  'June 2025',
+  'July 2025',
+  'August 2025',
+  'September 2025',
+  'October 2025',
+  'November 2025',
+];
+
 // Function to get financial year months (previous month if <= 6th, current month, remaining months)
 const getFinancialYearMonths = (currentDate: Date) => {
   const currentMonth = currentDate.getMonth(); // 0-based
@@ -426,6 +446,18 @@ Thanks.`;
     return false;
   };
 
+  // ✅ Admin check (same as delete)
+  const isAdmin = (userAttributes.username || '').toLowerCase() === 'manika5170@bharatbiotech.com';
+
+  // ✅ Allow Backfill toggle (admin-only). Stored locally for convenience.
+  // NOTE: This is per-device; true “across laptops/users” should be enforced on backend.
+  const [allowBackfill, setAllowBackfill] = useState<boolean>(() => {
+    try { return localStorage.getItem('allowBackfill') === 'true'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('allowBackfill', String(allowBackfill)); } catch {}
+  }, [allowBackfill]);
+
   const uploadFile = async (
     f: File | null,
     apiUrl: string,
@@ -449,6 +481,10 @@ Thanks.`;
     if (segment) formData.append('segment', segment);
     formData.append('fileName', originalFileName);
     formData.append('username', userAttributes.username || 'Unknown');
+
+    // ✅ backfill info for backend (safe even if backend ignores)
+    formData.append('allowBackfill', allowBackfill ? 'true' : 'false');
+    if (monthLabelForLog) formData.append('monthLabel', monthLabelForLog);
 
     try {
       setIsUploading(true);
@@ -479,21 +515,32 @@ Thanks.`;
       setModalType('success');
       setShowMessageModal(true);
 
-      // Upload log (non-blocking best effort)
+      // ✅ For "Uploaded By" to resolve, log the SAME basename that ends up in S3.
+      // Adjust this if your backend uses a different naming rule.
+      const uploadType = monthForUpload === 'Daily' ? 'daily' : 'monthly';
+
+      const savedBasename =
+        uploadType === 'monthly' && allowBackfill
+          ? `${String(monthLabelForLog || '').trim().replace(/\s+/g, '_')}_Planned_vs_Achieved_.csv`
+          : uploadType === 'monthly'
+            ? 'current_file.csv'
+            : originalFileName;
+
+      // Upload log (best effort)
       try {
-        const uploadType = monthForUpload === 'Daily' ? 'daily' : 'monthly';
         await fetchWithTimeout(
           API_SAVE_FILES,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              fileName: originalFileName,
+              fileName: savedBasename,
               action: 'upload',
               user: userAttributes.username || 'Unknown',
               uploadType,
               segment: segment || undefined,
               month: uploadType === 'monthly' ? (monthLabelForLog || monthForUpload) : undefined,
+              allowBackfill: uploadType === 'monthly' ? allowBackfill : undefined,
             }),
             mode: 'cors',
             credentials: 'omit',
@@ -507,12 +554,6 @@ Thanks.`;
       await loadS3Files(activeTab);
     } catch (error: any) {
       console.error('Upload error:', error);
-
-      // Most common for “Failed to fetch”
-      // - CORS blocked
-      // - API URL wrong / stage down
-      // - Network/DNS
-      // - Mixed content (http inside https) — not your case since URLs are https
       const msg =
         error?.name === 'AbortError'
           ? 'Upload timed out (network slow or API not responding).'
@@ -534,8 +575,16 @@ Thanks.`;
       return;
     }
 
+    // ✅ If backfill is ON, enforce allowed list (when BACKFILL_2025_MODE is ON)
+    if (allowBackfill && BACKFILL_2025_MODE && !BACKFILL_MONTHS_2025.includes(selectedMonth)) {
+      setModalMessage('Please select an allowed month (Jan 2025 to Nov 2025) for backfill.');
+      setModalType('error');
+      setShowMessageModal(true);
+      return;
+    }
+
     if (validateFile(file)) {
-      const monthName = selectedMonth.split(' ')[0]; // backend expects month name only
+      const monthName = selectedMonth.split(' ')[0]; // backend expects month name only (keep current behavior)
       uploadFile(file, API_MONTHLY_UPLOAD, monthName, undefined, selectedMonth);
     }
   };
@@ -745,8 +794,6 @@ Thanks.`;
     };
   }, []);
 
-  const isAdmin = (userAttributes.username || '').toLowerCase() === 'manika5170@bharatbiotech.com';
-
   return (
     <>
       <header ref={headerRef} className={`app-header ${activeTab === 'daily' ? 'daily-theme' : ''}`}>
@@ -929,6 +976,7 @@ Thanks.`;
                     className="file-input"
                     disabled={isUploading}
                   />
+
                   <div className="custom-dropdown" ref={dropdownRef}>
                     <div
                       className={`dropdown-toggle ${isDropdownOpen ? 'open' : ''}`}
@@ -944,9 +992,10 @@ Thanks.`;
                       <span>{selectedMonth || 'Select Month'}</span>
                       <span className="dropdown-arrow"></span>
                     </div>
+
                     {isDropdownOpen && (
                       <ul className="dropdown-menu">
-                        {getFinancialYearMonths(new Date()).map((monthYear) => (
+                        {(allowBackfill && BACKFILL_2025_MODE ? BACKFILL_MONTHS_2025 : getFinancialYearMonths(new Date())).map((monthYear) => (
                           <li
                             key={monthYear}
                             className={`dropdown-item ${selectedMonth === monthYear ? 'selected' : ''}`}
@@ -980,20 +1029,38 @@ Thanks.`;
                 <h2 style={{ margin: 0, marginRight: '10px' }}>📋 List of Files Submitted</h2>
 
                 {isAdmin && (
-                  <label
-                    className="delete-option-label"
-                    style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer' }}
-                  >
-                    <input
-                      type="checkbox"
-                      className="delete-option-checkbox"
-                      checked={isDeleteOptionEnabled}
-                      onChange={(e) => setIsDeleteOptionEnabled(e.target.checked)}
-                      aria-checked={isDeleteOptionEnabled}
-                      aria-label="Toggle delete option"
-                    />
-                    Delete Option
-                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <label
+                      className="delete-option-label"
+                      style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer' }}
+                    >
+                      <input
+                        type="checkbox"
+                        className="delete-option-checkbox"
+                        checked={isDeleteOptionEnabled}
+                        onChange={(e) => setIsDeleteOptionEnabled(e.target.checked)}
+                        aria-checked={isDeleteOptionEnabled}
+                        aria-label="Toggle delete option"
+                      />
+                      Delete Option
+                    </label>
+
+                    <label
+                      className="delete-option-label"
+                      style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer', gap: '8px' }}
+                      title="When ON, monthly uploads are saved as Month_Year file (backfill mode). When OFF, normal current_file behavior."
+                    >
+                      <input
+                        type="checkbox"
+                        className="delete-option-checkbox"
+                        checked={allowBackfill}
+                        onChange={(e) => setAllowBackfill(e.target.checked)}
+                        aria-checked={allowBackfill}
+                        aria-label="Toggle allow backfill"
+                      />
+                      Allow Backfill
+                    </label>
+                  </div>
                 )}
               </div>
 
