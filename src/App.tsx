@@ -105,38 +105,34 @@ const getLast36Months = (currentDate: Date) => {
     out.push(formatMonthYear(d));
     d.setMonth(d.getMonth() - 1);
   }
-  return out;
+  // ✅ show oldest → newest (ascending)
+  return out.reverse();
 };
 
 // ✅ show: current month + next 4 months
 // plus previous month ONLY if today is within first 7 business days of current month
+// ✅ show:
+// - Until 7th of the month (inclusive): previous month + current month
+// - From 8th onwards: ONLY current month
+// Always return ascending order.
 const getNextMonthsWindow = (currentDate: Date) => {
   const out: string[] = [];
 
-  // compute first 7 business days (Mon-Fri) of current month
   const firstOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-  let businessDays = 0;
-  let thresholdDate = new Date(firstOfMonth);
-  while (businessDays < 7) {
-    const day = thresholdDate.getDay(); // 0 Sun, 6 Sat
-    if (day !== 0 && day !== 6) businessDays++;
-    if (businessDays < 7) thresholdDate.setDate(thresholdDate.getDate() + 1);
-  }
+  const currentLabel = formatMonthYear(firstOfMonth);
 
-  // if currentDate <= thresholdDate, include previous month
-  if (currentDate <= thresholdDate) {
+  // Calendar-day rule (not business days):
+  // If today is 1..7 (inclusive), allow previous month as well
+  const dayOfMonth = currentDate.getDate();
+  if (dayOfMonth <= 7) {
     const prev = new Date(firstOfMonth);
     prev.setMonth(prev.getMonth() - 1);
     out.push(formatMonthYear(prev));
   }
 
-  // current + next 4
-  const d = new Date(firstOfMonth);
-  for (let i = 0; i < 5; i++) {
-    out.push(formatMonthYear(d));
-    d.setMonth(d.getMonth() + 1);
-  }
+  out.push(currentLabel);
 
+  // Ensure unique + ascending (prev, current)
   return Array.from(new Set(out));
 };
 
