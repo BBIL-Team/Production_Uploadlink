@@ -97,16 +97,32 @@ async function readResponseBody(res: Response) {
 // ✅ Month label helpers
 const formatMonthYear = (d: Date) => `${months[d.getMonth()]} ${d.getFullYear()}`;
 
-// ✅ last 36 months including current month
-const getLast36Months = (currentDate: Date) => {
-  const out: string[] = [];
-  const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-  for (let i = 0; i < 36; i++) {
-    out.push(formatMonthYear(d));
-    d.setMonth(d.getMonth() - 1);
+// ✅ Backfill dropdown: show all months of previous calendar year + current month (ascending)
+// Example if today is Jan 2026 => Jan 2025..Dec 2025, Jan 2026
+const getBackfillMonths = (currentDate: Date) => {
+  const prevYear = currentDate.getFullYear() - 1;
+  const items: Array<{ ts: number; label: string }> = [];
+
+  // Jan..Dec of previous year
+  for (let m = 0; m < 12; m++) {
+    const d = new Date(prevYear, m, 1);
+    items.push({ ts: d.getTime(), label: formatMonthYear(d) });
   }
-  // ✅ show oldest → newest (ascending)
-  return out.reverse();
+
+  // Current month
+  const cur = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+  items.push({ ts: cur.getTime(), label: formatMonthYear(cur) });
+
+  // Deduplicate + ascending
+  const uniq = new Map<string, number>();
+  for (const it of items) {
+    if (!uniq.has(it.label)) uniq.set(it.label, it.ts);
+  }
+
+  return Array.from(uniq.entries())
+    .map(([label, ts]) => ({ label, ts }))
+    .sort((a, b) => a.ts - b.ts)
+    .map((x) => x.label);
 };
 
 // ✅ show: current month + next 4 months
@@ -1221,7 +1237,7 @@ const handleDailyUpload = (f: File | null, segment: 'DS' | 'DP') => {
 
                     {isDropdownOpen && (
                       <ul className="dropdown-menu">
-                        {(allowBackfill ? getLast36Months(new Date()) : getNextMonthsWindow(new Date())).map((monthYear) => (
+                        {(allowBackfill ? getBackfillMonths(new Date()) : getNextMonthsWindow(new Date())).map((monthYear) => (
                           <li
                             key={monthYear}
                             className={`dropdown-item ${selectedMonth === monthYear ? 'selected' : ''}`}
