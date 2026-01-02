@@ -140,6 +140,119 @@ const getNextMonthsWindow = (currentDate: Date) => {
   return Array.from(new Set(out));
 };
 
+// ✅ Month token helper for CSV validation (e.g., "January 2026" -> "Jan-26")
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'] as const;
+
+const monthYearLabelToToken = (label: string): string => {
+  const parts = String(label || '').trim().split(/\s+/);
+  if (parts.length < 2) return '';
+  const monthName = parts[0];
+  const yearPart = parts[1];
+
+  const monthIndex = months.findIndex((m) => m.toLowerCase() === monthName.toLowerCase());
+  if (monthIndex < 0) return '';
+  const yy = yearPart.slice(-2);
+  return `${MONTHS_SHORT[monthIndex]}-${yy}`;
+};
+
+const normalizeCsvHeader = (s: string): string => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+// Basic CSV line parser (handles quoted commas)
+const parseCsvLine = (line: string): string[] => {
+  const out: string[] = [];
+  let cur = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+
+    if (ch === '"') {
+      const next = line[i + 1];
+      // Escaped quote inside quoted field
+      if (inQuotes && next === '"') {
+        cur += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (ch === ',' && !inQuotes) {
+      out.push(cur);
+      cur = '';
+      continue;
+    }
+
+    cur += ch;
+  }
+  out.push(cur);
+  return out;
+};
+
+const validateMonthlyCsvMonthColumn = async (
+  f: File,
+  expectedToken: string
+): Promise<{ ok: boolean; message?: string }> => {
+  // Only validate CSV files
+  const ext = (f.name.split('.').pop() || '').toLowerCase();
+  if (ext !== 'csv') return { ok: true };
+
+  if (!expectedToken) {
+    return { ok: false, message: 'Internal error: unable to derive expected Month & Year token from selected month.' };
+  }
+
+  // Read file text (limit parsing to first ~250k chars to avoid huge files)
+  const rawFull = await f.text();
+  const raw = rawFull.slice(0, 250_000);
+
+  const normalized = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/^\uFEFF/, '');
+  const lines = normalized.split('\n').filter((l) => l.trim() !== '');
+
+  if (lines.length < 2) {
+    return { ok: false, message: 'Validation failed: CSV appears empty or header row is missing.' };
+  }
+
+  const headerCols = parseCsvLine(lines[0]).map((h) => String(h || '').trim());
+  const targetKey = 'monthyear';
+  const colIndex = headerCols.findIndex((h) => normalizeCsvHeader(h) === targetKey);
+
+  if (colIndex < 0) {
+    return {
+      ok: false,
+      message: `Validation failed: Could not find required column "Month & Year" in the CSV header.`,
+    };
+  }
+
+  // Validate all non-empty values are exactly the expected token
+  const maxRowsToCheck = 5000;
+  let checked = 0;
+
+  for (let i = 1; i < lines.length && checked < maxRowsToCheck; i++) {
+    const line = lines[i];
+    if (!line.trim()) continue;
+
+    const cols = parseCsvLine(line);
+    const valRaw = (cols[colIndex] ?? '').trim();
+
+    // Skip empty cells
+    if (!valRaw) continue;
+
+    const val = valRaw.replace(/^"|"$/g, '').trim();
+
+    if (val !== expectedToken) {
+      return {
+        ok: false,
+        message: `Validation failed: Column "Month & Year" must be "${expectedToken}" for the selected month, but found "${val}" (row ${i + 1}).`,
+      };
+    }
+
+    checked++;
+  }
+
+  return { ok: true };
+};
+
 const App: React.FC = () => {
   const { signOut } = useAuthenticator();
 
@@ -669,7 +782,7 @@ Thanks.`;
     }
   };
 
-  const handleMonthlyUpload = () => {
+  const handleMonthlyUpload = async () => {
     if (!selectedMonth) {
       setModalMessage('Please select the correct month.');
       setModalType('error');
@@ -677,13 +790,30 @@ Thanks.`;
       return;
     }
 
-    if (validateFile(file)) {
-      const monthName = selectedMonth.split(' ')[0]; // backend expects month name only (keep current behavior)
-      uploadFile(file, API_MONTHLY_UPLOAD, monthName, undefined, selectedMonth);
-    }
-  };
+    if (!validateFile(file)) return;
 
-  const handleDailyUpload = (f: File | null, segment: 'DS' | 'DP') => {
+    // ✅ Validate Month & Year column against selected dropdown month (CSV only)
+    try {
+      const expectedToken = monthYearLabelToToken(selectedMonth); // e.g., "January 2026" -> "Jan-26"
+      const result = await validateMonthlyCsvMonthColumn(file as File, expectedToken);
+      if (!result.ok) {
+        setModalMessage(result.message || 'Validation failed for Month & Year column.');
+        setModalType('error');
+        setShowMessageModal(true);
+        return;
+      }
+    } catch (e: any) {
+      console.error('Month & Year validation failed:', e);
+      setModalMessage(`Validation failed: ${e?.message || 'Unable to read/validate the CSV file.'}`);
+      setModalType('error');
+      setShowMessageModal(true);
+      return;
+    }
+
+    const monthName = selectedMonth.split(' ')[0]; // backend expects month name only (keep current behavior)
+    uploadFile(file, API_MONTHLY_UPLOAD, monthName, undefined, selectedMonth);
+  };
+const handleDailyUpload = (f: File | null, segment: 'DS' | 'DP') => {
     if (validateFile(f)) {
       uploadFile(f, API_DAILY_UPLOAD, 'Daily', segment);
     }
