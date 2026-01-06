@@ -4,7 +4,7 @@ import { useAuthenticator } from '@aws-amplify/ui-react';
 import { getCurrentUser, fetchUserAttributes, updateUserAttributes } from '@aws-amplify/auth';
 
 // --- Footer link helpers (replace with your real values) ---
-const DASHBOARD_URL = 'https://your-dashboard-url.example.com'; // TODO: replace
+const DASHBOARD_URL = 'https://ap-south-1.quicksight.aws.amazon.com/sn/account/bbil-dashboards/dashboards/88001d2d-9daa-477d-8301-7418de873115/sheets/88001d2d-9daa-477d-8301-7418de873115_298b1a92-4fc0-4e5f-9938-8664fb6fd34b'; // TODO: replace
 const SUPPORT_EMAIL = 'analytics@bharatbiotech.com'; // TODO: confirm or replace
 const BA_PHONE_TEL = '+914000000000'; // TODO: replace with real phone in E.164
 
