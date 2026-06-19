@@ -100,7 +100,10 @@ const formatMonthYear = (d: Date) => `${months[d.getMonth()]} ${d.getFullYear()}
 // ✅ Backfill dropdown: show all months of previous calendar year + current month (ascending)
 // Example if today is Jan 2026 => Jan 2025..Dec 2025, Jan 2026
 const getBackfillMonths = (currentDate: Date) => {
-  const prevYear = currentDate.getFullYear() - 1;
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth();
+  const prevYear = currentYear - 1;
+
   const items: Array<{ ts: number; label: string }> = [];
 
   // Jan..Dec of previous year
@@ -109,20 +112,13 @@ const getBackfillMonths = (currentDate: Date) => {
     items.push({ ts: d.getTime(), label: formatMonthYear(d) });
   }
 
-  // Current month
-  const cur = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-  items.push({ ts: cur.getTime(), label: formatMonthYear(cur) });
-
-  // Deduplicate + ascending
-  const uniq = new Map<string, number>();
-  for (const it of items) {
-    if (!uniq.has(it.label)) uniq.set(it.label, it.ts);
+  // Jan..current month of current year
+  for (let m = 0; m <= currentMonth; m++) {
+    const d = new Date(currentYear, m, 1);
+    items.push({ ts: d.getTime(), label: formatMonthYear(d) });
   }
 
-  return Array.from(uniq.entries())
-    .map(([label, ts]) => ({ label, ts }))
-    .sort((a, b) => a.ts - b.ts)
-    .map((x) => x.label);
+  return items.sort((a, b) => a.ts - b.ts).map((x) => x.label);
 };
 
 // ✅ show: current month + next 4 months
