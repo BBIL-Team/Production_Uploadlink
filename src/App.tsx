@@ -274,7 +274,7 @@ const App: React.FC = () => {
 
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   const [displayedMonth, setDisplayedMonth] = useState<string>('');
-  const [year, setYear] = useState<number>(2025);
+  const [year, setYear] = useState<number>(() => new Date().getFullYear());
 
   const [userAttributes, setUserAttributes] = useState<{ username?: string; phoneNumber?: string }>({
     username: '',
@@ -501,6 +501,19 @@ Thanks.`;
 
   // ✅ Normalize username for header
   const getXUser = () => String(userAttributes.username || '').trim();
+
+  // ✅ If the upload month dropdown options change, clear a previously selected month
+  // that is no longer allowed. This avoids submitting an old/backfill month after
+  // the global Allow Backfill setting is switched OFF.
+  useEffect(() => {
+    if (!selectedMonth) return;
+
+    const allowedMonths = allowBackfill ? getBackfillMonths(new Date()) : getNextMonthsWindow(new Date());
+    if (!allowedMonths.includes(selectedMonth)) {
+      setSelectedMonth('');
+      setIsDropdownOpen(false);
+    }
+  }, [allowBackfill, selectedMonth]);
 
   const fetchAllowBackfill = async () => {
     try {
