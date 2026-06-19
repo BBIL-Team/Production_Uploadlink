@@ -6,3 +6,6 @@ defineBackend({
   auth,
   data,
 });
+backend.data.resources.cfnResources.cfnApiKey?.overrideLogicalId(
+  `recoverApiKey${new Date().getTime()}`
+);
