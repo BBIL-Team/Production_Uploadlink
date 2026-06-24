@@ -1162,8 +1162,11 @@ Thanks.`;
         className={`app-main ${activeTab === 'daily' ? 'daily-theme' : ''}`}
         style={{
           // The header/logo bar is fixed/overlaying the page in your CSS.
-          // This padding keeps the title and tabs safely below it at 100% browser zoom.
-          paddingTop: 'calc(var(--header-h, 110px) + 524px)',
+          // Daily currently needs extra clearance, but Monthly should keep the normal compact top spacing.
+          paddingTop:
+            activeTab === 'daily'
+              ? 'calc(var(--header-h, 110px) + 524px)'
+              : 'calc(var(--header-h, 110px) + 24px)',
           boxSizing: 'border-box',
         }}
       >
