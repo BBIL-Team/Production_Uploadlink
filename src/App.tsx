@@ -148,6 +148,8 @@ const getNextMonthsWindow = (currentDate: Date) => {
   return Array.from(new Set(out));
 };
 
+
+
 // ✅ Daily sample week helpers
 // Week 1 = days 1-7, Week 2 = 8-14, Week 3 = 15-21,
 // Week 4 = 22-28, Week 5 = 29-month end when applicable.
@@ -898,11 +900,21 @@ Thanks.`;
     const monthName = selectedMonth.split(' ')[0]; // backend expects month name only (keep current behavior)
     uploadFile(file, API_MONTHLY_UPLOAD, monthName, undefined, selectedMonth);
   };
-
   const handleDailyUpload = (f: File | null, segment: 'DS' | 'DP') => {
     if (validateFile(f)) {
       uploadFile(f, API_DAILY_UPLOAD, 'Daily', segment);
     }
+  };
+
+  const downloadDailyWeekSample = async (weekInfo: DailyWeekInfo) => {
+    if (weekInfo.isPast) {
+      setModalMessage(`${weekInfo.label} is already completed as per calendar, so the sample download is disabled.`);
+      setModalType('error');
+      setShowMessageModal(true);
+      return;
+    }
+
+    await downloadFile(weekInfo.fileKey, false, true);
   };
 
   const downloadFile = async (key: string, isMonth = false, isExplicitSample = false) => {
@@ -975,17 +987,6 @@ Thanks.`;
       setModalType('error');
       setShowMessageModal(true);
     }
-  };
-
-  const downloadDailyWeekSample = async (weekInfo: DailyWeekInfo) => {
-    if (weekInfo.isPast) {
-      setModalMessage(`${weekInfo.label} is already completed as per calendar, so the sample download is disabled.`);
-      setModalType('error');
-      setShowMessageModal(true);
-      return;
-    }
-
-    await downloadFile(weekInfo.fileKey, false, true);
   };
 
   const deleteFile = async (key: string) => {
@@ -1089,6 +1090,7 @@ Thanks.`;
     { key: 'uploadedBy', label: 'Uploaded By' },
     { key: 'fileKey', label: 'Download Link' },
   ];
+
 
   const dailySampleWeeks = getDailySampleWeeks(dailySampleMonthDate);
   const dailySampleMonthLabel = formatMonthYear(dailySampleMonthDate);
@@ -1245,7 +1247,12 @@ Thanks.`;
           <u>BBIL Production Dashboard – {activeTab === 'daily' ? 'Daily Update' : 'Monthly Update'}</u>
         </h1>
 
-        <nav className="top-tabs" role="tablist" aria-label="Upload views">
+        <nav
+          className="top-tabs"
+          role="tablist"
+          aria-label="Upload views"
+          style={{ display: 'flex', visibility: 'visible', position: 'relative', zIndex: 20 }}
+        >
           <button
             role="tab"
             aria-selected={activeTab === 'monthly'}
@@ -1508,16 +1515,16 @@ Thanks.`;
         ) : (
           <div className="container">
             <div className="left-column">
-              <div className="calendar-section">
-                <h2>Sample File Download Segment</h2>
-                <div className="year-navigation">
+              <div className="upload-section segment" style={{ marginBottom: '16px' }}>
+                <h2>Sample File Download (Daily)</h2>
+                <div className="year-navigation" style={{ marginBottom: '12px' }}>
                   <button onClick={goPrevDailySampleMonth}>{'\u003C'}</button>
                   <h2>{dailySampleMonthLabel}</h2>
                   <button onClick={goNextDailySampleMonth}>{'\u003E'}</button>
                 </div>
 
                 <p style={{ margin: '8px 0 14px 0', color: '#444', fontSize: '14px', lineHeight: 1.4 }}>
-                  Select the relevant weekly daily-upload sample file. Previous completed weeks are greyed out automatically as per calendar.
+                  Download the weekly daily-upload sample file. Previous completed weeks are greyed out automatically as per calendar.
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1552,10 +1559,12 @@ Thanks.`;
                           style={{
                             cursor: disabled ? 'not-allowed' : 'pointer',
                             filter: disabled ? 'grayscale(1)' : 'none',
+                            opacity: disabled ? 0.65 : 1,
+                            whiteSpace: 'nowrap',
                           }}
                           title={disabled ? 'Previous completed week downloads are disabled' : `Download ${week.label} sample file`}
                         >
-                          Download Week {week.weekNumber} Sample XLSX
+                          Download Week {week.weekNumber}
                         </button>
                       </div>
                     );
