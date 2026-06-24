@@ -1552,9 +1552,9 @@ Thanks.`;
         ) : (
           <div className="container">
             <div className="left-column">
-              <div className="upload-section segment" style={{ marginBottom: '16px' }}>
+              <div className="calendar-section" style={{ marginBottom: '16px' }}>
                 <h2>Sample File Download (Daily)</h2>
-                <div className="year-navigation" style={{ marginBottom: '12px' }}>
+                <div className="year-navigation">
                   <button onClick={goPrevDailySampleMonth}>{'\u003C'}</button>
                   <h2>{dailySampleMonthLabel}</h2>
                   <button onClick={goNextDailySampleMonth}>{'\u003E'}</button>
@@ -1564,46 +1564,36 @@ Thanks.`;
                   Download the weekly daily-upload sample file. Weeks run Monday to Sunday; completed weeks are greyed out automatically.
                 </p>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div className="months-grid">
                   {dailySampleWeeks.map((week) => {
                     const disabled = week.isPast;
                     return (
-                      <div
+                      <button
                         key={week.weekNumber}
+                        className={`month-button ${week.isCurrent ? 'active-month' : ''}`}
+                        onClick={() => downloadDailyWeekSample(week)}
+                        disabled={disabled}
                         style={{
+                          minHeight: '76px',
+                          cursor: disabled ? 'not-allowed' : 'pointer',
+                          filter: disabled ? 'grayscale(1)' : 'none',
+                          opacity: disabled ? 0.55 : 1,
                           display: 'flex',
-                          justifyContent: 'space-between',
+                          flexDirection: 'column',
                           alignItems: 'center',
-                          gap: '10px',
-                          padding: '10px 12px',
-                          borderRadius: '8px',
-                          border: week.isCurrent ? '2px solid #007BFF' : '1px solid #d6d6d6',
-                          backgroundColor: disabled ? '#eeeeee' : week.isCurrent ? '#eaf4ff' : '#ffffff',
-                          color: disabled ? '#8a8a8a' : '#222',
-                          opacity: disabled ? 0.62 : 1,
+                          justifyContent: 'center',
+                          gap: '4px',
                         }}
+                        title={disabled ? 'Previous completed week downloads are disabled' : `Download ${week.label} sample file`}
                       >
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                          <strong>{week.label}</strong>
-                          <span style={{ fontSize: '12px' }}>
-                            {week.isPast ? 'Completed week' : week.isCurrent ? 'Current week' : 'Upcoming week'}
-                          </span>
-                        </div>
-                        <button
-                          className="download-btn"
-                          onClick={() => downloadDailyWeekSample(week)}
-                          disabled={disabled}
-                          style={{
-                            cursor: disabled ? 'not-allowed' : 'pointer',
-                            filter: disabled ? 'grayscale(1)' : 'none',
-                            opacity: disabled ? 0.65 : 1,
-                            whiteSpace: 'nowrap',
-                          }}
-                          title={disabled ? 'Previous completed week downloads are disabled' : `Download ${week.label} sample file`}
-                        >
-                          Download Week {week.weekNumber}
-                        </button>
-                      </div>
+                        <span style={{ fontWeight: 700 }}>Week {week.weekNumber}</span>
+                        <span style={{ fontSize: '12px', lineHeight: 1.25 }}>
+                          {formatWeekDate(week.startDate)} - {formatWeekDate(week.endDate)}
+                        </span>
+                        <span style={{ fontSize: '11px', lineHeight: 1.2 }}>
+                          {week.isPast ? 'Completed' : week.isCurrent ? 'Current' : 'Upcoming'}
+                        </span>
+                      </button>
                     );
                   })}
                 </div>
