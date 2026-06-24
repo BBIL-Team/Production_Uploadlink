@@ -1248,24 +1248,62 @@ Thanks.`;
         </h1>
 
         <nav
-          className="top-tabs"
           role="tablist"
           aria-label="Upload views"
-          style={{ display: 'flex', visibility: 'visible', position: 'relative', zIndex: 20 }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '12px',
+            width: '100%',
+            margin: '8px auto 18px auto',
+            padding: '12px',
+            background: '#ffffff',
+            border: '1px solid #d7e3f4',
+            borderRadius: '14px',
+            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.08)',
+            position: 'relative',
+            zIndex: 100,
+            boxSizing: 'border-box',
+          }}
         >
           <button
+            type="button"
             role="tab"
             aria-selected={activeTab === 'monthly'}
-            className={`tab-btn ${activeTab === 'monthly' ? 'active' : ''}`}
             onClick={() => setActiveTab('monthly')}
+            style={{
+              minWidth: '180px',
+              padding: '12px 18px',
+              borderRadius: '999px',
+              border: activeTab === 'monthly' ? '2px solid #005bbb' : '1px solid #b8c7dc',
+              background: activeTab === 'monthly' ? '#005bbb' : '#f7fbff',
+              color: activeTab === 'monthly' ? '#ffffff' : '#123b66',
+              fontWeight: 700,
+              fontSize: '15px',
+              cursor: 'pointer',
+              boxShadow: activeTab === 'monthly' ? '0 3px 8px rgba(0, 91, 187, 0.25)' : 'none',
+            }}
           >
             Monthly Update
           </button>
           <button
+            type="button"
             role="tab"
             aria-selected={activeTab === 'daily'}
-            className={`tab-btn ${activeTab === 'daily' ? 'active' : ''}`}
             onClick={() => setActiveTab('daily')}
+            style={{
+              minWidth: '180px',
+              padding: '12px 18px',
+              borderRadius: '999px',
+              border: activeTab === 'daily' ? '2px solid #005bbb' : '1px solid #b8c7dc',
+              background: activeTab === 'daily' ? '#005bbb' : '#f7fbff',
+              color: activeTab === 'daily' ? '#ffffff' : '#123b66',
+              fontWeight: 700,
+              fontSize: '15px',
+              cursor: 'pointer',
+              boxShadow: activeTab === 'daily' ? '0 3px 8px rgba(0, 91, 187, 0.25)' : 'none',
+            }}
           >
             Daily Update
           </button>
