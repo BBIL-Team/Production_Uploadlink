@@ -1243,71 +1243,41 @@ Thanks.`;
           </div>
         )}
 
-        <h1 className="app-title">
+        <h1 className="app-title" style={{ marginTop: '12px' }}>
           <u>BBIL Production Dashboard – {activeTab === 'daily' ? 'Daily Update' : 'Monthly Update'}</u>
         </h1>
 
-        <nav
-          role="tablist"
-          aria-label="Upload views"
+        <div
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '12px',
+            position: 'sticky',
+            top: 'calc(var(--header-h, 96px) + 8px)',
+            zIndex: 999,
             width: '100%',
-            margin: '8px auto 18px auto',
-            padding: '12px',
-            background: '#ffffff',
-            border: '1px solid #d7e3f4',
-            borderRadius: '14px',
-            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.08)',
-            position: 'relative',
-            zIndex: 100,
+            margin: '0 auto 16px auto',
+            padding: '8px 0 10px 0',
+            background: 'transparent',
             boxSizing: 'border-box',
           }}
         >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'monthly'}
-            onClick={() => setActiveTab('monthly')}
-            style={{
-              minWidth: '180px',
-              padding: '12px 18px',
-              borderRadius: '999px',
-              border: activeTab === 'monthly' ? '2px solid #005bbb' : '1px solid #b8c7dc',
-              background: activeTab === 'monthly' ? '#005bbb' : '#f7fbff',
-              color: activeTab === 'monthly' ? '#ffffff' : '#123b66',
-              fontWeight: 700,
-              fontSize: '15px',
-              cursor: 'pointer',
-              boxShadow: activeTab === 'monthly' ? '0 3px 8px rgba(0, 91, 187, 0.25)' : 'none',
-            }}
-          >
-            Monthly Update
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'daily'}
-            onClick={() => setActiveTab('daily')}
-            style={{
-              minWidth: '180px',
-              padding: '12px 18px',
-              borderRadius: '999px',
-              border: activeTab === 'daily' ? '2px solid #005bbb' : '1px solid #b8c7dc',
-              background: activeTab === 'daily' ? '#005bbb' : '#f7fbff',
-              color: activeTab === 'daily' ? '#ffffff' : '#123b66',
-              fontWeight: 700,
-              fontSize: '15px',
-              cursor: 'pointer',
-              boxShadow: activeTab === 'daily' ? '0 3px 8px rgba(0, 91, 187, 0.25)' : 'none',
-            }}
-          >
-            Daily Update
-          </button>
-        </nav>
+          <nav className="top-tabs" role="tablist" aria-label="Upload views">
+            <button
+              role="tab"
+              aria-selected={activeTab === 'monthly'}
+              className={`tab-btn ${activeTab === 'monthly' ? 'active' : ''}`}
+              onClick={() => setActiveTab('monthly')}
+            >
+              Monthly Update
+            </button>
+            <button
+              role="tab"
+              aria-selected={activeTab === 'daily'}
+              className={`tab-btn ${activeTab === 'daily' ? 'active' : ''}`}
+              onClick={() => setActiveTab('daily')}
+            >
+              Daily Update
+            </button>
+          </nav>
+        </div>
 
         {activeTab === 'daily' && (
           <div className="mode-banner" role="status">
