@@ -151,8 +151,8 @@ const getNextMonthsWindow = (currentDate: Date) => {
 
 
 // ✅ Daily sample week helpers
-// Week 1 = days 1-7, Week 2 = 8-14, Week 3 = 15-21,
-// Week 4 = 22-28, Week 5 = 29-month end when applicable.
+// Weeks follow calendar weeks from Monday to Sunday.
+// Example: July 2026 Week 1 = 29 Jun 2026 to 05 Jul 2026.
 type DailyWeekInfo = {
   weekNumber: number;
   startDate: Date;
@@ -165,6 +165,18 @@ type DailyWeekInfo = {
 };
 
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+const addDays = (d: Date, days: number) => {
+  const copy = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  copy.setDate(copy.getDate() + days);
+  return copy;
+};
+
+const getMondayOfWeek = (d: Date) => {
+  const day = d.getDay(); // Sunday = 0, Monday = 1, ... Saturday = 6
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  return addDays(d, diffToMonday);
+};
 
 const formatWeekDate = (d: Date) =>
   d.toLocaleDateString('en-IN', {
@@ -181,19 +193,26 @@ const getDailySampleWeeks = (monthDate: Date, today: Date = new Date()): DailyWe
   const year = monthDate.getFullYear();
   const monthIndex = monthDate.getMonth();
   const monthNumber = monthIndex + 1;
-  const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+
+  const firstDayOfMonth = new Date(year, monthIndex, 1);
+  const lastDayOfMonth = new Date(year, monthIndex + 1, 0);
+
+  // Start from the Monday of the week that contains the 1st of the selected month.
+  // This means a month can start with a previous-month date, e.g. July 2026 starts at 29 Jun.
+  const firstMonday = getMondayOfWeek(firstDayOfMonth);
   const todayStart = startOfDay(today);
   const weeks: DailyWeekInfo[] = [];
 
-  for (let startDay = 1; startDay <= lastDay; startDay += 7) {
-    const weekNumber = Math.floor((startDay - 1) / 7) + 1;
-    const endDay = Math.min(startDay + 6, lastDay);
-    const startDate = new Date(year, monthIndex, startDay);
-    const endDate = new Date(year, monthIndex, endDay);
+  let weekStart = firstMonday;
+  let weekNumber = 1;
+
+  while (weekStart <= lastDayOfMonth) {
+    const startDate = startOfDay(weekStart);
+    const endDate = addDays(startDate, 6);
 
     const isPast = startOfDay(endDate) < todayStart;
-    const isCurrent = startOfDay(startDate) <= todayStart && todayStart <= startOfDay(endDate);
-    const isFuture = startOfDay(startDate) > todayStart;
+    const isCurrent = startDate <= todayStart && todayStart <= startOfDay(endDate);
+    const isFuture = startDate > todayStart;
 
     weeks.push({
       weekNumber,
@@ -205,6 +224,9 @@ const getDailySampleWeeks = (monthDate: Date, today: Date = new Date()): DailyWe
       isCurrent,
       isFuture,
     });
+
+    weekStart = addDays(weekStart, 7);
+    weekNumber += 1;
   }
 
   return weeks;
@@ -1539,7 +1561,7 @@ Thanks.`;
                 </div>
 
                 <p style={{ margin: '8px 0 14px 0', color: '#444', fontSize: '14px', lineHeight: 1.4 }}>
-                  Download the weekly daily-upload sample file. Previous completed weeks are greyed out automatically as per calendar.
+                  Download the weekly daily-upload sample file. Weeks run Monday to Sunday; completed weeks are greyed out automatically.
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
