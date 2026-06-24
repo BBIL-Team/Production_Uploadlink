@@ -1187,7 +1187,7 @@ Thanks.`;
           // Daily currently needs extra clearance, but Monthly should keep the normal compact top spacing.
           paddingTop:
             activeTab === 'daily'
-              ? 'calc(var(--header-h, 110px) + 524px)'
+              ? 'calc(var(--header-h, 110px) + 324px)'
               : 'calc(var(--header-h, 110px) + 24px)',
           boxSizing: 'border-box',
         }}
