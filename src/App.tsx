@@ -1163,7 +1163,7 @@ Thanks.`;
         style={{
           // The header/logo bar is fixed/overlaying the page in your CSS.
           // This padding keeps the title and tabs safely below it at 100% browser zoom.
-          paddingTop: 'calc(var(--header-h, 110px) + 24px)',
+          paddingTop: 'calc(var(--header-h, 110px) + 124px)',
           boxSizing: 'border-box',
         }}
       >
