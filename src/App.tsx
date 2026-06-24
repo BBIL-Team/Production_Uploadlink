@@ -148,6 +148,66 @@ const getNextMonthsWindow = (currentDate: Date) => {
   return Array.from(new Set(out));
 };
 
+// ✅ Daily sample week helpers
+// Week 1 = days 1-7, Week 2 = 8-14, Week 3 = 15-21,
+// Week 4 = 22-28, Week 5 = 29-month end when applicable.
+type DailyWeekInfo = {
+  weekNumber: number;
+  startDate: Date;
+  endDate: Date;
+  label: string;
+  fileKey: string;
+  isPast: boolean;
+  isCurrent: boolean;
+  isFuture: boolean;
+};
+
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+const formatWeekDate = (d: Date) =>
+  d.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+  });
+
+const getDailySampleFileKey = (year: number, monthNumber: number, weekNumber: number) => {
+  const monthToken = String(monthNumber).padStart(2, '0');
+  return `Production_Sample_Files/Daily_Update_Sample_Files/${year}_${monthToken}_Week_${weekNumber}_Sample_File.xlsx`;
+};
+
+const getDailySampleWeeks = (monthDate: Date, today: Date = new Date()): DailyWeekInfo[] => {
+  const year = monthDate.getFullYear();
+  const monthIndex = monthDate.getMonth();
+  const monthNumber = monthIndex + 1;
+  const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+  const todayStart = startOfDay(today);
+  const weeks: DailyWeekInfo[] = [];
+
+  for (let startDay = 1; startDay <= lastDay; startDay += 7) {
+    const weekNumber = Math.floor((startDay - 1) / 7) + 1;
+    const endDay = Math.min(startDay + 6, lastDay);
+    const startDate = new Date(year, monthIndex, startDay);
+    const endDate = new Date(year, monthIndex, endDay);
+
+    const isPast = startOfDay(endDate) < todayStart;
+    const isCurrent = startOfDay(startDate) <= todayStart && todayStart <= startOfDay(endDate);
+    const isFuture = startOfDay(startDate) > todayStart;
+
+    weeks.push({
+      weekNumber,
+      startDate,
+      endDate,
+      label: `Week ${weekNumber} (${formatWeekDate(startDate)} - ${formatWeekDate(endDate)})`,
+      fileKey: getDailySampleFileKey(year, monthNumber, weekNumber),
+      isPast,
+      isCurrent,
+      isFuture,
+    });
+  }
+
+  return weeks;
+};
+
 // ✅ Month token helper for CSV validation (e.g., "January 2026" -> "Jan-26")
 const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'] as const;
 
@@ -271,6 +331,10 @@ const App: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   const [displayedMonth, setDisplayedMonth] = useState<string>('');
   const [year, setYear] = useState<number>(() => new Date().getFullYear());
+  const [dailySampleMonthDate, setDailySampleMonthDate] = useState<Date>(() => {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), 1);
+  });
 
   const [userAttributes, setUserAttributes] = useState<{ username?: string; phoneNumber?: string }>({
     username: '',
@@ -834,13 +898,14 @@ Thanks.`;
     const monthName = selectedMonth.split(' ')[0]; // backend expects month name only (keep current behavior)
     uploadFile(file, API_MONTHLY_UPLOAD, monthName, undefined, selectedMonth);
   };
-const handleDailyUpload = (f: File | null, segment: 'DS' | 'DP') => {
+
+  const handleDailyUpload = (f: File | null, segment: 'DS' | 'DP') => {
     if (validateFile(f)) {
       uploadFile(f, API_DAILY_UPLOAD, 'Daily', segment);
     }
   };
 
-  const downloadFile = async (key: string, isMonth = false) => {
+  const downloadFile = async (key: string, isMonth = false, isExplicitSample = false) => {
     try {
       const fileKey = isMonth ? `Production_Sample_Files/${key}_Sample_File.csv` : key;
 
@@ -853,7 +918,7 @@ const handleDailyUpload = (f: File | null, segment: 'DS' | 'DP') => {
             bucket_name: BUCKET_NAME,
             file_key: fileKey,
             action: 'download',
-            isSample: isMonth,
+            isSample: isMonth || isExplicitSample,
           }),
           mode: 'cors',
           credentials: 'omit',
@@ -910,6 +975,17 @@ const handleDailyUpload = (f: File | null, segment: 'DS' | 'DP') => {
       setModalType('error');
       setShowMessageModal(true);
     }
+  };
+
+  const downloadDailyWeekSample = async (weekInfo: DailyWeekInfo) => {
+    if (weekInfo.isPast) {
+      setModalMessage(`${weekInfo.label} is already completed as per calendar, so the sample download is disabled.`);
+      setModalType('error');
+      setShowMessageModal(true);
+      return;
+    }
+
+    await downloadFile(weekInfo.fileKey, false, true);
   };
 
   const deleteFile = async (key: string) => {
@@ -1013,6 +1089,17 @@ const handleDailyUpload = (f: File | null, segment: 'DS' | 'DP') => {
     { key: 'uploadedBy', label: 'Uploaded By' },
     { key: 'fileKey', label: 'Download Link' },
   ];
+
+  const dailySampleWeeks = getDailySampleWeeks(dailySampleMonthDate);
+  const dailySampleMonthLabel = formatMonthYear(dailySampleMonthDate);
+
+  const goPrevDailySampleMonth = () => {
+    setDailySampleMonthDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  };
+
+  const goNextDailySampleMonth = () => {
+    setDailySampleMonthDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  };
 
   // header height CSS var
   const headerRef = useRef<HTMLElement | null>(null);
@@ -1421,6 +1508,61 @@ const handleDailyUpload = (f: File | null, segment: 'DS' | 'DP') => {
         ) : (
           <div className="container">
             <div className="left-column">
+              <div className="calendar-section">
+                <h2>Sample File Download Segment</h2>
+                <div className="year-navigation">
+                  <button onClick={goPrevDailySampleMonth}>{'\u003C'}</button>
+                  <h2>{dailySampleMonthLabel}</h2>
+                  <button onClick={goNextDailySampleMonth}>{'\u003E'}</button>
+                </div>
+
+                <p style={{ margin: '8px 0 14px 0', color: '#444', fontSize: '14px', lineHeight: 1.4 }}>
+                  Select the relevant weekly daily-upload sample file. Previous completed weeks are greyed out automatically as per calendar.
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {dailySampleWeeks.map((week) => {
+                    const disabled = week.isPast;
+                    return (
+                      <div
+                        key={week.weekNumber}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '10px 12px',
+                          borderRadius: '8px',
+                          border: week.isCurrent ? '2px solid #007BFF' : '1px solid #d6d6d6',
+                          backgroundColor: disabled ? '#eeeeee' : week.isCurrent ? '#eaf4ff' : '#ffffff',
+                          color: disabled ? '#8a8a8a' : '#222',
+                          opacity: disabled ? 0.62 : 1,
+                        }}
+                      >
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <strong>{week.label}</strong>
+                          <span style={{ fontSize: '12px' }}>
+                            {week.isPast ? 'Completed week' : week.isCurrent ? 'Current week' : 'Upcoming week'}
+                          </span>
+                        </div>
+                        <button
+                          className="download-btn"
+                          onClick={() => downloadDailyWeekSample(week)}
+                          disabled={disabled}
+                          style={{
+                            cursor: disabled ? 'not-allowed' : 'pointer',
+                            filter: disabled ? 'grayscale(1)' : 'none',
+                          }}
+                          title={disabled ? 'Previous completed week downloads are disabled' : `Download ${week.label} sample file`}
+                        >
+                          Download Week {week.weekNumber} Sample XLSX
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="upload-section segment segment--ds">
                 <h2>📤 Daily Status – Drug Substance (DS)</h2>
                 <div className="upload-form">
