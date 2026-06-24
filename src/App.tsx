@@ -1158,7 +1158,15 @@ Thanks.`;
         </div>
       </header>
 
-      <main className={`app-main ${activeTab === 'daily' ? 'daily-theme' : ''}`}>
+      <main
+        className={`app-main ${activeTab === 'daily' ? 'daily-theme' : ''}`}
+        style={{
+          // The header/logo bar is fixed/overlaying the page in your CSS.
+          // This padding keeps the title and tabs safely below it at 100% browser zoom.
+          paddingTop: 'calc(var(--header-h, 110px) + 24px)',
+          boxSizing: 'border-box',
+        }}
+      >
         {tooltip.visible && (
           <div className="tooltip" style={{ left: `${tooltip.x + 10}px`, top: `${tooltip.y + 10}px` }}>
             {tooltip.content}
@@ -1243,20 +1251,16 @@ Thanks.`;
           </div>
         )}
 
-        <h1 className="app-title" style={{ marginTop: '12px' }}>
+        <h1 className="app-title">
           <u>BBIL Production Dashboard – {activeTab === 'daily' ? 'Daily Update' : 'Monthly Update'}</u>
         </h1>
 
         <div
           style={{
-            position: 'sticky',
-            top: 'calc(var(--header-h, 96px) + 8px)',
-            zIndex: 999,
             width: '100%',
-            margin: '0 auto 16px auto',
-            padding: '8px 0 10px 0',
-            background: 'transparent',
-            boxSizing: 'border-box',
+            margin: '0 auto 18px auto',
+            position: 'relative',
+            zIndex: 20,
           }}
         >
           <nav className="top-tabs" role="tablist" aria-label="Upload views">
