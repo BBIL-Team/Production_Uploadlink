@@ -159,6 +159,8 @@ type DailyWeekInfo = {
   endDate: Date;
   label: string;
   fileKey: string;
+  sampleYear: number;
+  sampleMonthNumber: number;
   isPast: boolean;
   isCurrent: boolean;
   isFuture: boolean;
@@ -184,9 +186,10 @@ const formatWeekDate = (d: Date) =>
     month: 'short',
   });
 
-const getDailySampleFileKey = (year: number, monthNumber: number, weekNumber: number) => {
+const getDailySampleFileKey = (year: number, monthNumber: number, weekNumber: number, segment?: 'DS' | 'DP') => {
   const monthToken = String(monthNumber).padStart(2, '0');
-  return `Production_Sample_Files/Daily_Update_Sample_Files/${year}_${monthToken}_Week_${weekNumber}_Sample_File.xlsx`;
+  const segmentToken = segment ? `_${segment}` : '';
+  return `Production_Sample_Files/Daily_Update_Sample_Files/${year}_${monthToken}_Week_${weekNumber}${segmentToken}_Sample_File.xlsx`;
 };
 
 const getDailySampleWeeks = (monthDate: Date, today: Date = new Date()): DailyWeekInfo[] => {
@@ -220,6 +223,8 @@ const getDailySampleWeeks = (monthDate: Date, today: Date = new Date()): DailyWe
       endDate,
       label: `Week ${weekNumber} (${formatWeekDate(startDate)} - ${formatWeekDate(endDate)})`,
       fileKey: getDailySampleFileKey(year, monthNumber, weekNumber),
+      sampleYear: year,
+      sampleMonthNumber: monthNumber,
       isPast,
       isCurrent,
       isFuture,
@@ -387,6 +392,9 @@ const App: React.FC = () => {
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
   const [fileNameToDelete, setFileNameToDelete] = useState<string | null>(null);
   const [isDeleteOptionEnabled, setIsDeleteOptionEnabled] = useState<boolean>(false);
+
+  const [showDailySampleChoiceModal, setShowDailySampleChoiceModal] = useState<boolean>(false);
+  const [dailySampleWeekToDownload, setDailySampleWeekToDownload] = useState<DailyWeekInfo | null>(null);
 
   const [activeTab, setActiveTab] = useState<'monthly' | 'daily'>(() => {
     try {
@@ -722,7 +730,7 @@ Thanks.`;
 
   // Manage body scroll when modal is open
   useEffect(() => {
-    if (showMessageModal || showUpdateForm || isUploading || showConfirmDeleteModal) {
+    if (showMessageModal || showUpdateForm || isUploading || showConfirmDeleteModal || showDailySampleChoiceModal) {
       const scrollY = window.scrollY;
       document.body.style.overflow = 'hidden';
       document.body.style.position = 'fixed';
@@ -742,7 +750,7 @@ Thanks.`;
       document.body.style.top = '';
       document.body.style.width = '';
     };
-  }, [showMessageModal, showUpdateForm, isUploading, showConfirmDeleteModal]);
+  }, [showMessageModal, showUpdateForm, isUploading, showConfirmDeleteModal, showDailySampleChoiceModal]);
 
   const handleUpdateUsername = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -928,7 +936,7 @@ Thanks.`;
     }
   };
 
-  const downloadDailyWeekSample = async (weekInfo: DailyWeekInfo) => {
+  const downloadDailyWeekSample = (weekInfo: DailyWeekInfo) => {
     if (weekInfo.isPast) {
       setModalMessage(`${weekInfo.label} is already completed as per calendar, so the sample download is disabled.`);
       setModalType('error');
@@ -936,7 +944,34 @@ Thanks.`;
       return;
     }
 
-    await downloadFile(weekInfo.fileKey, false, true);
+    setDailySampleWeekToDownload(weekInfo);
+    setShowDailySampleChoiceModal(true);
+  };
+
+  const closeDailySampleChoiceModal = () => {
+    setShowDailySampleChoiceModal(false);
+    setDailySampleWeekToDownload(null);
+  };
+
+  const downloadDailyWeekSampleForSegment = async (segment: 'DS' | 'DP') => {
+    const weekInfo = dailySampleWeekToDownload;
+
+    if (!weekInfo) {
+      setShowDailySampleChoiceModal(false);
+      return;
+    }
+
+    const fileKey = getDailySampleFileKey(
+      weekInfo.sampleYear,
+      weekInfo.sampleMonthNumber,
+      weekInfo.weekNumber,
+      segment
+    );
+
+    setShowDailySampleChoiceModal(false);
+    setDailySampleWeekToDownload(null);
+
+    await downloadFile(fileKey, false, true);
   };
 
   const downloadFile = async (key: string, isMonth = false, isExplicitSample = false) => {
@@ -1187,7 +1222,7 @@ Thanks.`;
           // Daily currently needs extra clearance, but Monthly should keep the normal compact top spacing.
           paddingTop:
             activeTab === 'daily'
-              ? 'calc(var(--header-h, 110px) + 324px)'
+              ? 'calc(var(--header-h, 110px) + 524px)'
               : 'calc(var(--header-h, 110px) + 24px)',
           boxSizing: 'border-box',
         }}
@@ -1258,6 +1293,54 @@ Thanks.`;
                   Confirm
                 </button>
                 <button className="cancel-btn" onClick={handleCancelDelete}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showDailySampleChoiceModal && dailySampleWeekToDownload && (
+          <div className="modal-overlay">
+            <div className="modal-content" style={{ maxWidth: '520px' }}>
+              <h3 className="modal-title">Select Daily Sample Format</h3>
+              <p className="message-text" style={{ marginBottom: '18px' }}>
+                Please choose the sample format for <strong>{dailySampleWeekToDownload.label}</strong>.
+              </p>
+
+              <div
+                className="modal-buttons"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  alignItems: 'stretch',
+                }}
+              >
+                <button
+                  type="button"
+                  className="submit-btn"
+                  onClick={() => downloadDailyWeekSampleForSegment('DS')}
+                  style={{ width: '100%' }}
+                >
+                  Download Drug Substance (DS) Sample
+                </button>
+
+                <button
+                  type="button"
+                  className="submit-btn"
+                  onClick={() => downloadDailyWeekSampleForSegment('DP')}
+                  style={{ width: '100%' }}
+                >
+                  Download Drug Product (DP) Sample
+                </button>
+
+                <button
+                  type="button"
+                  className="cancel-btn"
+                  onClick={closeDailySampleChoiceModal}
+                  style={{ width: '100%' }}
+                >
                   Cancel
                 </button>
               </div>
@@ -1584,7 +1667,7 @@ Thanks.`;
                           justifyContent: 'center',
                           gap: '4px',
                         }}
-                        title={disabled ? 'Previous completed week downloads are disabled' : `Download ${week.label} sample file`}
+                        title={disabled ? 'Previous completed week downloads are disabled' : `Choose DS/DP sample format for ${week.label}`}
                       >
                         <span style={{ fontWeight: 700 }}>Week {week.weekNumber}</span>
                         <span style={{ fontSize: '12px', lineHeight: 1.25 }}>
