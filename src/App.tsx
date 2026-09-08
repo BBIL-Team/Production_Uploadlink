@@ -21,10 +21,23 @@ const API_PRESIGNED = 'https://e3blv3dko6.execute-api.ap-south-1.amazonaws.com/P
 const API_MONTHLY_UPLOAD = `${API_BASE}/Production_Uploadlink`;
 const API_DAILY_UPLOAD = 'https://1whw41i19a.execute-api.ap-south-1.amazonaws.com/S1/Production_DailyUpload';
 
+// ====== Dispatch (daily update) APIs ======
+// These are intentionally separate from Monthly Update and will be filled after new endpoints are created.
+const API_DISPATCH_LIST_FILES = '';
+const API_DISPATCH_GET_UPLOADER = '';
+const API_DISPATCH_SAVE_FILES = '';
+const API_DISPATCH_SETTINGS = '';
+const API_DISPATCH_PRESIGNED = '';
+const API_DISPATCH_UPLOAD = '';
+
 // Hardcoded bucket and folder names
 const BUCKET_NAME = 'production-bbil';
 const DAILY_FOLDER_NAME = 'Production_daily_upload_files_location/';
 const MONTHLY_FOLDER_NAME = 'Production_Upload_Files/';
+
+// Dispatch storage/sample locations are intentionally separate from Monthly Update.
+const DISPATCH_FOLDER_NAME = '';
+const DISPATCH_SAMPLE_FOLDER_NAME = '';
 
 // Supported file extensions
 const SUPPORTED_EXTENSIONS = ['.csv', '.pdf', '.xlsx', '.xls', '.doc', '.docx'];
@@ -356,10 +369,14 @@ const App: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [dailyFileA, setDailyFileA] = useState<File | null>(null);
   const [dailyFileB, setDailyFileB] = useState<File | null>(null);
+  const [dispatchFile, setDispatchFile] = useState<File | null>(null);
 
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   const [displayedMonth, setDisplayedMonth] = useState<string>('');
   const [year, setYear] = useState<number>(() => new Date().getFullYear());
+  const [dispatchSelectedMonth, setDispatchSelectedMonth] = useState<string>('');
+  const [dispatchDisplayedMonth, setDispatchDisplayedMonth] = useState<string>('');
+  const [dispatchYear, setDispatchYear] = useState<number>(() => new Date().getFullYear());
   const [dailySampleMonthDate, setDailySampleMonthDate] = useState<Date>(() => {
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), 1);
@@ -378,6 +395,7 @@ const App: React.FC = () => {
   const [uploadKey, setUploadKey] = useState<number>(0);
 
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
+  const [isDispatchDropdownOpen, setIsDispatchDropdownOpen] = useState<boolean>(false);
 
   const [showMessageModal, setShowMessageModal] = useState<boolean>(false);
   const [modalMessage, setModalMessage] = useState<string>('');
@@ -388,18 +406,31 @@ const App: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [hiddenColumns, setHiddenColumns] = useState<Array<keyof FileRow>>([]);
 
+  // Dispatch keeps its file table state separate from Monthly/Daily.
+  const [dispatchS3Files, setDispatchS3Files] = useState<FileRow[]>([]);
+  const [dispatchSortColumn, setDispatchSortColumn] = useState<keyof FileRow | null>(null);
+  const [dispatchSortDirection, setDispatchSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [dispatchHiddenColumns, setDispatchHiddenColumns] = useState<Array<keyof FileRow>>([]);
+
   const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState<boolean>(false);
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
   const [fileNameToDelete, setFileNameToDelete] = useState<string | null>(null);
   const [isDeleteOptionEnabled, setIsDeleteOptionEnabled] = useState<boolean>(false);
 
+  const [showDispatchConfirmDeleteModal, setShowDispatchConfirmDeleteModal] = useState<boolean>(false);
+  const [dispatchFileToDelete, setDispatchFileToDelete] = useState<string | null>(null);
+  const [dispatchFileNameToDelete, setDispatchFileNameToDelete] = useState<string | null>(null);
+  const [isDispatchDeleteOptionEnabled, setIsDispatchDeleteOptionEnabled] = useState<boolean>(false);
+
   const [showDailySampleChoiceModal, setShowDailySampleChoiceModal] = useState<boolean>(false);
   const [dailySampleWeekToDownload, setDailySampleWeekToDownload] = useState<DailyWeekInfo | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'monthly' | 'daily'>(() => {
+  const [dispatchContextMenu, setDispatchContextMenu] = useState<ContextMenuState>({ visible: false, x: 0, y: 0, column: null });
+
+  const [activeTab, setActiveTab] = useState<'monthly' | 'daily' | 'dispatch'>(() => {
     try {
       const saved = typeof window !== 'undefined' ? localStorage.getItem('activeTab') : null;
-      return saved === 'daily' || saved === 'monthly' ? saved : 'monthly';
+      return saved === 'daily' || saved === 'monthly' || saved === 'dispatch' ? saved : 'monthly';
     } catch {
       return 'monthly';
     }
@@ -413,6 +444,8 @@ const App: React.FC = () => {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
+  const dispatchDropdownRef = useRef<HTMLDivElement>(null);
+  const dispatchContextMenuRef = useRef<HTMLDivElement>(null);
 
   const reportSubject = 'Report a Problem – BBIL Production Dashboard';
   const reportBodyRaw = `Hi Business Analytics Team,
@@ -483,6 +516,12 @@ Thanks.`;
       }
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
+      }
+      if (dispatchContextMenuRef.current && !dispatchContextMenuRef.current.contains(event.target as Node)) {
+        setDispatchContextMenu({ visible: false, x: 0, y: 0, column: null });
+      }
+      if (dispatchDropdownRef.current && !dispatchDropdownRef.current.contains(event.target as Node)) {
+        setIsDispatchDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -584,12 +623,117 @@ Thanks.`;
     }
   };
 
+
+  // Dispatch file list loader. It never calls Monthly/Daily endpoints.
+  const loadDispatchS3Files = async () => {
+    if (!API_DISPATCH_LIST_FILES || !DISPATCH_FOLDER_NAME) {
+      setDispatchS3Files([]);
+      setDispatchSortColumn('dateUploaded');
+      setDispatchSortDirection('desc');
+      return;
+    }
+
+    try {
+      const queryParams = new URLSearchParams({
+        bucket_name: BUCKET_NAME,
+        folder_name: DISPATCH_FOLDER_NAME,
+      });
+
+      const response = await fetchWithTimeout(
+        `${API_DISPATCH_LIST_FILES}?${queryParams.toString()}`,
+        { method: 'GET', headers: { 'Content-Type': 'application/json' }, mode: 'cors', credentials: 'omit' },
+        25000
+      );
+
+      if (!response.ok) {
+        const body = await readResponseBody(response);
+        throw new Error(`Failed to fetch Dispatch files (${response.status}): ${body || response.statusText}`);
+      }
+
+      const data = await response.json().catch(() => ({}));
+
+      const filesRaw = await Promise.all(
+        (data.files || [])
+          .filter((f: { key: string }) => {
+            const extension = (f.key.split('.').pop() || '').toLowerCase();
+            return SUPPORTED_EXTENSIONS.includes(`.${extension}`);
+          })
+          .map(async (f: { key: string; size: number; lastModified: string }, index: number) => {
+            const fullFileName = f.key.split('/').pop() || '';
+            const fileNameParts = fullFileName.split('.');
+            const fileName = fileNameParts.slice(0, -1).join('.');
+            const fileType = fileNameParts[fileNameParts.length - 1]?.toLowerCase() || '';
+            const filesizeKB = (f.size / 1024).toFixed(1) + ' KB';
+
+            const dateUploadedTs = new Date(f.lastModified).getTime();
+            const dateUploaded = new Date(f.lastModified).toLocaleString('en-IN', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: false,
+            });
+
+            let uploadedBy = 'Unknown';
+            if (API_DISPATCH_GET_UPLOADER) {
+              try {
+                const uploaderResponse = await fetchWithTimeout(
+                  `${API_DISPATCH_GET_UPLOADER}?fileName=${encodeURIComponent(fullFileName)}`,
+                  { method: 'GET', headers: { 'Content-Type': 'application/json' }, mode: 'cors', credentials: 'omit' },
+                  20000
+                );
+                if (uploaderResponse.ok) {
+                  const uploaderData = await uploaderResponse.json().catch(() => ({}));
+                  uploadedBy =
+                    uploaderData.uploadedBy ||
+                    uploaderData.user ||
+                    uploaderData.username ||
+                    uploaderData.uploaded_by ||
+                    uploaderData.uploader ||
+                    'Unknown';
+                }
+              } catch {
+                // keep Unknown
+              }
+            }
+
+            return {
+              id: index + 1,
+              fileName,
+              fileType,
+              filesize: filesizeKB,
+              dateUploaded,
+              dateUploadedTs,
+              uploadedBy,
+              fileKey: f.key,
+            } as FileRow;
+          })
+      );
+
+      const sorted = [...filesRaw].sort((a, b) => b.dateUploadedTs - a.dateUploadedTs);
+      const withIds = sorted.map((row, idx) => ({ ...row, id: idx + 1 }));
+
+      setDispatchS3Files(withIds);
+      setDispatchSortColumn('dateUploaded');
+      setDispatchSortDirection('desc');
+    } catch (error: any) {
+      console.error('Error fetching Dispatch files:', error);
+      setModalMessage(error?.message || 'Failed to load Dispatch files from server.');
+      setModalType('error');
+      setShowMessageModal(true);
+    }
+  };
+
   // ✅ Admin check (same as delete)
   const isAdmin = (userAttributes.username || '').toLowerCase() === 'manika5170@bharatbiotech.com';
 
   // ✅ Global backfill setting from backend (applies across all users/laptops)
   const [allowBackfill, setAllowBackfill] = useState<boolean>(false);
   const [isBackfillLoaded, setIsBackfillLoaded] = useState<boolean>(false);
+  const [dispatchAllowBackfill, setDispatchAllowBackfill] = useState<boolean>(false);
+  const [isDispatchBackfillLoaded, setIsDispatchBackfillLoaded] = useState<boolean>(false);
 
   // ✅ Normalize username for header
   const getXUser = () => String(userAttributes.username || '').trim();
@@ -606,6 +750,17 @@ Thanks.`;
       setIsDropdownOpen(false);
     }
   }, [allowBackfill, selectedMonth]);
+
+
+  useEffect(() => {
+    if (!dispatchSelectedMonth) return;
+
+    const allowedMonths = dispatchAllowBackfill ? getBackfillMonths(new Date()) : getNextMonthsWindow(new Date());
+    if (!allowedMonths.includes(dispatchSelectedMonth)) {
+      setDispatchSelectedMonth('');
+      setIsDispatchDropdownOpen(false);
+    }
+  }, [dispatchAllowBackfill, dispatchSelectedMonth]);
 
   const fetchAllowBackfill = async () => {
     try {
@@ -688,6 +843,90 @@ Thanks.`;
     }
   };
 
+
+  const fetchDispatchAllowBackfill = async () => {
+    if (!API_DISPATCH_SETTINGS) {
+      setDispatchAllowBackfill(false);
+      setIsDispatchBackfillLoaded(true);
+      return;
+    }
+
+    try {
+      const res = await fetchWithTimeout(
+        `${API_DISPATCH_SETTINGS}?settingKey=allowBackfill`,
+        {
+          method: 'GET',
+          headers: { 'X-User': getXUser() },
+          mode: 'cors',
+          credentials: 'omit',
+        },
+        15000
+      );
+
+      if (!res.ok) {
+        const body = await readResponseBody(res);
+        throw new Error(body || `GET Dispatch /settings failed (HTTP ${res.status})`);
+      }
+
+      const data = await res.json().catch(() => ({}));
+      setDispatchAllowBackfill(Boolean(data?.valueBool));
+    } catch (e) {
+      console.error('fetchDispatchAllowBackfill failed', e);
+      setDispatchAllowBackfill(false);
+    } finally {
+      setIsDispatchBackfillLoaded(true);
+    }
+  };
+
+  const updateDispatchAllowBackfill = async (nextValue: boolean) => {
+    if (!API_DISPATCH_SETTINGS) {
+      setModalMessage('Dispatch settings API is not configured yet. No Monthly Update endpoint was called.');
+      setModalType('error');
+      setShowMessageModal(true);
+      return;
+    }
+
+    const prev = dispatchAllowBackfill;
+    setDispatchAllowBackfill(nextValue);
+
+    try {
+      const xUser = getXUser();
+      if (!xUser) throw new Error('Missing username (X-User). Please login again.');
+
+      const res = await fetchWithTimeout(
+        API_DISPATCH_SETTINGS,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-User': xUser,
+          },
+          body: JSON.stringify({
+            settingKey: 'allowBackfill',
+            valueBool: nextValue,
+          }),
+          mode: 'cors',
+          credentials: 'omit',
+        },
+        20000
+      );
+
+      if (!res.ok) {
+        const body = await readResponseBody(res);
+        throw new Error(body || `PUT Dispatch /settings failed (HTTP ${res.status})`);
+      }
+
+      const data = await res.json().catch(() => ({}));
+      if (typeof data?.valueBool === 'boolean') setDispatchAllowBackfill(Boolean(data.valueBool));
+    } catch (e: any) {
+      console.error('updateDispatchAllowBackfill failed', e);
+      setDispatchAllowBackfill(prev);
+      setModalMessage(`Failed to update Dispatch backfill setting: ${e?.message || 'Unknown error'}`);
+      setModalType('error');
+      setShowMessageModal(true);
+    }
+  };
+
   // Fetch user attributes and initial table
   useEffect(() => {
     const fetchUserData = async () => {
@@ -711,7 +950,8 @@ Thanks.`;
     };
 
     fetchUserData();
-    loadS3Files(activeTab);
+    if (activeTab === 'dispatch') loadDispatchS3Files();
+    else loadS3Files(activeTab);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -722,15 +962,23 @@ Thanks.`;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userAttributes.username]);
 
+  // Dispatch settings are loaded only for the Dispatch tab.
+  useEffect(() => {
+    if (!userAttributes.username || activeTab !== 'dispatch') return;
+    fetchDispatchAllowBackfill();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userAttributes.username, activeTab]);
+
   // Reload table when switching tabs
   useEffect(() => {
-    loadS3Files(activeTab);
+    if (activeTab === 'dispatch') loadDispatchS3Files();
+    else loadS3Files(activeTab);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   // Manage body scroll when modal is open
   useEffect(() => {
-    if (showMessageModal || showUpdateForm || isUploading || showConfirmDeleteModal || showDailySampleChoiceModal) {
+    if (showMessageModal || showUpdateForm || isUploading || showConfirmDeleteModal || showDailySampleChoiceModal || showDispatchConfirmDeleteModal) {
       const scrollY = window.scrollY;
       document.body.style.overflow = 'hidden';
       document.body.style.position = 'fixed';
@@ -750,7 +998,7 @@ Thanks.`;
       document.body.style.top = '';
       document.body.style.width = '';
     };
-  }, [showMessageModal, showUpdateForm, isUploading, showConfirmDeleteModal, showDailySampleChoiceModal]);
+  }, [showMessageModal, showUpdateForm, isUploading, showConfirmDeleteModal, showDailySampleChoiceModal, showDispatchConfirmDeleteModal]);
 
   const handleUpdateUsername = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -897,6 +1145,134 @@ Thanks.`;
     } finally {
       setIsUploading(false);
     }
+  };
+
+
+  const uploadDispatchFile = async (f: File | null, monthForUpload: string, monthLabelForLog?: string) => {
+    if (!f) {
+      setModalMessage('Please select a file to upload.');
+      setModalType('error');
+      setShowMessageModal(true);
+      return;
+    }
+
+    if (!API_DISPATCH_UPLOAD) {
+      setModalMessage('Dispatch upload API is not configured yet. No Monthly Update endpoint was called.');
+      setModalType('error');
+      setShowMessageModal(true);
+      return;
+    }
+
+    const originalFileName = f.name;
+    const formData = new FormData();
+    formData.append('file', f);
+    formData.append('month', monthForUpload);
+    formData.append('fileName', originalFileName);
+    formData.append('username', userAttributes.username || 'Unknown');
+    formData.append('allowBackfill', dispatchAllowBackfill ? 'true' : 'false');
+    if (monthLabelForLog) formData.append('monthLabel', monthLabelForLog);
+
+    try {
+      setIsUploading(true);
+      setUploadKey((prev) => prev + 1);
+
+      const res = await fetchWithTimeout(
+        API_DISPATCH_UPLOAD,
+        {
+          method: 'POST',
+          body: formData,
+          mode: 'cors',
+          credentials: 'omit',
+        },
+        45000
+      );
+
+      if (!res.ok) {
+        const body = await readResponseBody(res);
+        setModalMessage(body || `Failed to upload Dispatch file (HTTP ${res.status})`);
+        setModalType('error');
+        setShowMessageModal(true);
+        return;
+      }
+
+      const uploadData = await res.json().catch(() => ({}));
+      setModalMessage(uploadData.message || 'Dispatch file uploaded successfully!');
+      setModalType('success');
+      setShowMessageModal(true);
+
+      const savedBasename = dispatchAllowBackfill
+        ? `${String(monthLabelForLog || '').trim().replace(/\s+/g, '_')}_Planned_vs_Achieved.csv`
+        : 'current_file.csv';
+
+      if (API_DISPATCH_SAVE_FILES) {
+        try {
+          await fetchWithTimeout(
+            API_DISPATCH_SAVE_FILES,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                fileName: savedBasename,
+                action: 'upload',
+                user: userAttributes.username || 'Unknown',
+                uploadType: 'dispatch',
+                month: monthLabelForLog || monthForUpload,
+                allowBackfill: dispatchAllowBackfill,
+              }),
+              mode: 'cors',
+              credentials: 'omit',
+            },
+            20000
+          );
+        } catch (e) {
+          console.warn('Dispatch upload saved, but failed to save Dispatch upload log:', e);
+        }
+      }
+
+      await loadDispatchS3Files();
+    } catch (error: any) {
+      console.error('Dispatch upload error:', error);
+      const msg =
+        error?.name === 'AbortError'
+          ? 'Dispatch upload timed out (network slow or API not responding).'
+          : error?.message || 'Failed to fetch';
+      setModalMessage(`An error occurred while uploading the Dispatch file: ${msg}`);
+      setModalType('error');
+      setShowMessageModal(true);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDispatchUpload = async () => {
+    if (!dispatchSelectedMonth) {
+      setModalMessage('Please select the correct month.');
+      setModalType('error');
+      setShowMessageModal(true);
+      return;
+    }
+
+    if (!validateFile(dispatchFile)) return;
+
+    try {
+      const expectedToken = monthYearLabelToToken(dispatchSelectedMonth);
+      const result = await validateMonthlyCsvMonthColumn(dispatchFile as File, expectedToken);
+      if (!result.ok) {
+        setModalMessage(result.message || 'Validation failed for Month & Year column.');
+        setModalType('error');
+        setShowMessageModal(true);
+        return;
+      }
+    } catch (e: any) {
+      console.error('Dispatch Month & Year validation failed:', e);
+      setModalMessage(`Validation failed: ${e?.message || 'Unable to read/validate the CSV file.'}`);
+      setModalType('error');
+      setShowMessageModal(true);
+      return;
+    }
+
+    const monthName = dispatchSelectedMonth.split(' ')[0];
+    uploadDispatchFile(dispatchFile, monthName, dispatchSelectedMonth);
   };
 
   const handleMonthlyUpload = async () => {
@@ -1046,6 +1422,132 @@ Thanks.`;
     }
   };
 
+
+  const downloadDispatchFile = async (key: string, isMonth = false) => {
+    if (!API_DISPATCH_PRESIGNED) {
+      setModalMessage('Dispatch download API is not configured yet. No Monthly Update endpoint was called.');
+      setModalType('error');
+      setShowMessageModal(true);
+      return;
+    }
+    if (isMonth && !DISPATCH_SAMPLE_FOLDER_NAME) {
+      setModalMessage('Dispatch sample folder is not configured yet. No Monthly Update sample path was used.');
+      setModalType('error');
+      setShowMessageModal(true);
+      return;
+    }
+
+    try {
+      const fileKey = isMonth ? `${DISPATCH_SAMPLE_FOLDER_NAME}${key}_Sample_File.csv` : key;
+      const res = await fetchWithTimeout(
+        API_DISPATCH_PRESIGNED,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bucket_name: BUCKET_NAME,
+            file_key: fileKey,
+            action: 'download',
+            isSample: isMonth,
+          }),
+          mode: 'cors',
+          credentials: 'omit',
+        },
+        25000
+      );
+
+      const dataText = await res.text().catch(() => '');
+      let data: any = {};
+      try {
+        data = dataText ? JSON.parse(dataText) : {};
+      } catch {
+        data = { raw: dataText };
+      }
+
+      if (res.ok && data.presigned_url) {
+        const link = document.createElement('a');
+        link.href = data.presigned_url;
+        link.download = fileKey.split('/').pop() || 'download';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        if (API_DISPATCH_SAVE_FILES) {
+          try {
+            await fetchWithTimeout(
+              API_DISPATCH_SAVE_FILES,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  fileName: fileKey.split('/').pop(),
+                  action: 'download',
+                  user: userAttributes.username || 'Unknown',
+                  uploadType: 'dispatch',
+                }),
+                mode: 'cors',
+                credentials: 'omit',
+              },
+              15000
+            );
+          } catch {}
+        }
+
+        setModalMessage(`Downloaded ${fileKey.split('/').pop()} successfully!`);
+        setModalType('success');
+        setShowMessageModal(true);
+      } else {
+        const errMsg = data?.error || data?.message || dataText || `HTTP ${res.status}`;
+        setModalMessage(`Error: ${errMsg}`);
+        setModalType('error');
+        setShowMessageModal(true);
+      }
+    } catch (error: any) {
+      setModalMessage(`An error occurred while fetching the Dispatch download link: ${error?.message || 'Unknown error'}`);
+      setModalType('error');
+      setShowMessageModal(true);
+    }
+  };
+
+  const deleteDispatchFile = async (key: string) => {
+    if (!API_DISPATCH_PRESIGNED) {
+      setModalMessage('Dispatch delete API is not configured yet. No Monthly Update endpoint was called.');
+      setModalType('error');
+      setShowMessageModal(true);
+      return;
+    }
+
+    try {
+      const res = await fetchWithTimeout(
+        API_DISPATCH_PRESIGNED,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bucket_name: BUCKET_NAME, file_key: key, action: 'delete' }),
+          mode: 'cors',
+          credentials: 'omit',
+        },
+        25000
+      );
+
+      if (res.ok) {
+        setModalMessage(`File ${key.split('/').pop()} deleted successfully!`);
+        setModalType('success');
+        setShowMessageModal(true);
+        await loadDispatchS3Files();
+      } else {
+        const body = await readResponseBody(res);
+        setModalMessage(`Failed to delete Dispatch file: ${body || res.statusText}`);
+        setModalType('error');
+        setShowMessageModal(true);
+      }
+    } catch (error: any) {
+      setModalMessage(`An error occurred while deleting the Dispatch file: ${error?.message || 'Unknown error'}`);
+      setModalType('error');
+      setShowMessageModal(true);
+    }
+  };
+
   const deleteFile = async (key: string) => {
     try {
       const res = await fetchWithTimeout(
@@ -1093,6 +1595,29 @@ Thanks.`;
     setFileNameToDelete(null);
   };
 
+
+  const handleDispatchConfirmDelete = () => {
+    if (dispatchFileToDelete) {
+      deleteDispatchFile(dispatchFileToDelete);
+      setShowDispatchConfirmDeleteModal(false);
+      setDispatchFileToDelete(null);
+      setDispatchFileNameToDelete(null);
+    }
+  };
+
+  const handleDispatchCancelDelete = () => {
+    setShowDispatchConfirmDeleteModal(false);
+    setDispatchFileToDelete(null);
+    setDispatchFileNameToDelete(null);
+  };
+
+  const toggleDispatchDropdown = () => setIsDispatchDropdownOpen((prev) => !prev);
+
+  const selectDispatchMonth = (monthYear: string) => {
+    setDispatchSelectedMonth(monthYear);
+    setIsDispatchDropdownOpen(false);
+  };
+
   const toggleDropdown = () => setIsDropdownOpen((prev) => !prev);
 
   const selectMonth = (monthYear: string) => {
@@ -1136,6 +1661,58 @@ Thanks.`;
 
     const withIds = sortedFiles.map((row, idx) => ({ ...row, id: idx + 1 }));
     setS3Files(withIds);
+  };
+
+
+  const handleDispatchContextMenu = (e: React.MouseEvent<HTMLTableCellElement>, column: keyof FileRow) => {
+    e.preventDefault();
+    setDispatchContextMenu({ visible: true, x: e.clientX, y: e.clientY, column });
+  };
+
+  const handleDispatchHideColumn = () => {
+    if (dispatchContextMenu.column) {
+      setDispatchHiddenColumns((prev) => {
+        const col = dispatchContextMenu.column;
+        if (col === null) return prev;
+        if (prev.includes(col)) return prev;
+        return [...prev, col];
+      });
+      setDispatchContextMenu({ visible: false, x: 0, y: 0, column: null });
+    }
+  };
+
+  const handleDispatchSort = (column: keyof FileRow) => {
+    const newDirection = dispatchSortColumn === column && dispatchSortDirection === 'asc' ? 'desc' : 'asc';
+    setDispatchSortColumn(column);
+    setDispatchSortDirection(newDirection);
+
+    const sortedFiles = [...dispatchS3Files].sort((a, b) => {
+      const valueA = a[column];
+      const valueB = b[column];
+
+      if (column === 'id') {
+        return newDirection === 'asc'
+          ? (valueA as number) - (valueB as number)
+          : (valueB as number) - (valueA as number);
+      }
+
+      if (column === 'filesize') {
+        const sizeA = parseFloat((valueA as string).replace(' KB', ''));
+        const sizeB = parseFloat((valueB as string).replace(' KB', ''));
+        return newDirection === 'asc' ? sizeA - sizeB : sizeB - sizeA;
+      }
+
+      if (column === 'dateUploaded') {
+        return newDirection === 'asc' ? a.dateUploadedTs - b.dateUploadedTs : b.dateUploadedTs - a.dateUploadedTs;
+      }
+
+      return newDirection === 'asc'
+        ? String(valueA).localeCompare(String(valueB))
+        : String(valueB).localeCompare(String(valueA));
+    });
+
+    const withIds = sortedFiles.map((row, idx) => ({ ...row, id: idx + 1 }));
+    setDispatchS3Files(withIds);
   };
 
   const columns: Array<{ key: keyof FileRow; label: string }> = [
@@ -1241,6 +1818,18 @@ Thanks.`;
           </div>
         )}
 
+        {dispatchContextMenu.visible && (
+          <div
+            ref={dispatchContextMenuRef}
+            className="context-menu"
+            style={{ left: `${dispatchContextMenu.x}px`, top: `${dispatchContextMenu.y}px` }}
+          >
+            <div className="context-menu-item" onClick={handleDispatchHideColumn}>
+              Hide Column
+            </div>
+          </div>
+        )}
+
         {showUpdateForm && (
           <div className="modal-overlay">
             <div className="modal-content">
@@ -1293,6 +1882,26 @@ Thanks.`;
                   Confirm
                 </button>
                 <button className="cancel-btn" onClick={handleCancelDelete}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+
+        {showDispatchConfirmDeleteModal && (
+          <div className="modal-overlay">
+            <div className="modal-content">
+              <h3 className="modal-title">Confirm Deletion</h3>
+              <p className="message-text">
+                Are you sure you want to delete the file &quot;{dispatchFileNameToDelete}&quot;? This action cannot be undone.
+              </p>
+              <div className="modal-buttons" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <button className="submit-btn" onClick={handleDispatchConfirmDelete}>
+                  Confirm
+                </button>
+                <button className="cancel-btn" onClick={handleDispatchCancelDelete}>
                   Cancel
                 </button>
               </div>
@@ -1360,7 +1969,10 @@ Thanks.`;
         )}
 
         <h1 className="app-title">
-          <u>BBIL Production Dashboard – {activeTab === 'daily' ? 'Daily Update' : 'Monthly Update'}</u>
+          <u>
+            BBIL Production Dashboard –{' '}
+            {activeTab === 'daily' ? 'Daily Update' : activeTab === 'dispatch' ? 'Dispatch (daily update)' : 'Monthly Update'}
+          </u>
         </h1>
 
         <div
@@ -1387,6 +1999,14 @@ Thanks.`;
               onClick={() => setActiveTab('daily')}
             >
               Daily Update
+            </button>
+            <button
+              role="tab"
+              aria-selected={activeTab === 'dispatch'}
+              className={`tab-btn ${activeTab === 'dispatch' ? 'active' : ''}`}
+              onClick={() => setActiveTab('dispatch')}
+            >
+              Dispatch (daily update)
             </button>
           </nav>
         </div>
@@ -1615,6 +2235,237 @@ Thanks.`;
                                       setFileToDelete(row.fileKey);
                                       setFileNameToDelete(row.fileName);
                                       setShowConfirmDeleteModal(true);
+                                    }}
+                                    className="download-link"
+                                  >
+                                    Delete
+                                  </a>
+                                </>
+                              )}
+                            </td>
+                          )}
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        ) : activeTab === 'dispatch' ? (
+          <div className="container">
+            <div className="left-column">
+              <div className="calendar-section">
+                <h2>Sample File Download Segment</h2>
+                <div className="year-navigation">
+                  <button onClick={() => setDispatchYear((prev) => prev - 1)}>{'\u003C'}</button>
+                  <h2>{dispatchYear}</h2>
+                  <button onClick={() => setDispatchYear((prev) => prev + 1)}>{'\u003E'}</button>
+                </div>
+                <div className="months-grid">
+                  {months.map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => setDispatchDisplayedMonth(m === dispatchDisplayedMonth ? '' : m)}
+                      className={`month-button ${dispatchDisplayedMonth === m ? 'active-month' : ''}`}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+                {dispatchDisplayedMonth && (
+                  <div className="download-button">
+                    <button onClick={() => downloadDispatchFile(dispatchDisplayedMonth, true)} className="download-btn">
+                      Download {dispatchDisplayedMonth} Sample CSV
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="upload-section">
+                <h2>📤 Upload File</h2>
+                <div className="upload-form">
+                  <input
+                    type="file"
+                    accept=".csv,.pdf,.xlsx,.xls,.doc,.docx"
+                    onChange={(e) => setDispatchFile(e.target.files?.[0] || null)}
+                    className="file-input"
+                    disabled={isUploading}
+                  />
+
+                  <div className="custom-dropdown" ref={dispatchDropdownRef}>
+                    <div
+                      className={`dropdown-toggle ${isDispatchDropdownOpen ? 'open' : ''}`}
+                      onClick={toggleDispatchDropdown}
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          toggleDispatchDropdown();
+                        }
+                      }}
+                    >
+                      <span>{dispatchSelectedMonth || 'Select Month'}</span>
+                      <span className="dropdown-arrow"></span>
+                    </div>
+
+                    {isDispatchDropdownOpen && (
+                      <ul className="dropdown-menu">
+                        {(dispatchAllowBackfill ? getBackfillMonths(new Date()) : getNextMonthsWindow(new Date())).map((monthYear) => (
+                          <li
+                            key={monthYear}
+                            className={`dropdown-item ${dispatchSelectedMonth === monthYear ? 'selected' : ''}`}
+                            onClick={() => selectDispatchMonth(monthYear)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                selectDispatchMonth(monthYear);
+                              }
+                            }}
+                            tabIndex={0}
+                            role="option"
+                            aria-selected={dispatchSelectedMonth === monthYear}
+                          >
+                            {monthYear}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
+                  <button className="upload-btn" onClick={handleDispatchUpload} disabled={isUploading}>
+                    {isUploading ? 'Uploading...' : 'Submit File'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="file-list" style={{ position: 'relative' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <h2 style={{ margin: 0, marginRight: '10px' }}>📋 List of Files Submitted</h2>
+
+                {isAdmin && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <label
+                      className="delete-option-label"
+                      style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer' }}
+                    >
+                      <input
+                        type="checkbox"
+                        className="delete-option-checkbox"
+                        checked={isDispatchDeleteOptionEnabled}
+                        onChange={(e) => setIsDispatchDeleteOptionEnabled(e.target.checked)}
+                        aria-checked={isDispatchDeleteOptionEnabled}
+                        aria-label="Toggle delete option"
+                      />
+                      Delete Option
+                    </label>
+
+                    <label
+                      className="delete-option-label"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        fontSize: '16px',
+                        color: '#333',
+                        cursor: 'pointer',
+                        gap: '8px',
+                      }}
+                      title="Global setting (applies to all users). ON = last 3 years. OFF = limited window."
+                    >
+                      <input
+                        type="checkbox"
+                        className="delete-option-checkbox"
+                        checked={dispatchAllowBackfill}
+                        onChange={(e) => updateDispatchAllowBackfill(e.target.checked)}
+                        disabled={!isDispatchBackfillLoaded}
+                        aria-checked={dispatchAllowBackfill}
+                        aria-label="Toggle allow backfill"
+                      />
+                      Allow Backfill
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              <div className="table-container">
+                <table className="file-table">
+                  <thead>
+                    <tr>
+                      {columns.map(
+                        (col) =>
+                          !dispatchHiddenColumns.includes(col.key) && (
+                            <th
+                              key={col.key}
+                              onClick={() => handleDispatchSort(col.key)}
+                              onContextMenu={(e) => handleDispatchContextMenu(e, col.key)}
+                              className={dispatchSortColumn === col.key ? `sorted-${dispatchSortDirection}` : ''}
+                            >
+                              {col.label}
+                            </th>
+                          )
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dispatchS3Files.length === 0 ? (
+                      <tr>
+                        <td colSpan={columns.length - dispatchHiddenColumns.length} style={{ textAlign: 'center' }}>
+                          No files found.
+                        </td>
+                      </tr>
+                    ) : (
+                      dispatchS3Files.map((row) => (
+                        <tr key={row.id}>
+                          {!dispatchHiddenColumns.includes('id') && <td>{row.id}</td>}
+                          {!dispatchHiddenColumns.includes('fileName') && (
+                            <td
+                              data-full-text={row.fileName}
+                              onMouseEnter={(e) => handleMouseEnter(e, row.fileName)}
+                              onMouseMove={handleMouseMove}
+                              onMouseLeave={handleMouseLeave}
+                              className="tooltip-target"
+                            >
+                              {row.fileName}
+                            </td>
+                          )}
+                          {!dispatchHiddenColumns.includes('fileType') && <td>{row.fileType}</td>}
+                          {!dispatchHiddenColumns.includes('filesize') && <td>{row.filesize}</td>}
+                          {!dispatchHiddenColumns.includes('dateUploaded') && (
+                            <td
+                              data-full-text={row.dateUploaded}
+                              onMouseEnter={(e) => handleMouseEnter(e, row.dateUploaded)}
+                              onMouseMove={handleMouseMove}
+                              onMouseLeave={handleMouseLeave}
+                              className="tooltip-target"
+                            >
+                              {row.dateUploaded}
+                            </td>
+                          )}
+                          {!dispatchHiddenColumns.includes('uploadedBy') && <td>{row.uploadedBy}</td>}
+                          {!dispatchHiddenColumns.includes('fileKey') && (
+                            <td>
+                              <a
+                                href="#"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  downloadDispatchFile(row.fileKey);
+                                }}
+                                className="download-link"
+                              >
+                                Download
+                              </a>
+
+                              {isAdmin && isDispatchDeleteOptionEnabled && (
+                                <>
+                                  {' / '}
+                                  <a
+                                    href="#"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      setDispatchFileToDelete(row.fileKey);
+                                      setDispatchFileNameToDelete(row.fileName);
+                                      setShowDispatchConfirmDeleteModal(true);
                                     }}
                                     className="download-link"
                                   >
