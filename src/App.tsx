@@ -1131,7 +1131,7 @@ Thanks.`;
         console.warn('Upload saved, but failed to save upload log:', e);
       }
 
-      await loadS3Files(activeTab);
+      await loadS3Files(activeTab as 'monthly' | 'daily');
     } catch (error: any) {
       console.error('Upload error:', error);
       const msg =
@@ -1566,7 +1566,7 @@ Thanks.`;
         setModalMessage(`File ${key.split('/').pop()} deleted successfully!`);
         setModalType('success');
         setShowMessageModal(true);
-        await loadS3Files(activeTab);
+        await loadS3Files(activeTab as 'monthly' | 'daily');
       } else {
         const body = await readResponseBody(res);
         setModalMessage(`Failed to delete file: ${body || res.statusText}`);
