@@ -1761,7 +1761,146 @@ Thanks.`;
 
   return (
     <>
-      <header ref={headerRef} className={`app-header ${activeTab === 'daily' ? 'daily-theme' : ''}`}>
+      <style>{`
+        /* =========================================================
+           Dispatch (daily update) visual theme
+           Visual-only: no Dispatch/Monthly/Daily behavior is changed.
+           ========================================================= */
+
+        .app-header.dispatch-theme {
+          background: linear-gradient(135deg, #4c1d95 0%, #6d28d9 52%, #7c3aed 100%) !important;
+          border-bottom: 4px solid #a78bfa !important;
+          box-shadow: 0 4px 18px rgba(76, 29, 149, 0.28) !important;
+        }
+
+        .app-header.dispatch-theme .username,
+        .app-header.dispatch-theme .phone-number {
+          color: #ffffff !important;
+        }
+
+        .app-header.dispatch-theme .sign-out-btn,
+        .app-header.dispatch-theme .update-username-btn {
+          background: #ffffff !important;
+          color: #5b21b6 !important;
+          border-color: #ddd6fe !important;
+        }
+
+        .app-main.dispatch-theme {
+          background:
+            linear-gradient(180deg, rgba(245, 243, 255, 0.98) 0%, rgba(250, 248, 255, 0.98) 42%, #ffffff 100%) !important;
+        }
+
+        .app-main.dispatch-theme .app-title {
+          color: #5b21b6 !important;
+          text-decoration-color: #8b5cf6 !important;
+        }
+
+        .app-main.dispatch-theme .top-tabs {
+          border-color: #c4b5fd !important;
+          box-shadow: 0 3px 12px rgba(91, 33, 182, 0.10) !important;
+        }
+
+        .app-main.dispatch-theme .top-tabs .tab-btn.active {
+          background: linear-gradient(135deg, #5b21b6 0%, #7c3aed 100%) !important;
+          color: #ffffff !important;
+          border-color: #6d28d9 !important;
+          box-shadow: 0 3px 10px rgba(91, 33, 182, 0.28) !important;
+        }
+
+        .app-main.dispatch-theme .calendar-section,
+        .app-main.dispatch-theme .upload-section,
+        .app-main.dispatch-theme .file-list {
+          border-color: #c4b5fd !important;
+          box-shadow: 0 5px 18px rgba(91, 33, 182, 0.10) !important;
+        }
+
+        .app-main.dispatch-theme .calendar-section h2,
+        .app-main.dispatch-theme .upload-section h2,
+        .app-main.dispatch-theme .file-list h2 {
+          color: #5b21b6 !important;
+        }
+
+        .app-main.dispatch-theme .year-navigation button,
+        .app-main.dispatch-theme .month-button.active-month,
+        .app-main.dispatch-theme .upload-btn,
+        .app-main.dispatch-theme .download-btn,
+        .app-main.dispatch-theme .submit-btn,
+        .app-main.dispatch-theme .ok-btn {
+          background: linear-gradient(135deg, #6d28d9 0%, #8b5cf6 100%) !important;
+          color: #ffffff !important;
+          border-color: #6d28d9 !important;
+        }
+
+        .app-main.dispatch-theme .year-navigation button:hover,
+        .app-main.dispatch-theme .month-button.active-month:hover,
+        .app-main.dispatch-theme .upload-btn:hover:not(:disabled),
+        .app-main.dispatch-theme .download-btn:hover:not(:disabled),
+        .app-main.dispatch-theme .submit-btn:hover:not(:disabled),
+        .app-main.dispatch-theme .ok-btn:hover:not(:disabled) {
+          background: linear-gradient(135deg, #4c1d95 0%, #6d28d9 100%) !important;
+        }
+
+        .app-main.dispatch-theme .month-button {
+          border-color: #c4b5fd !important;
+        }
+
+        .app-main.dispatch-theme .month-button:hover {
+          background: #ede9fe !important;
+          border-color: #8b5cf6 !important;
+          color: #5b21b6 !important;
+        }
+
+        .app-main.dispatch-theme .dropdown-toggle {
+          border-color: #a78bfa !important;
+        }
+
+        .app-main.dispatch-theme .dropdown-toggle.open,
+        .app-main.dispatch-theme .dropdown-toggle:focus {
+          border-color: #7c3aed !important;
+          box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.14) !important;
+        }
+
+        .app-main.dispatch-theme .dropdown-item:hover,
+        .app-main.dispatch-theme .dropdown-item.selected {
+          background: #ede9fe !important;
+          color: #5b21b6 !important;
+        }
+
+        .app-main.dispatch-theme .file-table thead th {
+          background: linear-gradient(135deg, #5b21b6 0%, #7c3aed 100%) !important;
+          color: #ffffff !important;
+          border-color: #7c3aed !important;
+        }
+
+        .app-main.dispatch-theme .file-table tbody tr:nth-child(even) {
+          background: #faf8ff !important;
+        }
+
+        .app-main.dispatch-theme .file-table tbody tr:hover {
+          background: #f3efff !important;
+        }
+
+        .app-main.dispatch-theme .download-link {
+          color: #6d28d9 !important;
+          font-weight: 600;
+        }
+
+        .app-main.dispatch-theme .delete-option-checkbox {
+          accent-color: #7c3aed;
+        }
+
+        .app-main.dispatch-theme .context-menu-item:hover {
+          background: #ede9fe !important;
+          color: #5b21b6 !important;
+        }
+      `}</style>
+
+      <header
+        ref={headerRef}
+        className={`app-header ${
+          activeTab === 'daily' ? 'daily-theme' : activeTab === 'dispatch' ? 'dispatch-theme' : ''
+        }`}
+      >
         <div style={{ width: '130px', height: '100%', overflow: 'hidden', borderRadius: '8px', marginLeft: '20px' }}>
           <img
             style={{ width: '100%', height: '100%', objectFit: 'contain', boxSizing: 'border-box' }}
@@ -1793,7 +1932,9 @@ Thanks.`;
       </header>
 
       <main
-        className={`app-main ${activeTab === 'daily' ? 'daily-theme' : ''}`}
+        className={`app-main ${
+          activeTab === 'daily' ? 'daily-theme' : activeTab === 'dispatch' ? 'dispatch-theme' : ''
+        }`}
         style={{
           // The header/logo bar is fixed/overlaying the page in your CSS.
           // Daily currently needs extra clearance, but Monthly should keep the normal compact top spacing.
