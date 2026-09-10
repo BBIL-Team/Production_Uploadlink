@@ -1728,6 +1728,12 @@ Thanks.`;
   return (
     <>
       <style>{`
+        /* Restore the original visible boundary around the top tab group. */
+        .app-main .top-tabs {
+          border-style: solid !important;
+          border-width: 1px !important;
+        }
+
         /* =========================================================
            Dispatch (daily update) visual theme
            Visual-only: no Dispatch/Monthly/Daily behavior is changed.
