@@ -26,18 +26,18 @@ const API_DAILY_UPLOAD = 'https://1whw41i19a.execute-api.ap-south-1.amazonaws.co
 const API_DISPATCH_LIST_FILES = '';
 const API_DISPATCH_GET_UPLOADER = '';
 const API_DISPATCH_SAVE_FILES = '';
-const API_DISPATCH_SETTINGS = '';
 const API_DISPATCH_PRESIGNED = '';
 const API_DISPATCH_UPLOAD = '';
+const API_DISPATCH_CURRENT_FILE = ''; // GET -> presigned URL for the latest accepted current-month workbook
 
 // Hardcoded bucket and folder names
 const BUCKET_NAME = 'production-bbil';
 const DAILY_FOLDER_NAME = 'Production_daily_upload_files_location/';
 const MONTHLY_FOLDER_NAME = 'Production_Upload_Files/';
 
-// Dispatch storage/sample locations are intentionally separate from Monthly Update.
-const DISPATCH_FOLDER_NAME = '';
-const DISPATCH_SAMPLE_FOLDER_NAME = '';
+// Dispatch storage is intentionally separate from Monthly/Daily.
+// This folder should contain immutable archived user uploads shown in the Dispatch file list.
+const DISPATCH_FOLDER_NAME = 'Dispatch_Raw_Uploads/';
 
 // Supported file extensions
 const SUPPORTED_EXTENSIONS = ['.csv', '.pdf', '.xlsx', '.xls', '.doc', '.docx'];
@@ -74,6 +74,16 @@ type FileRow = {
   dateUploadedTs: number; // sorting
   uploadedBy: string;
   fileKey: string;
+};
+
+type DispatchValidationError = {
+  row?: number | string;
+  column?: string;
+  billingDate?: string;
+  material?: string;
+  previousValue?: string | number | null;
+  uploadedValue?: string | number | null;
+  message?: string;
 };
 
 // Context menu state
@@ -374,9 +384,6 @@ const App: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   const [displayedMonth, setDisplayedMonth] = useState<string>('');
   const [year, setYear] = useState<number>(() => new Date().getFullYear());
-  const [dispatchSelectedMonth, setDispatchSelectedMonth] = useState<string>('');
-  const [dispatchDisplayedMonth, setDispatchDisplayedMonth] = useState<string>('');
-  const [dispatchYear, setDispatchYear] = useState<number>(() => new Date().getFullYear());
   const [dailySampleMonthDate, setDailySampleMonthDate] = useState<Date>(() => {
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), 1);
@@ -395,7 +402,6 @@ const App: React.FC = () => {
   const [uploadKey, setUploadKey] = useState<number>(0);
 
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
-  const [isDispatchDropdownOpen, setIsDispatchDropdownOpen] = useState<boolean>(false);
 
   const [showMessageModal, setShowMessageModal] = useState<boolean>(false);
   const [modalMessage, setModalMessage] = useState<string>('');
@@ -411,6 +417,8 @@ const App: React.FC = () => {
   const [dispatchSortColumn, setDispatchSortColumn] = useState<keyof FileRow | null>(null);
   const [dispatchSortDirection, setDispatchSortDirection] = useState<'asc' | 'desc'>('asc');
   const [dispatchHiddenColumns, setDispatchHiddenColumns] = useState<Array<keyof FileRow>>([]);
+  const [dispatchValidationErrors, setDispatchValidationErrors] = useState<DispatchValidationError[]>([]);
+  const [isDispatchCurrentDownloading, setIsDispatchCurrentDownloading] = useState<boolean>(false);
 
   const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState<boolean>(false);
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
@@ -444,7 +452,6 @@ const App: React.FC = () => {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
-  const dispatchDropdownRef = useRef<HTMLDivElement>(null);
   const dispatchContextMenuRef = useRef<HTMLDivElement>(null);
 
   const reportSubject = 'Report a Problem – BBIL Production Dashboard';
@@ -519,9 +526,6 @@ Thanks.`;
       }
       if (dispatchContextMenuRef.current && !dispatchContextMenuRef.current.contains(event.target as Node)) {
         setDispatchContextMenu({ visible: false, x: 0, y: 0, column: null });
-      }
-      if (dispatchDropdownRef.current && !dispatchDropdownRef.current.contains(event.target as Node)) {
-        setIsDispatchDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -732,8 +736,6 @@ Thanks.`;
   // ✅ Global backfill setting from backend (applies across all users/laptops)
   const [allowBackfill, setAllowBackfill] = useState<boolean>(false);
   const [isBackfillLoaded, setIsBackfillLoaded] = useState<boolean>(false);
-  const [dispatchAllowBackfill, setDispatchAllowBackfill] = useState<boolean>(false);
-  const [isDispatchBackfillLoaded, setIsDispatchBackfillLoaded] = useState<boolean>(false);
 
   // ✅ Normalize username for header
   const getXUser = () => String(userAttributes.username || '').trim();
@@ -752,15 +754,6 @@ Thanks.`;
   }, [allowBackfill, selectedMonth]);
 
 
-  useEffect(() => {
-    if (!dispatchSelectedMonth) return;
-
-    const allowedMonths = dispatchAllowBackfill ? getBackfillMonths(new Date()) : getNextMonthsWindow(new Date());
-    if (!allowedMonths.includes(dispatchSelectedMonth)) {
-      setDispatchSelectedMonth('');
-      setIsDispatchDropdownOpen(false);
-    }
-  }, [dispatchAllowBackfill, dispatchSelectedMonth]);
 
   const fetchAllowBackfill = async () => {
     try {
@@ -844,88 +837,6 @@ Thanks.`;
   };
 
 
-  const fetchDispatchAllowBackfill = async () => {
-    if (!API_DISPATCH_SETTINGS) {
-      setDispatchAllowBackfill(false);
-      setIsDispatchBackfillLoaded(true);
-      return;
-    }
-
-    try {
-      const res = await fetchWithTimeout(
-        `${API_DISPATCH_SETTINGS}?settingKey=allowBackfill`,
-        {
-          method: 'GET',
-          headers: { 'X-User': getXUser() },
-          mode: 'cors',
-          credentials: 'omit',
-        },
-        15000
-      );
-
-      if (!res.ok) {
-        const body = await readResponseBody(res);
-        throw new Error(body || `GET Dispatch /settings failed (HTTP ${res.status})`);
-      }
-
-      const data = await res.json().catch(() => ({}));
-      setDispatchAllowBackfill(Boolean(data?.valueBool));
-    } catch (e) {
-      console.error('fetchDispatchAllowBackfill failed', e);
-      setDispatchAllowBackfill(false);
-    } finally {
-      setIsDispatchBackfillLoaded(true);
-    }
-  };
-
-  const updateDispatchAllowBackfill = async (nextValue: boolean) => {
-    if (!API_DISPATCH_SETTINGS) {
-      setModalMessage('Dispatch settings API is not configured yet. No Monthly Update endpoint was called.');
-      setModalType('error');
-      setShowMessageModal(true);
-      return;
-    }
-
-    const prev = dispatchAllowBackfill;
-    setDispatchAllowBackfill(nextValue);
-
-    try {
-      const xUser = getXUser();
-      if (!xUser) throw new Error('Missing username (X-User). Please login again.');
-
-      const res = await fetchWithTimeout(
-        API_DISPATCH_SETTINGS,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-User': xUser,
-          },
-          body: JSON.stringify({
-            settingKey: 'allowBackfill',
-            valueBool: nextValue,
-          }),
-          mode: 'cors',
-          credentials: 'omit',
-        },
-        20000
-      );
-
-      if (!res.ok) {
-        const body = await readResponseBody(res);
-        throw new Error(body || `PUT Dispatch /settings failed (HTTP ${res.status})`);
-      }
-
-      const data = await res.json().catch(() => ({}));
-      if (typeof data?.valueBool === 'boolean') setDispatchAllowBackfill(Boolean(data.valueBool));
-    } catch (e: any) {
-      console.error('updateDispatchAllowBackfill failed', e);
-      setDispatchAllowBackfill(prev);
-      setModalMessage(`Failed to update Dispatch backfill setting: ${e?.message || 'Unknown error'}`);
-      setModalType('error');
-      setShowMessageModal(true);
-    }
-  };
 
   // Fetch user attributes and initial table
   useEffect(() => {
@@ -961,13 +872,6 @@ Thanks.`;
     fetchAllowBackfill();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userAttributes.username]);
-
-  // Dispatch settings are loaded only for the Dispatch tab.
-  useEffect(() => {
-    if (!userAttributes.username || activeTab !== 'dispatch') return;
-    fetchDispatchAllowBackfill();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userAttributes.username, activeTab]);
 
   // Reload table when switching tabs
   useEffect(() => {
@@ -1148,17 +1052,19 @@ Thanks.`;
   };
 
 
-  const uploadDispatchFile = async (f: File | null, monthForUpload: string, monthLabelForLog?: string) => {
+  const uploadDispatchFile = async (f: File | null) => {
     if (!f) {
-      setModalMessage('Please select a file to upload.');
+      setModalMessage('Please select the updated Sales Register file.');
       setModalType('error');
+      setDispatchValidationErrors([]);
       setShowMessageModal(true);
       return;
     }
 
     if (!API_DISPATCH_UPLOAD) {
-      setModalMessage('Dispatch upload API is not configured yet. No Monthly Update endpoint was called.');
+      setModalMessage('Dispatch upload API is not configured yet. No Monthly/Daily endpoint was called.');
       setModalType('error');
+      setDispatchValidationErrors([]);
       setShowMessageModal(true);
       return;
     }
@@ -1166,15 +1072,14 @@ Thanks.`;
     const originalFileName = f.name;
     const formData = new FormData();
     formData.append('file', f);
-    formData.append('month', monthForUpload);
     formData.append('fileName', originalFileName);
     formData.append('username', userAttributes.username || 'Unknown');
-    formData.append('allowBackfill', dispatchAllowBackfill ? 'true' : 'false');
-    if (monthLabelForLog) formData.append('monthLabel', monthLabelForLog);
+    formData.append('uploadType', 'dispatch_daily');
 
     try {
       setIsUploading(true);
       setUploadKey((prev) => prev + 1);
+      setDispatchValidationErrors([]);
 
       const res = await fetchWithTimeout(
         API_DISPATCH_UPLOAD,
@@ -1187,22 +1092,51 @@ Thanks.`;
         45000
       );
 
+      const responseText = await res.text().catch(() => '');
+      let uploadData: any = {};
+      try {
+        uploadData = responseText ? JSON.parse(responseText) : {};
+      } catch {
+        uploadData = { message: responseText };
+      }
+
       if (!res.ok) {
-        const body = await readResponseBody(res);
-        setModalMessage(body || `Failed to upload Dispatch file (HTTP ${res.status})`);
+        const errorsRaw =
+          (Array.isArray(uploadData?.errors) && uploadData.errors) ||
+          (Array.isArray(uploadData?.validationErrors) && uploadData.validationErrors) ||
+          [];
+
+        const normalizedErrors: DispatchValidationError[] = errorsRaw.map((item: any) => ({
+          row: item?.row ?? item?.rowNumber ?? item?.excelRow,
+          column: item?.column ?? item?.columnName,
+          billingDate: item?.billingDate ?? item?.billing_date,
+          material: item?.material,
+          previousValue: item?.previousValue ?? item?.oldValue ?? item?.previous_value,
+          uploadedValue: item?.uploadedValue ?? item?.newValue ?? item?.uploaded_value,
+          message: item?.message,
+        }));
+
+        setDispatchValidationErrors(normalizedErrors);
+        setModalMessage(
+          uploadData?.message ||
+            uploadData?.error ||
+            (normalizedErrors.length > 0
+              ? `Upload rejected. ${normalizedErrors.length} historical change${normalizedErrors.length === 1 ? '' : 's'} detected.`
+              : `Failed to upload Dispatch file (HTTP ${res.status})`)
+        );
         setModalType('error');
         setShowMessageModal(true);
         return;
       }
 
-      const uploadData = await res.json().catch(() => ({}));
-      setModalMessage(uploadData.message || 'Dispatch file uploaded successfully!');
+      setDispatchValidationErrors([]);
+      setDispatchFile(null);
+      setModalMessage(
+        uploadData?.message ||
+          'Dispatch file accepted. Historical rows were preserved and the current-month working file has been updated.'
+      );
       setModalType('success');
       setShowMessageModal(true);
-
-      const savedBasename = dispatchAllowBackfill
-        ? `${String(monthLabelForLog || '').trim().replace(/\s+/g, '_')}_Planned_vs_Achieved.csv`
-        : 'current_file.csv';
 
       if (API_DISPATCH_SAVE_FILES) {
         try {
@@ -1212,12 +1146,10 @@ Thanks.`;
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                fileName: savedBasename,
+                fileName: uploadData?.archivedFileName || originalFileName,
                 action: 'upload',
                 user: userAttributes.username || 'Unknown',
                 uploadType: 'dispatch',
-                month: monthLabelForLog || monthForUpload,
-                allowBackfill: dispatchAllowBackfill,
               }),
               mode: 'cors',
               credentials: 'omit',
@@ -1225,7 +1157,7 @@ Thanks.`;
             20000
           );
         } catch (e) {
-          console.warn('Dispatch upload saved, but failed to save Dispatch upload log:', e);
+          console.warn('Dispatch upload succeeded, but upload-log write failed:', e);
         }
       }
 
@@ -1236,6 +1168,7 @@ Thanks.`;
         error?.name === 'AbortError'
           ? 'Dispatch upload timed out (network slow or API not responding).'
           : error?.message || 'Failed to fetch';
+      setDispatchValidationErrors([]);
       setModalMessage(`An error occurred while uploading the Dispatch file: ${msg}`);
       setModalType('error');
       setShowMessageModal(true);
@@ -1245,35 +1178,26 @@ Thanks.`;
   };
 
   const handleDispatchUpload = async () => {
-    if (!dispatchSelectedMonth) {
-      setModalMessage('Please select the correct month.');
+    if (!dispatchFile) {
+      setModalMessage('Please select the updated Sales Register file.');
       setModalType('error');
+      setDispatchValidationErrors([]);
       setShowMessageModal(true);
       return;
     }
 
-    if (!validateFile(dispatchFile)) return;
-
-    try {
-      const expectedToken = monthYearLabelToToken(dispatchSelectedMonth);
-      const result = await validateMonthlyCsvMonthColumn(dispatchFile as File, expectedToken);
-      if (!result.ok) {
-        setModalMessage(result.message || 'Validation failed for Month & Year column.');
-        setModalType('error');
-        setShowMessageModal(true);
-        return;
-      }
-    } catch (e: any) {
-      console.error('Dispatch Month & Year validation failed:', e);
-      setModalMessage(`Validation failed: ${e?.message || 'Unable to read/validate the CSV file.'}`);
+    const extension = (dispatchFile.name.split('.').pop() || '').toLowerCase();
+    if (!['xlsx', 'xls'].includes(extension)) {
+      setModalMessage('Dispatch accepts Excel Sales Register files only (.xlsx or .xls).');
       setModalType('error');
+      setDispatchValidationErrors([]);
       setShowMessageModal(true);
       return;
     }
 
-    const monthName = dispatchSelectedMonth.split(' ')[0];
-    uploadDispatchFile(dispatchFile, monthName, dispatchSelectedMonth);
+    await uploadDispatchFile(dispatchFile);
   };
+
 
   const handleMonthlyUpload = async () => {
     if (!selectedMonth) {
@@ -1423,22 +1347,16 @@ Thanks.`;
   };
 
 
-  const downloadDispatchFile = async (key: string, isMonth = false) => {
+  const downloadDispatchFile = async (key: string) => {
     if (!API_DISPATCH_PRESIGNED) {
-      setModalMessage('Dispatch download API is not configured yet. No Monthly Update endpoint was called.');
+      setModalMessage('Dispatch download API is not configured yet. No Monthly/Daily endpoint was called.');
       setModalType('error');
-      setShowMessageModal(true);
-      return;
-    }
-    if (isMonth && !DISPATCH_SAMPLE_FOLDER_NAME) {
-      setModalMessage('Dispatch sample folder is not configured yet. No Monthly Update sample path was used.');
-      setModalType('error');
+      setDispatchValidationErrors([]);
       setShowMessageModal(true);
       return;
     }
 
     try {
-      const fileKey = isMonth ? `${DISPATCH_SAMPLE_FOLDER_NAME}${key}_Sample_File.csv` : key;
       const res = await fetchWithTimeout(
         API_DISPATCH_PRESIGNED,
         {
@@ -1446,9 +1364,8 @@ Thanks.`;
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             bucket_name: BUCKET_NAME,
-            file_key: fileKey,
+            file_key: key,
             action: 'download',
-            isSample: isMonth,
           }),
           mode: 'cors',
           credentials: 'omit',
@@ -1467,7 +1384,7 @@ Thanks.`;
       if (res.ok && data.presigned_url) {
         const link = document.createElement('a');
         link.href = data.presigned_url;
-        link.download = fileKey.split('/').pop() || 'download';
+        link.download = data.file_name || key.split('/').pop() || 'dispatch-file.xlsx';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -1480,7 +1397,7 @@ Thanks.`;
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  fileName: fileKey.split('/').pop(),
+                  fileName: key.split('/').pop(),
                   action: 'download',
                   user: userAttributes.username || 'Unknown',
                   uploadType: 'dispatch',
@@ -1492,22 +1409,77 @@ Thanks.`;
             );
           } catch {}
         }
-
-        setModalMessage(`Downloaded ${fileKey.split('/').pop()} successfully!`);
-        setModalType('success');
-        setShowMessageModal(true);
       } else {
         const errMsg = data?.error || data?.message || dataText || `HTTP ${res.status}`;
+        setDispatchValidationErrors([]);
         setModalMessage(`Error: ${errMsg}`);
         setModalType('error');
         setShowMessageModal(true);
       }
     } catch (error: any) {
+      setDispatchValidationErrors([]);
       setModalMessage(`An error occurred while fetching the Dispatch download link: ${error?.message || 'Unknown error'}`);
       setModalType('error');
       setShowMessageModal(true);
     }
   };
+
+  const downloadDispatchCurrentFile = async () => {
+    if (!API_DISPATCH_CURRENT_FILE) {
+      setModalMessage('Dispatch Current File API is not configured yet.');
+      setModalType('error');
+      setDispatchValidationErrors([]);
+      setShowMessageModal(true);
+      return;
+    }
+
+    try {
+      setIsDispatchCurrentDownloading(true);
+
+      const query = new URLSearchParams({
+        username: userAttributes.username || 'Unknown',
+      });
+
+      const res = await fetchWithTimeout(
+        `${API_DISPATCH_CURRENT_FILE}?${query.toString()}`,
+        {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          mode: 'cors',
+          credentials: 'omit',
+        },
+        25000
+      );
+
+      const dataText = await res.text().catch(() => '');
+      let data: any = {};
+      try {
+        data = dataText ? JSON.parse(dataText) : {};
+      } catch {
+        data = { raw: dataText };
+      }
+
+      if (!res.ok || !data?.presigned_url) {
+        const errMsg = data?.error || data?.message || dataText || `HTTP ${res.status}`;
+        throw new Error(errMsg);
+      }
+
+      const link = document.createElement('a');
+      link.href = data.presigned_url;
+      link.download = data.file_name || data.fileName || `Dispatch_Current_${formatMonthYear(new Date()).replace(/\s+/g, '_')}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error: any) {
+      setDispatchValidationErrors([]);
+      setModalMessage(`Unable to download the current Dispatch file: ${error?.message || 'Unknown error'}`);
+      setModalType('error');
+      setShowMessageModal(true);
+    } finally {
+      setIsDispatchCurrentDownloading(false);
+    }
+  };
+
 
   const deleteDispatchFile = async (key: string) => {
     if (!API_DISPATCH_PRESIGNED) {
@@ -1611,13 +1583,6 @@ Thanks.`;
     setDispatchFileNameToDelete(null);
   };
 
-  const toggleDispatchDropdown = () => setIsDispatchDropdownOpen((prev) => !prev);
-
-  const selectDispatchMonth = (monthYear: string) => {
-    setDispatchSelectedMonth(monthYear);
-    setIsDispatchDropdownOpen(false);
-  };
-
   const toggleDropdown = () => setIsDropdownOpen((prev) => !prev);
 
   const selectMonth = (monthYear: string) => {
@@ -1629,6 +1594,7 @@ Thanks.`;
     setShowMessageModal(false);
     setModalMessage('');
     setModalType('success');
+    setDispatchValidationErrors([]);
   };
 
   const handleSort = (column: keyof FileRow) => {
@@ -2004,6 +1970,39 @@ Thanks.`;
               </span>
               <h3 className="modal-title">{modalType === 'success' ? 'Success' : 'Error'}</h3>
               <p className={`message-text ${modalType === 'success' ? 'success-text' : 'error-text'}`}>{modalMessage}</p>
+
+              {modalType === 'error' && dispatchValidationErrors.length > 0 && (
+                <div style={{ width: '100%', maxHeight: '320px', overflow: 'auto', margin: '14px 0' }}>
+                  <table className="file-table" style={{ minWidth: '760px', fontSize: '13px' }}>
+                    <thead>
+                      <tr>
+                        <th>Row</th>
+                        <th>Column</th>
+                        <th>Billing Date</th>
+                        <th>Material</th>
+                        <th>Previously Accepted</th>
+                        <th>Uploaded Value</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dispatchValidationErrors.map((error, index) => (
+                        <tr key={`${String(error.row ?? 'row')}-${String(error.column ?? 'column')}-${index}`}>
+                          <td>{error.row ?? '-'}</td>
+                          <td>{error.column || '-'}</td>
+                          <td>{error.billingDate || '-'}</td>
+                          <td>{error.material || '-'}</td>
+                          <td>{error.previousValue === null || error.previousValue === undefined ? '-' : String(error.previousValue)}</td>
+                          <td>{error.uploadedValue === null || error.uploadedValue === undefined ? '-' : String(error.uploadedValue)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p style={{ margin: '10px 0 0', fontSize: '13px', color: '#555' }}>
+                    Restore the previously accepted historical values and upload the workbook again.
+                  </p>
+                </div>
+              )}
+
               <button className="ok-btn" onClick={closeMessageModal}>
                 OK
               </button>
@@ -2397,135 +2396,66 @@ Thanks.`;
           <div className="container">
             <div className="left-column">
               <div className="calendar-section">
-                <h2>Sample File Download Segment</h2>
-                <div className="year-navigation">
-                  <button onClick={() => setDispatchYear((prev) => prev - 1)}>{'\u003C'}</button>
-                  <h2>{dispatchYear}</h2>
-                  <button onClick={() => setDispatchYear((prev) => prev + 1)}>{'\u003E'}</button>
+                <h2>📥 Current Working File</h2>
+                <p style={{ margin: '8px 0 4px', color: '#444', lineHeight: 1.5 }}>
+                  {formatMonthYear(new Date())} accepted Dispatch data. Download this file, add today&apos;s new rows at the end,
+                  and upload the updated workbook below.
+                </p>
+                <p style={{ margin: '4px 0 14px', color: '#666', fontSize: '13px', lineHeight: 1.45 }}>
+                  Previously accepted historical rows are locked. If an earlier value is changed or removed, the upload will be rejected
+                  and the affected row and column will be shown.
+                </p>
+                <div className="download-button">
+                  <button
+                    onClick={downloadDispatchCurrentFile}
+                    className="download-btn"
+                    disabled={isDispatchCurrentDownloading}
+                  >
+                    {isDispatchCurrentDownloading ? 'Preparing Current File...' : '⬇ Download Current File'}
+                  </button>
                 </div>
-                <div className="months-grid">
-                  {months.map((m) => (
-                    <button
-                      key={m}
-                      onClick={() => setDispatchDisplayedMonth(m === dispatchDisplayedMonth ? '' : m)}
-                      className={`month-button ${dispatchDisplayedMonth === m ? 'active-month' : ''}`}
-                    >
-                      {m}
-                    </button>
-                  ))}
-                </div>
-                {dispatchDisplayedMonth && (
-                  <div className="download-button">
-                    <button onClick={() => downloadDispatchFile(dispatchDisplayedMonth, true)} className="download-btn">
-                      Download {dispatchDisplayedMonth} Sample CSV
-                    </button>
-                  </div>
-                )}
               </div>
 
               <div className="upload-section">
-                <h2>📤 Upload File</h2>
+                <h2>📤 Upload Updated Sales Register</h2>
                 <div className="upload-form">
                   <input
                     type="file"
-                    accept=".csv,.pdf,.xlsx,.xls,.doc,.docx"
+                    accept=".xlsx,.xls"
                     onChange={(e) => setDispatchFile(e.target.files?.[0] || null)}
                     className="file-input"
                     disabled={isUploading}
                   />
 
-                  <div className="custom-dropdown" ref={dispatchDropdownRef}>
-                    <div
-                      className={`dropdown-toggle ${isDispatchDropdownOpen ? 'open' : ''}`}
-                      onClick={toggleDispatchDropdown}
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          toggleDispatchDropdown();
-                        }
-                      }}
-                    >
-                      <span>{dispatchSelectedMonth || 'Select Month'}</span>
-                      <span className="dropdown-arrow"></span>
-                    </div>
-
-                    {isDispatchDropdownOpen && (
-                      <ul className="dropdown-menu">
-                        {(dispatchAllowBackfill ? getBackfillMonths(new Date()) : getNextMonthsWindow(new Date())).map((monthYear) => (
-                          <li
-                            key={monthYear}
-                            className={`dropdown-item ${dispatchSelectedMonth === monthYear ? 'selected' : ''}`}
-                            onClick={() => selectDispatchMonth(monthYear)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                selectDispatchMonth(monthYear);
-                              }
-                            }}
-                            tabIndex={0}
-                            role="option"
-                            aria-selected={dispatchSelectedMonth === monthYear}
-                          >
-                            {monthYear}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-
-                  <button className="upload-btn" onClick={handleDispatchUpload} disabled={isUploading}>
-                    {isUploading ? 'Uploading...' : 'Submit File'}
+                  <button className="upload-btn" onClick={handleDispatchUpload} disabled={isUploading || !dispatchFile}>
+                    {isUploading ? 'Validating & Uploading...' : 'Submit File'}
                   </button>
                 </div>
+                <p style={{ marginTop: '10px', marginBottom: 0, color: '#666', fontSize: '13px', lineHeight: 1.45 }}>
+                  Month and year are read from the workbook&apos;s Billing Date column. Only Material values beginning with 23 are used for
+                  Dispatch calculations; the backend keeps the complete uploaded workbook in the archive.
+                </p>
               </div>
             </div>
-
             <div className="file-list" style={{ position: 'relative' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                 <h2 style={{ margin: 0, marginRight: '10px' }}>📋 List of Files Submitted</h2>
 
                 {isAdmin && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <label
-                      className="delete-option-label"
-                      style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer' }}
-                    >
-                      <input
-                        type="checkbox"
-                        className="delete-option-checkbox"
-                        checked={isDispatchDeleteOptionEnabled}
-                        onChange={(e) => setIsDispatchDeleteOptionEnabled(e.target.checked)}
-                        aria-checked={isDispatchDeleteOptionEnabled}
-                        aria-label="Toggle delete option"
-                      />
-                      Delete Option
-                    </label>
-
-                    <label
-                      className="delete-option-label"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        fontSize: '16px',
-                        color: '#333',
-                        cursor: 'pointer',
-                        gap: '8px',
-                      }}
-                      title="Global setting (applies to all users). ON = last 3 years. OFF = limited window."
-                    >
-                      <input
-                        type="checkbox"
-                        className="delete-option-checkbox"
-                        checked={dispatchAllowBackfill}
-                        onChange={(e) => updateDispatchAllowBackfill(e.target.checked)}
-                        disabled={!isDispatchBackfillLoaded}
-                        aria-checked={dispatchAllowBackfill}
-                        aria-label="Toggle allow backfill"
-                      />
-                      Allow Backfill
-                    </label>
-                  </div>
+                  <label
+                    className="delete-option-label"
+                    style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer' }}
+                  >
+                    <input
+                      type="checkbox"
+                      className="delete-option-checkbox"
+                      checked={isDispatchDeleteOptionEnabled}
+                      onChange={(e) => setIsDispatchDeleteOptionEnabled(e.target.checked)}
+                      aria-checked={isDispatchDeleteOptionEnabled}
+                      aria-label="Toggle delete option"
+                    />
+                    Delete Option
+                  </label>
                 )}
               </div>
 
