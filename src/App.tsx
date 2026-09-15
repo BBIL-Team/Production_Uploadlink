@@ -77,12 +77,16 @@ type FileRow = {
 };
 
 type DispatchValidationError = {
-  row?: number | string;
-  column?: string;
+  excelRow?: number | string | null;
+  previousExcelRow?: number | string | null;
+  excelColumn?: string | null;
+  columnNumber?: number | string | null;
+  columnName?: string | null;
   billingDate?: string;
   material?: string;
   previousValue?: string | number | null;
   uploadedValue?: string | number | null;
+  foundValue?: string | number | null;
   message?: string;
 };
 
@@ -1107,12 +1111,16 @@ Thanks.`;
           [];
 
         const normalizedErrors: DispatchValidationError[] = errorsRaw.map((item: any) => ({
-          row: item?.row ?? item?.rowNumber ?? item?.excelRow,
-          column: item?.column ?? item?.columnName,
+          excelRow: item?.excelRow ?? item?.row ?? item?.rowNumber ?? null,
+          previousExcelRow: item?.previousExcelRow ?? null,
+          excelColumn: item?.excelColumn ?? null,
+          columnNumber: item?.columnNumber ?? null,
+          columnName: item?.columnName ?? item?.column ?? null,
           billingDate: item?.billingDate ?? item?.billing_date,
           material: item?.material,
           previousValue: item?.previousValue ?? item?.oldValue ?? item?.previous_value,
           uploadedValue: item?.uploadedValue ?? item?.newValue ?? item?.uploaded_value,
+          foundValue: item?.foundValue ?? null,
           message: item?.message,
         }));
 
@@ -1976,23 +1984,42 @@ Thanks.`;
                   <table className="file-table" style={{ minWidth: '760px', fontSize: '13px' }}>
                     <thead>
                       <tr>
-                        <th>Row</th>
-                        <th>Column</th>
+                        <th>Excel Row</th>
+                        <th>Excel Column</th>
+                        <th>Field</th>
                         <th>Billing Date</th>
                         <th>Material</th>
                         <th>Previously Accepted</th>
-                        <th>Uploaded Value</th>
+                        <th>Uploaded / Found Value</th>
+                        <th>Problem</th>
                       </tr>
                     </thead>
                     <tbody>
                       {dispatchValidationErrors.map((error, index) => (
-                        <tr key={`${String(error.row ?? 'row')}-${String(error.column ?? 'column')}-${index}`}>
-                          <td>{error.row ?? '-'}</td>
-                          <td>{error.column || '-'}</td>
+                        <tr
+                          key={`${String(error.excelRow ?? error.previousExcelRow ?? 'row')}-${String(error.excelColumn ?? error.columnName ?? 'column')}-${index}`}
+                        >
+                          <td>
+                            {error.excelRow ??
+                              (error.previousExcelRow ? `Missing now (previously row ${error.previousExcelRow})` : '-')}
+                          </td>
+                          <td>
+                            {error.excelColumn
+                              ? `${error.excelColumn}${error.columnNumber ? ` (${error.columnNumber})` : ''}`
+                              : '-'}
+                          </td>
+                          <td>{error.columnName || '-'}</td>
                           <td>{error.billingDate || '-'}</td>
                           <td>{error.material || '-'}</td>
                           <td>{error.previousValue === null || error.previousValue === undefined ? '-' : String(error.previousValue)}</td>
-                          <td>{error.uploadedValue === null || error.uploadedValue === undefined ? '-' : String(error.uploadedValue)}</td>
+                          <td>
+                            {error.uploadedValue !== null && error.uploadedValue !== undefined
+                              ? String(error.uploadedValue)
+                              : error.foundValue !== null && error.foundValue !== undefined
+                              ? String(error.foundValue)
+                              : '-'}
+                          </td>
+                          <td>{error.message || '-'}</td>
                         </tr>
                       ))}
                     </tbody>
