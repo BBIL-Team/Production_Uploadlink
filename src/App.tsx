@@ -1975,7 +1975,18 @@ Thanks.`;
 
         {showMessageModal && (
           <div className="modal-overlay">
-            <div className="modal-content message-modal">
+            <div
+              className="modal-content message-modal"
+              style={
+                modalType === 'error' && dispatchValidationErrors.length > 0
+                  ? {
+                      width: '92vw',
+                      maxWidth: '620px',
+                      boxSizing: 'border-box',
+                    }
+                  : undefined
+              }
+            >
               <span className={`modal-icon ${modalType === 'success' ? 'success-icon' : 'error-icon'}`}>
                 {modalType === 'success' ? '✅' : '❌'}
               </span>
@@ -1983,52 +1994,182 @@ Thanks.`;
               <p className={`message-text ${modalType === 'success' ? 'success-text' : 'error-text'}`}>{modalMessage}</p>
 
               {modalType === 'error' && dispatchValidationErrors.length > 0 && (
-                <div style={{ width: '100%', maxHeight: '320px', overflow: 'auto', margin: '14px 0' }}>
-                  <table className="file-table" style={{ minWidth: '760px', fontSize: '13px' }}>
-                    <thead>
-                      <tr>
-                        <th>Excel Row</th>
-                        <th>Excel Column</th>
-                        <th>Field</th>
-                        <th>Billing Date</th>
-                        <th>Material</th>
-                        <th>Previously Accepted</th>
-                        <th>Uploaded / Found Value</th>
-                        <th>Problem</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dispatchValidationErrors.map((error, index) => (
-                        <tr
-                          key={`${String(error.excelRow ?? error.previousExcelRow ?? 'row')}-${String(error.excelColumn ?? error.columnName ?? 'column')}-${index}`}
+                <div
+                  style={{
+                    width: '100%',
+                    maxHeight: '52vh',
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    margin: '14px 0',
+                    paddingRight: '4px',
+                    boxSizing: 'border-box',
+                    textAlign: 'left',
+                  }}
+                >
+                  {dispatchValidationErrors.map((error, index) => {
+                    const rowDisplay =
+                      error.excelRow ??
+                      (error.previousExcelRow ? `previously row ${error.previousExcelRow}` : 'Not available');
+
+                    const columnDisplay = error.excelColumn
+                      ? `${error.excelColumn}${error.columnNumber ? ` (column ${error.columnNumber})` : ''}`
+                      : 'Not available';
+
+                    const uploadedDisplay =
+                      error.uploadedValue !== null && error.uploadedValue !== undefined
+                        ? String(error.uploadedValue)
+                        : error.foundValue !== null && error.foundValue !== undefined
+                        ? String(error.foundValue)
+                        : '-';
+
+                    const previousDisplay =
+                      error.previousValue === null || error.previousValue === undefined
+                        ? '-'
+                        : String(error.previousValue);
+
+                    const lowerMessage = String(error.message || '').toLowerCase();
+
+                    let simpleIssue = `Please check Excel row ${rowDisplay}${
+                      error.excelColumn ? ` and column ${error.excelColumn}` : ''
+                    }.`;
+
+                    if (lowerMessage.includes('historical value cannot be changed')) {
+                      simpleIssue = `A previously accepted value has been modified in Excel row ${rowDisplay}${
+                        error.excelColumn ? ` and column ${error.excelColumn}` : ''
+                      }. Please check and restore the previously accepted value.`;
+                    } else if (lowerMessage.includes('new historical rows are not allowed')) {
+                      simpleIssue = `A new historical record was added in Excel row ${rowDisplay}${
+                        error.excelColumn ? `, with the date in column ${error.excelColumn}` : ''
+                      }. Please check this row.`;
+                    } else if (
+                      lowerMessage.includes('removed') ||
+                      lowerMessage.includes('missing')
+                    ) {
+                      simpleIssue = `A previously accepted historical record is missing${
+                        error.previousExcelRow ? ` (previously Excel row ${error.previousExcelRow})` : ''
+                      }. Please restore the record and upload the workbook again.`;
+                    }
+
+                    return (
+                      <div
+                        key={`${String(error.excelRow ?? error.previousExcelRow ?? 'row')}-${String(
+                          error.excelColumn ?? error.columnName ?? 'column'
+                        )}-${index}`}
+                        style={{
+                          border: '1px solid #ddd6fe',
+                          borderLeft: '5px solid #7c3aed',
+                          borderRadius: '10px',
+                          background: '#faf8ff',
+                          padding: '14px 16px',
+                          marginBottom: '12px',
+                          boxSizing: 'border-box',
+                          overflowWrap: 'anywhere',
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: '14px',
+                            fontWeight: 700,
+                            color: '#5b21b6',
+                            marginBottom: '8px',
+                          }}
                         >
-                          <td>
-                            {error.excelRow ??
-                              (error.previousExcelRow ? `Missing now (previously row ${error.previousExcelRow})` : '-')}
-                          </td>
-                          <td>
-                            {error.excelColumn
-                              ? `${error.excelColumn}${error.columnNumber ? ` (${error.columnNumber})` : ''}`
-                              : '-'}
-                          </td>
-                          <td>{error.columnName || '-'}</td>
-                          <td>{error.billingDate || '-'}</td>
-                          <td>{error.material || '-'}</td>
-                          <td>{error.previousValue === null || error.previousValue === undefined ? '-' : String(error.previousValue)}</td>
-                          <td>
-                            {error.uploadedValue !== null && error.uploadedValue !== undefined
-                              ? String(error.uploadedValue)
-                              : error.foundValue !== null && error.foundValue !== undefined
-                              ? String(error.foundValue)
-                              : '-'}
-                          </td>
-                          <td>{error.message || '-'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <p style={{ margin: '10px 0 0', fontSize: '13px', color: '#555' }}>
-                    Restore the previously accepted historical values and upload the workbook again.
+                          {dispatchValidationErrors.length > 1 ? `Error ${index + 1}` : 'What needs to be corrected'}
+                        </div>
+
+                        <p
+                          style={{
+                            margin: '0 0 12px',
+                            fontSize: '15px',
+                            lineHeight: 1.55,
+                            color: '#222',
+                            fontWeight: 600,
+                          }}
+                        >
+                          {simpleIssue}
+                        </p>
+
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'minmax(120px, 155px) 1fr',
+                            gap: '6px 10px',
+                            fontSize: '14px',
+                            lineHeight: 1.45,
+                            color: '#333',
+                          }}
+                        >
+                          <strong>Excel row</strong>
+                          <span>{rowDisplay}</span>
+
+                          <strong>Excel column</strong>
+                          <span>{columnDisplay}</span>
+
+                          {error.columnName && (
+                            <>
+                              <strong>Field</strong>
+                              <span>{error.columnName}</span>
+                            </>
+                          )}
+
+                          {error.billingDate && (
+                            <>
+                              <strong>Billing Date</strong>
+                              <span>{error.billingDate}</span>
+                            </>
+                          )}
+
+                          {error.material && (
+                            <>
+                              <strong>Material</strong>
+                              <span>{error.material}</span>
+                            </>
+                          )}
+
+                          {(error.previousValue !== null && error.previousValue !== undefined) && (
+                            <>
+                              <strong>Previous value</strong>
+                              <span>{previousDisplay}</span>
+                            </>
+                          )}
+
+                          {(error.uploadedValue !== null &&
+                            error.uploadedValue !== undefined) ||
+                          (error.foundValue !== null && error.foundValue !== undefined) ? (
+                            <>
+                              <strong>Uploaded / found value</strong>
+                              <span>{uploadedDisplay}</span>
+                            </>
+                          ) : null}
+                        </div>
+
+                        {error.message && (
+                          <div
+                            style={{
+                              marginTop: '12px',
+                              paddingTop: '10px',
+                              borderTop: '1px solid #e5e7eb',
+                              fontSize: '13px',
+                              lineHeight: 1.5,
+                              color: '#555',
+                            }}
+                          >
+                            <strong>Reason:</strong> {error.message}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  <p
+                    style={{
+                      margin: '10px 2px 0',
+                      fontSize: '13px',
+                      lineHeight: 1.5,
+                      color: '#555',
+                    }}
+                  >
+                    Correct the indicated Excel row(s) and column(s), then upload the workbook again.
                   </p>
                 </div>
               )}
