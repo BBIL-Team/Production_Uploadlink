@@ -23,12 +23,12 @@ const API_DAILY_UPLOAD = 'https://1whw41i19a.execute-api.ap-south-1.amazonaws.co
 
 // ====== Dispatch (daily update) APIs ======
 // These are intentionally separate from Monthly Update and will be filled after new endpoints are created.
-const API_DISPATCH_LIST_FILES = '';
-const API_DISPATCH_GET_UPLOADER = '';
-const API_DISPATCH_SAVE_FILES = '';
-const API_DISPATCH_PRESIGNED = '';
-const API_DISPATCH_UPLOAD = '';
-const API_DISPATCH_CURRENT_FILE = ''; // GET -> presigned URL for the latest accepted current-month workbook
+const API_DISPATCH_LIST_FILES = 'https://mve3o4n322.execute-api.ap-south-1.amazonaws.com/P1/dispatch/files';
+const API_DISPATCH_GET_UPLOADER = ''; // uploader is returned directly by /dispatch/files
+const API_DISPATCH_SAVE_FILES = ''; // Dispatch upload/download audit comes from S3 object metadata for now
+const API_DISPATCH_PRESIGNED = 'https://mve3o4n322.execute-api.ap-south-1.amazonaws.com/P1/dispatch/presigned';
+const API_DISPATCH_UPLOAD = 'https://mve3o4n322.execute-api.ap-south-1.amazonaws.com/P1/dispatch/upload';
+const API_DISPATCH_CURRENT_FILE = 'https://mve3o4n322.execute-api.ap-south-1.amazonaws.com/P1/dispatch/current-file'; // GET -> presigned URL for the latest accepted workbook
 
 // Hardcoded bucket and folder names
 const BUCKET_NAME = 'production-bbil';
@@ -38,6 +38,9 @@ const MONTHLY_FOLDER_NAME = 'Production_Upload_Files/';
 // Dispatch storage is intentionally separate from Monthly/Daily.
 // This folder should contain immutable archived user uploads shown in the Dispatch file list.
 const DISPATCH_FOLDER_NAME = 'Dispatch_Raw_Uploads/';
+
+// Keep destructive Dispatch actions hidden until API Gateway is protected with authenticated admin authorization.
+const DISPATCH_DELETE_ENABLED = false;
 
 // Supported file extensions
 const SUPPORTED_EXTENSIONS = ['.csv', '.pdf', '.xlsx', '.xls', '.doc', '.docx'];
@@ -666,7 +669,7 @@ Thanks.`;
             const extension = (f.key.split('.').pop() || '').toLowerCase();
             return SUPPORTED_EXTENSIONS.includes(`.${extension}`);
           })
-          .map(async (f: { key: string; size: number; lastModified: string }, index: number) => {
+          .map(async (f: { key: string; size: number; lastModified: string; uploadedBy?: string }, index: number) => {
             const fullFileName = f.key.split('/').pop() || '';
             const fileNameParts = fullFileName.split('.');
             const fileName = fileNameParts.slice(0, -1).join('.');
@@ -684,8 +687,8 @@ Thanks.`;
               hour12: false,
             });
 
-            let uploadedBy = 'Unknown';
-            if (API_DISPATCH_GET_UPLOADER) {
+            let uploadedBy = f.uploadedBy || 'Unknown';
+            if (!f.uploadedBy && API_DISPATCH_GET_UPLOADER) {
               try {
                 const uploaderResponse = await fetchWithTimeout(
                   `${API_DISPATCH_GET_UPLOADER}?fileName=${encodeURIComponent(fullFileName)}`,
@@ -1195,8 +1198,8 @@ Thanks.`;
     }
 
     const extension = (dispatchFile.name.split('.').pop() || '').toLowerCase();
-    if (!['xlsx', 'xls'].includes(extension)) {
-      setModalMessage('Dispatch accepts Excel Sales Register files only (.xlsx or .xls).');
+    if (!['xlsx', 'xlsm'].includes(extension)) {
+      setModalMessage('Dispatch accepts Excel Sales Register files only (.xlsx or .xlsm).');
       setModalType('error');
       setDispatchValidationErrors([]);
       setShowMessageModal(true);
@@ -2448,7 +2451,7 @@ Thanks.`;
                 <div className="upload-form">
                   <input
                     type="file"
-                    accept=".xlsx,.xls"
+                    accept=".xlsx,.xlsm"
                     onChange={(e) => setDispatchFile(e.target.files?.[0] || null)}
                     className="file-input"
                     disabled={isUploading}
@@ -2468,7 +2471,7 @@ Thanks.`;
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                 <h2 style={{ margin: 0, marginRight: '10px' }}>📋 List of Files Submitted</h2>
 
-                {isAdmin && (
+                {isAdmin && DISPATCH_DELETE_ENABLED && (
                   <label
                     className="delete-option-label"
                     style={{ display: 'flex', alignItems: 'center', fontSize: '16px', color: '#333', cursor: 'pointer' }}
@@ -2554,7 +2557,7 @@ Thanks.`;
                                 Download
                               </a>
 
-                              {isAdmin && isDispatchDeleteOptionEnabled && (
+                              {isAdmin && DISPATCH_DELETE_ENABLED && isDispatchDeleteOptionEnabled && (
                                 <>
                                   {' / '}
                                   <a
