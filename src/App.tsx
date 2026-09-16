@@ -1896,6 +1896,58 @@ Thanks.`;
         .app-main.dispatch-theme {
           background:
             linear-gradient(180deg, rgba(245, 243, 255, 0.98) 0%, rgba(250, 248, 255, 0.98) 42%, #ffffff 100%) !important;
+          width: 100%;
+          max-width: 100vw;
+          overflow-x: hidden;
+          box-sizing: border-box;
+        }
+
+        /*
+         * Dispatch responsive containment.
+         * The wide submitted-files table must scroll inside its own card,
+         * never force the entire page beyond the viewport.
+         */
+        .app-main.dispatch-theme > .container {
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+          box-sizing: border-box;
+        }
+
+        .app-main.dispatch-theme .left-column,
+        .app-main.dispatch-theme .file-list {
+          min-width: 0;
+          max-width: 100%;
+          box-sizing: border-box;
+        }
+
+        .app-main.dispatch-theme .file-list {
+          overflow: hidden;
+        }
+
+        .app-main.dispatch-theme .table-container {
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+          overflow-x: auto;
+          overflow-y: visible;
+          box-sizing: border-box;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .app-main.dispatch-theme .download-button,
+        .app-main.dispatch-theme .upload-form {
+          max-width: 100%;
+          min-width: 0;
+          box-sizing: border-box;
+        }
+
+        .app-main.dispatch-theme .download-btn,
+        .app-main.dispatch-theme .upload-btn {
+          max-width: 100%;
+          white-space: normal;
+          overflow-wrap: anywhere;
+          box-sizing: border-box;
         }
 
         .app-main.dispatch-theme .app-title {
@@ -2005,7 +2057,7 @@ Thanks.`;
         /* Dispatch table only: keep Uploaded By and Download Link in separate columns. */
         .app-main.dispatch-theme .dispatch-file-table {
           width: 100%;
-          min-width: 1080px;
+          min-width: 980px;
           table-layout: fixed;
         }
 
@@ -2036,6 +2088,41 @@ Thanks.`;
           white-space: nowrap;
           text-align: center;
           overflow: visible;
+        }
+
+        /*
+         * On narrower screens stack the two Dispatch cards vertically.
+         * This prevents the left working-file card + right table card from
+         * competing for horizontal space.
+         */
+        @media (max-width: 1180px) {
+          .app-main.dispatch-theme > .container {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) !important;
+            gap: 18px !important;
+          }
+
+          .app-main.dispatch-theme .left-column,
+          .app-main.dispatch-theme .file-list {
+            width: 100% !important;
+            max-width: 100% !important;
+          }
+        }
+
+        @media (max-width: 700px) {
+          .app-main.dispatch-theme {
+            padding-left: 10px !important;
+            padding-right: 10px !important;
+          }
+
+          .app-main.dispatch-theme .dispatch-file-table {
+            min-width: 900px;
+          }
+
+          .app-main.dispatch-theme .download-btn,
+          .app-main.dispatch-theme .upload-btn {
+            width: 100%;
+          }
         }
       `}</style>
 
