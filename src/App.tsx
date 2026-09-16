@@ -93,6 +93,27 @@ type DispatchValidationError = {
   message?: string;
 };
 
+type DispatchProgressStatus = 'pending' | 'active' | 'success' | 'error' | 'skipped';
+
+type DispatchProgressStep = {
+  id: string;
+  label: string;
+  status: DispatchProgressStatus;
+  detail?: string;
+};
+
+const makeDispatchProgressSteps = (): DispatchProgressStep[] => [
+  { id: 'client', label: 'File selected and format checked', status: 'success' },
+  { id: 'received', label: 'Upload file to server', status: 'active' },
+  { id: 'validate', label: 'Validate workbook data and column types', status: 'pending' },
+  { id: 'history', label: 'Check protected historical records and allowed update dates', status: 'pending' },
+  { id: 'master', label: 'Merge accepted changes into master Dispatch history', status: 'pending' },
+  { id: 'archive', label: 'Archive the submitted workbook', status: 'pending' },
+  { id: 'current', label: 'Update the latest accepted working source', status: 'pending' },
+  { id: 'dataset', label: 'Generate the QuickSight-ready data file', status: 'pending' },
+  { id: 'quicksight', label: 'Refresh QuickSight dashboard', status: 'pending' },
+];
+
 // Context menu state
 interface ContextMenuState {
   visible: boolean;
@@ -126,6 +147,22 @@ async function readResponseBody(res: Response) {
 
 // ✅ Month label helpers
 const formatMonthYear = (d: Date) => `${months[d.getMonth()]} ${d.getFullYear()}`;
+
+const DISPATCH_MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const formatDispatchDisplayDate = (d: Date) =>
+  `${String(d.getDate()).padStart(2, '0')} ${DISPATCH_MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+
+const formatDispatchFileDate = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const getDispatchYesterday = (d: Date) => {
+  const copy = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  copy.setDate(copy.getDate() - 1);
+  return copy;
+};
+
+const isDispatchMonthCloseGrace = (d: Date) => d.getDate() === 1 || d.getDate() === 2;
 
 // ✅ Backfill dropdown: show all months of previous calendar year + current month (ascending)
 // Example if today is Jan 2026 => Jan 2025..Dec 2025, Jan 2026
@@ -426,6 +463,14 @@ const App: React.FC = () => {
   const [dispatchHiddenColumns, setDispatchHiddenColumns] = useState<Array<keyof FileRow>>([]);
   const [dispatchValidationErrors, setDispatchValidationErrors] = useState<DispatchValidationError[]>([]);
   const [isDispatchCurrentDownloading, setIsDispatchCurrentDownloading] = useState<boolean>(false);
+  const [showDispatchUploadProgress, setShowDispatchUploadProgress] = useState<boolean>(false);
+  const [dispatchUploadProgressSteps, setDispatchUploadProgressSteps] = useState<DispatchProgressStep[]>(
+    makeDispatchProgressSteps()
+  );
+  const [dispatchUploadProgressResult, setDispatchUploadProgressResult] = useState<'running' | 'success' | 'error'>(
+    'running'
+  );
+  const [dispatchUploadProgressMessage, setDispatchUploadProgressMessage] = useState<string>('');
 
   const [showConfirmDeleteModal, setShowConfirmDeleteModal] = useState<boolean>(false);
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
@@ -889,7 +934,15 @@ Thanks.`;
 
   // Manage body scroll when modal is open
   useEffect(() => {
-    if (showMessageModal || showUpdateForm || isUploading || showConfirmDeleteModal || showDailySampleChoiceModal || showDispatchConfirmDeleteModal) {
+    if (
+      showMessageModal ||
+      showUpdateForm ||
+      isUploading ||
+      showDispatchUploadProgress ||
+      showConfirmDeleteModal ||
+      showDailySampleChoiceModal ||
+      showDispatchConfirmDeleteModal
+    ) {
       const scrollY = window.scrollY;
       document.body.style.overflow = 'hidden';
       document.body.style.position = 'fixed';
@@ -909,7 +962,15 @@ Thanks.`;
       document.body.style.top = '';
       document.body.style.width = '';
     };
-  }, [showMessageModal, showUpdateForm, isUploading, showConfirmDeleteModal, showDailySampleChoiceModal, showDispatchConfirmDeleteModal]);
+  }, [
+    showMessageModal,
+    showUpdateForm,
+    isUploading,
+    showDispatchUploadProgress,
+    showConfirmDeleteModal,
+    showDailySampleChoiceModal,
+    showDispatchConfirmDeleteModal,
+  ]);
 
   const handleUpdateUsername = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1059,6 +1120,51 @@ Thanks.`;
   };
 
 
+  const updateDispatchProgressStep = (
+    id: string,
+    status: DispatchProgressStatus,
+    detail?: string
+  ) => {
+    setDispatchUploadProgressSteps((prev) =>
+      prev.map((step) => (step.id === id ? { ...step, status, detail } : step))
+    );
+  };
+
+  const markDispatchStepsFromResponse = (uploadData: any) => {
+    const completed = new Set<string>(
+      Array.isArray(uploadData?.processingSteps)
+        ? uploadData.processingSteps
+        : ['received', 'validate', 'history', 'master', 'archive', 'current', 'dataset']
+    );
+
+    ['received', 'validate', 'history', 'master', 'archive', 'current', 'dataset'].forEach((id) => {
+      if (completed.has(id)) updateDispatchProgressStep(id, 'success');
+    });
+
+    if (uploadData?.ingestionId || completed.has('quicksight')) {
+      updateDispatchProgressStep('quicksight', 'success', 'QuickSight refresh was triggered.');
+    } else {
+      updateDispatchProgressStep(
+        'quicksight',
+        'skipped',
+        'QuickSight refresh is intentionally disabled until the S3 dataset migration is completed.'
+      );
+    }
+  };
+
+  const openDispatchProgress = () => {
+    setDispatchUploadProgressSteps(makeDispatchProgressSteps());
+    setDispatchUploadProgressResult('running');
+    setDispatchUploadProgressMessage('Uploading and validating the Dispatch workbook...');
+    setShowDispatchUploadProgress(true);
+  };
+
+  const closeDispatchProgress = () => {
+    setShowDispatchUploadProgress(false);
+    setDispatchUploadProgressMessage('');
+    setDispatchUploadProgressResult('running');
+  };
+
   const uploadDispatchFile = async (f: File | null) => {
     if (!f) {
       setModalMessage('Please select the updated Sales Register file.');
@@ -1087,6 +1193,7 @@ Thanks.`;
       setIsUploading(true);
       setUploadKey((prev) => prev + 1);
       setDispatchValidationErrors([]);
+      openDispatchProgress();
 
       const res = await fetchWithTimeout(
         API_DISPATCH_UPLOAD,
@@ -1098,6 +1205,8 @@ Thanks.`;
         },
         45000
       );
+
+      updateDispatchProgressStep('received', 'success', 'File received by the Dispatch server.');
 
       const responseText = await res.text().catch(() => '');
       let uploadData: any = {};
@@ -1128,26 +1237,43 @@ Thanks.`;
         }));
 
         setDispatchValidationErrors(normalizedErrors);
-        setModalMessage(
+        const failureMessage =
           uploadData?.message ||
-            uploadData?.error ||
-            (normalizedErrors.length > 0
-              ? `Upload rejected. ${normalizedErrors.length} historical change${normalizedErrors.length === 1 ? '' : 's'} detected.`
-              : `Failed to upload Dispatch file (HTTP ${res.status})`)
-        );
+          uploadData?.error ||
+          (normalizedErrors.length > 0
+            ? `Upload rejected. ${normalizedErrors.length} issue${normalizedErrors.length === 1 ? '' : 's'} detected.`
+            : `Failed to upload Dispatch file (HTTP ${res.status})`);
+
+        setModalMessage(failureMessage);
         setModalType('error');
-        setShowMessageModal(true);
+
+        const failedStage = uploadData?.failedStage;
+        if (failedStage === 'validate' || uploadData?.errorType === 'DATA_VALIDATION_FAILED') {
+          updateDispatchProgressStep('validate', 'error', 'Workbook validation failed.');
+        } else if (
+          failedStage === 'history' ||
+          uploadData?.errorType === 'HISTORICAL_DATA_CHANGED' ||
+          uploadData?.errorType === 'BASELINE_NOT_INITIALIZED'
+        ) {
+          updateDispatchProgressStep('validate', 'success', 'Workbook data types and required columns are valid.');
+          updateDispatchProgressStep('history', 'error', 'Protected-date or master-history validation failed.');
+        } else {
+          updateDispatchProgressStep('validate', 'error', failureMessage);
+        }
+
+        setDispatchUploadProgressResult('error');
+        setDispatchUploadProgressMessage(failureMessage);
         return;
       }
 
+      markDispatchStepsFromResponse(uploadData);
       setDispatchValidationErrors([]);
       setDispatchFile(null);
-      setModalMessage(
+      setDispatchUploadProgressResult('success');
+      setDispatchUploadProgressMessage(
         uploadData?.message ||
-          'Dispatch file accepted. Historical rows were preserved and the current-month working file has been updated.'
+          'Dispatch file accepted. The master history, archive, current working source, and QuickSight-ready data file were updated.'
       );
-      setModalType('success');
-      setShowMessageModal(true);
 
       if (API_DISPATCH_SAVE_FILES) {
         try {
@@ -1157,7 +1283,7 @@ Thanks.`;
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                fileName: uploadData?.archivedFileName || originalFileName,
+                fileName: uploadData?.archiveFileName || uploadData?.archivedFileName || originalFileName,
                 action: 'upload',
                 user: userAttributes.username || 'Unknown',
                 uploadType: 'dispatch',
@@ -1180,9 +1306,11 @@ Thanks.`;
           ? 'Dispatch upload timed out (network slow or API not responding).'
           : error?.message || 'Failed to fetch';
       setDispatchValidationErrors([]);
+      updateDispatchProgressStep('received', 'error', msg);
+      setDispatchUploadProgressResult('error');
+      setDispatchUploadProgressMessage(`Upload could not be completed: ${msg}`);
       setModalMessage(`An error occurred while uploading the Dispatch file: ${msg}`);
       setModalType('error');
-      setShowMessageModal(true);
     } finally {
       setIsUploading(false);
     }
@@ -1477,7 +1605,10 @@ Thanks.`;
 
       const link = document.createElement('a');
       link.href = data.presigned_url;
-      link.download = data.file_name || data.fileName || `Dispatch_Current_${formatMonthYear(new Date()).replace(/\s+/g, '_')}.xlsx`;
+      link.download =
+        data.file_name ||
+        data.fileName ||
+        `${formatDispatchFileDate(new Date())}_Dispatch_Working_File.xlsx`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -1869,6 +2000,42 @@ Thanks.`;
         .app-main.dispatch-theme .context-menu-item:hover {
           background: #ede9fe !important;
           color: #5b21b6 !important;
+        }
+
+        /* Dispatch table only: keep Uploaded By and Download Link in separate columns. */
+        .app-main.dispatch-theme .dispatch-file-table {
+          width: 100%;
+          min-width: 1080px;
+          table-layout: fixed;
+        }
+
+        .app-main.dispatch-theme .dispatch-file-table th,
+        .app-main.dispatch-theme .dispatch-file-table td {
+          box-sizing: border-box;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          vertical-align: middle;
+        }
+
+        .app-main.dispatch-theme .dispatch-file-table .dispatch-serial { width: 65px; text-align: center; }
+        .app-main.dispatch-theme .dispatch-file-table .dispatch-file-name { width: 275px; }
+        .app-main.dispatch-theme .dispatch-file-table .dispatch-file-type { width: 80px; }
+        .app-main.dispatch-theme .dispatch-file-table .dispatch-file-size { width: 105px; }
+        .app-main.dispatch-theme .dispatch-file-table .dispatch-date-uploaded { width: 180px; }
+
+        .app-main.dispatch-theme .dispatch-file-table .dispatch-uploaded-by {
+          width: 230px;
+          white-space: normal;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+          line-height: 1.35;
+        }
+
+        .app-main.dispatch-theme .dispatch-file-table .dispatch-download-link-cell {
+          width: 145px;
+          white-space: nowrap;
+          text-align: center;
+          overflow: visible;
         }
       `}</style>
 
@@ -2268,7 +2435,148 @@ Thanks.`;
           </div>
         )}
 
-        {isUploading && (
+        {showDispatchUploadProgress && (
+          <div className="modal-overlay">
+            <div
+              className="modal-content"
+              style={{
+                width: '92vw',
+                maxWidth: '590px',
+                boxSizing: 'border-box',
+                textAlign: 'left',
+              }}
+            >
+              <h3
+                className="modal-title"
+                style={{
+                  marginBottom: '6px',
+                  textAlign: 'center',
+                  color:
+                    dispatchUploadProgressResult === 'success'
+                      ? '#15803d'
+                      : dispatchUploadProgressResult === 'error'
+                      ? '#b91c1c'
+                      : '#5b21b6',
+                }}
+              >
+                {dispatchUploadProgressResult === 'success'
+                  ? 'Dispatch Upload Completed'
+                  : dispatchUploadProgressResult === 'error'
+                  ? 'Dispatch Upload Stopped'
+                  : 'Dispatch Upload in Progress'}
+              </h3>
+
+              <p
+                style={{
+                  margin: '0 0 16px',
+                  textAlign: 'center',
+                  color: '#555',
+                  fontSize: '14px',
+                  lineHeight: 1.45,
+                }}
+              >
+                {dispatchUploadProgressMessage}
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '58vh', overflowY: 'auto' }}>
+                {dispatchUploadProgressSteps.map((step) => {
+                  const icon =
+                    step.status === 'success'
+                      ? '✅'
+                      : step.status === 'error'
+                      ? '❌'
+                      : step.status === 'active'
+                      ? '⏳'
+                      : step.status === 'skipped'
+                      ? '➖'
+                      : '○';
+
+                  return (
+                    <div
+                      key={step.id}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '28px 1fr',
+                        gap: '8px',
+                        alignItems: 'start',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        background:
+                          step.status === 'success'
+                            ? '#f0fdf4'
+                            : step.status === 'error'
+                            ? '#fef2f2'
+                            : step.status === 'active'
+                            ? '#f5f3ff'
+                            : '#f8fafc',
+                        border:
+                          step.status === 'success'
+                            ? '1px solid #bbf7d0'
+                            : step.status === 'error'
+                            ? '1px solid #fecaca'
+                            : step.status === 'active'
+                            ? '1px solid #ddd6fe'
+                            : '1px solid #e5e7eb',
+                      }}
+                    >
+                      <span style={{ fontSize: '18px', lineHeight: 1.2 }}>{icon}</span>
+                      <div>
+                        <div
+                          style={{
+                            fontWeight: step.status === 'active' ? 700 : 600,
+                            color:
+                              step.status === 'success'
+                                ? '#166534'
+                                : step.status === 'error'
+                                ? '#991b1b'
+                                : step.status === 'active'
+                                ? '#5b21b6'
+                                : '#64748b',
+                            lineHeight: 1.35,
+                          }}
+                        >
+                          {step.label}
+                        </div>
+                        {step.detail && (
+                          <div style={{ marginTop: '2px', fontSize: '12px', lineHeight: 1.4, color: '#64748b' }}>
+                            {step.detail}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {dispatchUploadProgressResult !== 'running' ? (
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '18px' }}>
+                  {dispatchUploadProgressResult === 'error' && dispatchValidationErrors.length > 0 ? (
+                    <button
+                      type="button"
+                      className="ok-btn"
+                      onClick={() => {
+                        setShowDispatchUploadProgress(false);
+                        setShowMessageModal(true);
+                      }}
+                    >
+                      View Error Details
+                    </button>
+                  ) : (
+                    <button type="button" className="ok-btn" onClick={closeDispatchProgress}>
+                      OK
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <p style={{ margin: '14px 0 0', fontSize: '12px', color: '#777', textAlign: 'center' }}>
+                  Please keep this page open until the upload finishes.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {isUploading && activeTab !== 'dispatch' && (
           <div className="modal-overlay">
             <div className="modal-content loading-modal">
               <p className="loading-text">Loading...</p>
@@ -2569,12 +2877,32 @@ Thanks.`;
               <div className="calendar-section">
                 <h2>📥 Current Working File</h2>
                 <p style={{ margin: '8px 0 4px', color: '#444', lineHeight: 1.5 }}>
-                  {formatMonthYear(new Date())} accepted Dispatch data. Download this file, add today&apos;s new rows at the end,
-                  and upload the updated workbook below.
+                  Download the working file, add the Dispatch records for{' '}
+                  <strong>{formatDispatchDisplayDate(getDispatchYesterday(new Date()))}</strong> at the end, save it, and upload it below.
                 </p>
+                <p style={{ margin: '4px 0 8px', color: '#666', fontSize: '13px', lineHeight: 1.45 }}>
+                  The backend automatically keeps this download compact: current-month data only, with month-close grace applied on the
+                  1st and 2nd when needed. Employees do not need to select or manage months manually.
+                </p>
+                {isDispatchMonthCloseGrace(new Date()) && (
+                  <p
+                    style={{
+                      margin: '4px 0 10px',
+                      padding: '7px 10px',
+                      borderRadius: '8px',
+                      background: '#f5f3ff',
+                      border: '1px solid #ddd6fe',
+                      color: '#5b21b6',
+                      fontSize: '12px',
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    Month-close grace is active automatically. No additional action is required from the employee.
+                  </p>
+                )}
                 <p style={{ margin: '4px 0 14px', color: '#666', fontSize: '13px', lineHeight: 1.45 }}>
-                  Previously accepted historical rows are locked. If an earlier value is changed or removed, the upload will be rejected
-                  and the affected row and column will be shown.
+                  Previously accepted locked rows cannot be changed or removed. If something is altered, the exact Excel row and column
+                  will be shown.
                 </p>
                 <div className="download-button">
                   <button
@@ -2582,7 +2910,9 @@ Thanks.`;
                     className="download-btn"
                     disabled={isDispatchCurrentDownloading}
                   >
-                    {isDispatchCurrentDownloading ? 'Preparing Current File...' : '⬇ Download Current File'}
+                    {isDispatchCurrentDownloading
+                      ? 'Preparing Current File...'
+                      : `⬇ Download Current File — ${formatDispatchDisplayDate(new Date())}`}
                   </button>
                 </div>
               </div>
@@ -2603,8 +2933,8 @@ Thanks.`;
                   </button>
                 </div>
                 <p style={{ marginTop: '10px', marginBottom: 0, color: '#666', fontSize: '13px', lineHeight: 1.45 }}>
-                  Month and year are read from the workbook&apos;s Billing Date column. Only Material values beginning with 23 are used for
-                  Dispatch calculations; the backend keeps the complete uploaded workbook in the archive.
+                  Billing Date controls the daily update window automatically. Only Material values beginning with 23 feed the Dispatch
+                  master history and dashboard dataset; the complete file you submit is preserved in the archive.
                 </p>
               </div>
             </div>
@@ -2631,7 +2961,7 @@ Thanks.`;
               </div>
 
               <div className="table-container">
-                <table className="file-table">
+                <table className="file-table dispatch-file-table">
                   <thead>
                     <tr>
                       {columns.map(
@@ -2641,7 +2971,23 @@ Thanks.`;
                               key={col.key}
                               onClick={() => handleDispatchSort(col.key)}
                               onContextMenu={(e) => handleDispatchContextMenu(e, col.key)}
-                              className={dispatchSortColumn === col.key ? `sorted-${dispatchSortDirection}` : ''}
+                              className={`${dispatchSortColumn === col.key ? `sorted-${dispatchSortDirection}` : ''} ${
+                                col.key === 'id'
+                                  ? 'dispatch-serial'
+                                  : col.key === 'fileName'
+                                  ? 'dispatch-file-name'
+                                  : col.key === 'fileType'
+                                  ? 'dispatch-file-type'
+                                  : col.key === 'filesize'
+                                  ? 'dispatch-file-size'
+                                  : col.key === 'dateUploaded'
+                                  ? 'dispatch-date-uploaded'
+                                  : col.key === 'uploadedBy'
+                                  ? 'dispatch-uploaded-by'
+                                  : col.key === 'fileKey'
+                                  ? 'dispatch-download-link-cell'
+                                  : ''
+                              }`.trim()}
                             >
                               {col.label}
                             </th>
@@ -2659,34 +3005,40 @@ Thanks.`;
                     ) : (
                       dispatchS3Files.map((row) => (
                         <tr key={row.id}>
-                          {!dispatchHiddenColumns.includes('id') && <td>{row.id}</td>}
+                          {!dispatchHiddenColumns.includes('id') && <td className="dispatch-serial">{row.id}</td>}
                           {!dispatchHiddenColumns.includes('fileName') && (
                             <td
                               data-full-text={row.fileName}
                               onMouseEnter={(e) => handleMouseEnter(e, row.fileName)}
                               onMouseMove={handleMouseMove}
                               onMouseLeave={handleMouseLeave}
-                              className="tooltip-target"
+                              className="tooltip-target dispatch-file-name"
                             >
                               {row.fileName}
                             </td>
                           )}
-                          {!dispatchHiddenColumns.includes('fileType') && <td>{row.fileType}</td>}
-                          {!dispatchHiddenColumns.includes('filesize') && <td>{row.filesize}</td>}
+                          {!dispatchHiddenColumns.includes('fileType') && (
+                            <td className="dispatch-file-type">{row.fileType}</td>
+                          )}
+                          {!dispatchHiddenColumns.includes('filesize') && (
+                            <td className="dispatch-file-size">{row.filesize}</td>
+                          )}
                           {!dispatchHiddenColumns.includes('dateUploaded') && (
                             <td
                               data-full-text={row.dateUploaded}
                               onMouseEnter={(e) => handleMouseEnter(e, row.dateUploaded)}
                               onMouseMove={handleMouseMove}
                               onMouseLeave={handleMouseLeave}
-                              className="tooltip-target"
+                              className="tooltip-target dispatch-date-uploaded"
                             >
                               {row.dateUploaded}
                             </td>
                           )}
-                          {!dispatchHiddenColumns.includes('uploadedBy') && <td>{row.uploadedBy}</td>}
+                          {!dispatchHiddenColumns.includes('uploadedBy') && (
+                            <td className="dispatch-uploaded-by">{row.uploadedBy}</td>
+                          )}
                           {!dispatchHiddenColumns.includes('fileKey') && (
-                            <td>
+                            <td className="dispatch-download-link-cell">
                               <a
                                 href="#"
                                 onClick={(e) => {
