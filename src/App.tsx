@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { useAuthenticator } from '@aws-amplify/ui-react';
-import { getCurrentUser, fetchUserAttributes, updateUserAttributes } from '@aws-amplify/auth';
+import { getCurrentUser, fetchUserAttributes, updateUserAttributes, fetchAuthSession } from '@aws-amplify/auth';
 
 // --- Footer link helpers (replace with your real values) ---
 const DASHBOARD_URL = 'https://ap-south-1.quicksight.aws.amazon.com/sn/account/bbil-dashboards/dashboards/88001d2d-9daa-477d-8301-7418de873115/sheets/88001d2d-9daa-477d-8301-7418de873115_298b1a92-4fc0-4e5f-9938-8664fb6fd34b'; // TODO: replace
@@ -20,6 +20,18 @@ const API_PRESIGNED = 'https://e3blv3dko6.execute-api.ap-south-1.amazonaws.com/P
 
 const API_MONTHLY_UPLOAD = `${API_BASE}/Production_Uploadlink`;
 const API_DAILY_UPLOAD = 'https://1whw41i19a.execute-api.ap-south-1.amazonaws.com/S1/Production_DailyUpload';
+
+// ====== MIS (daily update) PILOT: secure download ONLY ======
+// This URL is a separate Cognito JWT-authorized API, not an existing upload API.
+// The server verifies the Cognito access token and returns a short-lived S3 URL.
+const API_MIS_WORKING_FILE = 'https://c4a1jmxz88.execute-api.ap-south-1.amazonaws.com/mis/working-file';
+
+const getMisIstDateLabel = (daysBack = 0): string =>
+  new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit', month: 'short', year: 'numeric',
+  }).format(new Date(Date.now() - daysBack * 86400000));
+
 
 // ====== Dispatch (daily update) APIs ======
 // These are intentionally separate from Monthly Update and will be filled after new endpoints are created.
@@ -463,6 +475,8 @@ const App: React.FC = () => {
   const [dispatchHiddenColumns, setDispatchHiddenColumns] = useState<Array<keyof FileRow>>([]);
   const [dispatchValidationErrors, setDispatchValidationErrors] = useState<DispatchValidationError[]>([]);
   const [isDispatchCurrentDownloading, setIsDispatchCurrentDownloading] = useState<boolean>(false);
+  const [isMisWorkingFileDownloading, setIsMisWorkingFileDownloading] = useState<boolean>(false);
+  const [misDownloadNotice, setMisDownloadNotice] = useState<string>('');
   const [showDispatchUploadProgress, setShowDispatchUploadProgress] = useState<boolean>(false);
   const [dispatchUploadProgressSteps, setDispatchUploadProgressSteps] = useState<DispatchProgressStep[]>(
     makeDispatchProgressSteps()
@@ -487,10 +501,10 @@ const App: React.FC = () => {
 
   const [dispatchContextMenu, setDispatchContextMenu] = useState<ContextMenuState>({ visible: false, x: 0, y: 0, column: null });
 
-  const [activeTab, setActiveTab] = useState<'monthly' | 'daily' | 'dispatch'>(() => {
+  const [activeTab, setActiveTab] = useState<'monthly' | 'daily' | 'dispatch' | 'mis'>(() => {
     try {
       const saved = typeof window !== 'undefined' ? localStorage.getItem('activeTab') : null;
-      return saved === 'daily' || saved === 'monthly' || saved === 'dispatch' ? saved : 'monthly';
+      return saved === 'daily' || saved === 'monthly' || saved === 'dispatch' || saved === 'mis' ? saved : 'monthly';
     } catch {
       return 'monthly';
     }
@@ -914,7 +928,7 @@ Thanks.`;
 
     fetchUserData();
     if (activeTab === 'dispatch') loadDispatchS3Files();
-    else loadS3Files(activeTab);
+    else if (activeTab === 'monthly' || activeTab === 'daily') loadS3Files(activeTab);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -928,7 +942,7 @@ Thanks.`;
   // Reload table when switching tabs
   useEffect(() => {
     if (activeTab === 'dispatch') loadDispatchS3Files();
-    else loadS3Files(activeTab);
+    else if (activeTab === 'monthly' || activeTab === 'daily') loadS3Files(activeTab);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
@@ -1623,6 +1637,76 @@ Thanks.`;
   };
 
 
+  // MIS pilot: only the authenticated working-file download exists so far.
+  // Do not route MIS through Dispatch, Monthly or Daily upload/download APIs.
+  const downloadMisCurrentWorkingFile = async () => {
+    try {
+      setIsMisWorkingFileDownloading(true);
+      setMisDownloadNotice('Checking your employee login and requesting today’s MIS working file...');
+
+      // Use the current Amplify/Cognito ACCESS token, not a username or ID token.
+      const session = await fetchAuthSession();
+      const accessToken = session.tokens?.accessToken?.toString();
+      if (!accessToken) {
+        throw new Error('No active employee access token. Please sign out and sign in again.');
+      }
+
+      const res = await fetchWithTimeout(
+        API_MIS_WORKING_FILE,
+        {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
+          mode: 'cors',
+          credentials: 'omit',
+        },
+        25000
+      );
+
+      const text = await res.text().catch(() => '');
+      let data: any = {};
+      try { data = text ? JSON.parse(text) : {}; }
+      catch { data = { message: text }; }
+
+      if (!res.ok) {
+        const reason = String(data?.error || data?.message || `HTTP ${res.status}`);
+        if (res.status === 401 || res.status === 403) {
+          throw new Error(
+            `Employee login was not accepted by the secure MIS API (HTTP ${res.status}). ` +
+            'The portal Cognito pool/client may not match the configured BBIL-Prod pool. ' + reason
+          );
+        }
+        if (res.status === 409) {
+          throw new Error('Today’s MIS working file has not been generated yet. Please contact the MIS administrator.');
+        }
+        throw new Error(reason);
+      }
+      if (typeof data?.url !== 'string' || !data.url.startsWith('https://')) {
+        throw new Error('The secure MIS API did not return a valid download link.');
+      }
+
+      const filename = String(data.filename || 'MIS_Working_File.xlsx');
+      const link = document.createElement('a');
+      link.href = data.url;
+      link.download = filename;
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      setMisDownloadNotice(`Download requested: ${filename}. The private link expires after two minutes.`);
+    } catch (error: any) {
+      const detail = error?.name === 'AbortError'
+        ? 'Request timed out.'
+        : error?.message || 'Unable to request the working file.';
+      setMisDownloadNotice(`Download unavailable: ${detail}`);
+      setModalMessage(`Unable to download the MIS working file: ${detail}`);
+      setModalType('error');
+      setShowMessageModal(true);
+    } finally {
+      setIsMisWorkingFileDownloading(false);
+    }
+  };
+
   const deleteDispatchFile = async (key: string) => {
     if (!API_DISPATCH_PRESIGNED) {
       setModalMessage('Dispatch delete API is not configured yet. No Monthly Update endpoint was called.');
@@ -2129,7 +2213,7 @@ Thanks.`;
       <header
         ref={headerRef}
         className={`app-header ${
-          activeTab === 'daily' ? 'daily-theme' : activeTab === 'dispatch' ? 'dispatch-theme' : ''
+          activeTab === 'daily' ? 'daily-theme' : (activeTab === 'dispatch' || activeTab === 'mis') ? 'dispatch-theme' : ''
         }`}
       >
         <div style={{ width: '130px', height: '100%', overflow: 'hidden', borderRadius: '8px', marginLeft: '20px' }}>
@@ -2164,7 +2248,7 @@ Thanks.`;
 
       <main
         className={`app-main ${
-          activeTab === 'daily' ? 'daily-theme' : activeTab === 'dispatch' ? 'dispatch-theme' : ''
+          activeTab === 'daily' ? 'daily-theme' : (activeTab === 'dispatch' || activeTab === 'mis') ? 'dispatch-theme' : ''
         }`}
         style={{
           // The header/logo bar is fixed/overlaying the page in your CSS.
@@ -2677,7 +2761,7 @@ Thanks.`;
         <h1 className="app-title">
           <u>
             BBIL Production Dashboard –{' '}
-            {activeTab === 'daily' ? 'Daily Update' : activeTab === 'dispatch' ? 'Dispatch (daily update)' : 'Monthly Update'}
+            {activeTab === 'daily' ? 'Daily Update' : activeTab === 'dispatch' ? 'Dispatch (daily update)' : activeTab === 'mis' ? 'MIS Daily Update' : 'Monthly Update'}
           </u>
         </h1>
 
@@ -2689,7 +2773,7 @@ Thanks.`;
             zIndex: 20,
           }}
         >
-          <nav className="top-tabs" role="tablist" aria-label="Upload views">
+          <nav className="top-tabs" role="tablist" aria-label="Upload views" style={{ flexWrap: 'wrap' }}>
             <button
               role="tab"
               aria-selected={activeTab === 'monthly'}
@@ -2714,6 +2798,14 @@ Thanks.`;
             >
               Dispatch (daily update)
             </button>
+            <button
+              role="tab"
+              aria-selected={activeTab === 'mis'}
+              className={`tab-btn ${activeTab === 'mis' ? 'active' : ''}`}
+              onClick={() => setActiveTab('mis')}
+            >
+              MIS Daily Update
+            </button>
           </nav>
         </div>
 
@@ -2727,7 +2819,68 @@ Thanks.`;
           </div>
         )}
 
-        {activeTab === 'monthly' ? (
+        {activeTab === 'mis' ? (
+          <div className="container">
+            <div className="left-column">
+              <div className="calendar-section">
+                <h2>📥 Current MIS Working File</h2>
+                <p style={{ margin: '8px 0', color: '#444', lineHeight: 1.55 }}>
+                  Download the compact daily MIS workbook for <strong>{getMisIstDateLabel()}</strong>.
+                  The file retains all 11 original worksheet names.
+                </p>
+                <p style={{ margin: '8px 0', color: '#555', lineHeight: 1.5 }}>
+                  Permitted daily-entry dates: <strong>{getMisIstDateLabel(2)}</strong> and{' '}
+                  <strong>{getMisIstDateLabel(1)}</strong> (India time).
+                </p>
+                <p style={{ margin: '8px 0 14px', color: '#666', fontSize: '13px', lineHeight: 1.5 }}>
+                  Older records and reference sheets are protected. This pilot verifies secure employee downloads;
+                  the backend will enforce date restrictions when uploads are enabled.
+                </p>
+                <div className="download-button">
+                  <button
+                    type="button"
+                    className="download-btn"
+                    onClick={downloadMisCurrentWorkingFile}
+                    disabled={isMisWorkingFileDownloading}
+                  >
+                    {isMisWorkingFileDownloading
+                      ? 'Authorizing MIS Download...'
+                      : `⬇ Download Current MIS File — ${getMisIstDateLabel()}`}
+                  </button>
+                </div>
+                {misDownloadNotice && (
+                  <p role="status" style={{ margin: '12px 0 0', color: '#5b21b6', fontSize: '13px', lineHeight: 1.5 }}>
+                    {misDownloadNotice}
+                  </p>
+                )}
+              </div>
+              <div className="upload-section">
+                <h2>📤 MIS Daily Upload — Pilot</h2>
+                <p style={{ color: '#555', lineHeight: 1.55 }}>
+                  Uploads are not active yet. We will enable them only after secure server-side
+                  validation, historical-record protection and test synchronization are ready.
+                </p>
+                <div className="upload-form">
+                  <button type="button" className="upload-btn" disabled title="Secure MIS upload backend not yet deployed">
+                    MIS Upload — Not Yet Enabled
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="file-list" style={{ position: 'relative' }}>
+              <h2>📋 MIS Daily Update — Pilot Status</h2>
+              <p style={{ color: '#444', lineHeight: 1.55 }}>
+                <strong>Download:</strong> Available to an employee whose active Cognito login is accepted by the MIS pilot API.
+              </p>
+              <p style={{ color: '#555', lineHeight: 1.55 }}>
+                <strong>Upload and update history:</strong> Not yet enabled. The existing Monthly, Daily and Dispatch workflows continue separately.
+              </p>
+              <p style={{ color: '#666', fontSize: '13px', lineHeight: 1.55 }}>
+                Please use the download button to verify access. Do not use this pilot for production MIS submissions yet.
+              </p>
+            </div>
+          </div>
+        ) : activeTab === 'monthly' ? (
           <div className="container">
             <div className="left-column">
               <div className="calendar-section">
