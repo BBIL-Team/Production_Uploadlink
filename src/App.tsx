@@ -2966,8 +2966,12 @@ Thanks.`;
                   You can upload it directly; no manual editing or working-file download is required.
                 </p>
                 <p style={{ color: '#555', fontSize: '13px' }}>
-                  Typical report date: <strong>{getMisIstDateLabel(1)}</strong> (IST).
-                  This pilot permits historical test files but does not yet count as a live daily submission.
+                  <strong>Accepted SAP transaction dates (IST):</strong>{' '}
+                  <strong>{getMisIstDateLabel(2)}</strong> or{' '}
+                  <strong>{getMisIstDateLabel(1)}</strong> only.
+                  Today, older dates and future transaction dates will be rejected.
+                  Inventory may contain a current-day snapshot; historical reference sheets are preserved.
+                  This is a validation pilot and does not count as a live submission.
                 </p>
                 <div className="upload-form" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <input
