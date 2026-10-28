@@ -479,6 +479,10 @@ const App: React.FC = () => {
   const [isMisSapUploading, setIsMisSapUploading] = useState<boolean>(false);
   const [misSapUploadNotice, setMisSapUploadNotice] = useState<string>('');
   const [misSapUploadResult, setMisSapUploadResult] = useState<any>(null);
+  // Separate SAP pilot popup: does not change the Monthly, Daily or Dispatch modals.
+  const [showMisSapUploadPopup, setShowMisSapUploadPopup] = useState<boolean>(false);
+  const [misSapUploadPopupOutcome, setMisSapUploadPopupOutcome] = useState<'running' | 'validated' | 'duplicate' | 'error'>('running');
+  const [misSapUploadStep, setMisSapUploadStep] = useState<number>(0);
   const [showDispatchUploadProgress, setShowDispatchUploadProgress] = useState<boolean>(false);
   const [dispatchUploadProgressSteps, setDispatchUploadProgressSteps] = useState<DispatchProgressStep[]>(
     makeDispatchProgressSteps()
@@ -955,6 +959,7 @@ Thanks.`;
       showUpdateForm ||
       isUploading ||
       showDispatchUploadProgress ||
+      showMisSapUploadPopup ||
       showConfirmDeleteModal ||
       showDailySampleChoiceModal ||
       showDispatchConfirmDeleteModal
@@ -983,6 +988,7 @@ Thanks.`;
     showUpdateForm,
     isUploading,
     showDispatchUploadProgress,
+    showMisSapUploadPopup,
     showConfirmDeleteModal,
     showDailySampleChoiceModal,
     showDispatchConfirmDeleteModal,
@@ -1639,28 +1645,42 @@ Thanks.`;
   };
 
 
-  // SAP pilot upload uses the same Amplify access token as the existing employee login.
-  // It only archives and validates the uploaded XLSX; no live submission is recorded.
+  // SAP pilot upload uses the employee's existing Cognito access token.
+  // The modal deliberately says VALIDATED (PILOT), never "dashboard updated":
+  // this endpoint archives and validates but does not refresh live QuickSight.
   const uploadMisSapPilot = async () => {
+    const showSapInputError = (message: string) => {
+      setMisSapUploadResult(null);
+      setMisSapUploadNotice(message);
+      setMisSapUploadStep(0);
+      setMisSapUploadPopupOutcome('error');
+      setShowMisSapUploadPopup(true);
+    };
+
     if (!misSapFile) {
-      setMisSapUploadNotice('Choose the daily SAP MIS Excel file first.');
+      showSapInputError('Choose the daily SAP MIS Excel file first.');
       return;
     }
     if (!/\.xlsx$/i.test(misSapFile.name) || misSapFile.size > 15 * 1024 * 1024 || misSapFile.size === 0) {
-      setMisSapUploadNotice('The file must be a nonempty .xlsx workbook no larger than 15 MB.');
+      showSapInputError('The file must be a nonempty .xlsx workbook no larger than 15 MB.');
       return;
     }
     if (!API_MIS_SAP_PILOT_BASE.startsWith('https://')) {
-      setMisSapUploadNotice('The secure MIS API URL has not yet been configured.');
+      showSapInputError('The secure SAP upload API URL has not yet been configured.');
       return;
     }
+
+    setIsMisSapUploading(true);
+    setMisSapUploadResult(null);
+    setMisSapUploadStep(0);
+    setMisSapUploadPopupOutcome('running');
+    setMisSapUploadNotice('Checking your employee login...');
+    setShowMisSapUploadPopup(true);
+
     try {
-      setIsMisSapUploading(true);
-      setMisSapUploadResult(null);
-      setMisSapUploadNotice('Authorizing your employee session...');
       const session = await fetchAuthSession();
       const token = session.tokens?.accessToken?.toString();
-      if (!token) throw new Error('Employee login expired. Please sign in again.');
+      if (!token) throw new Error('Your employee login has expired. Please sign in again.');
 
       const api = async (path: string, data: any): Promise<any> => {
         const res = await fetchWithTimeout(`${API_MIS_SAP_PILOT_BASE}${path}`, {
@@ -1670,9 +1690,10 @@ Thanks.`;
         }, 60000);
         const raw = await res.text().catch(() => '');
         let body: any = {};
-        try { body = JSON.parse(raw); } catch { body = {}; }
+        try { body = raw ? JSON.parse(raw) : {}; } catch { body = {}; }
         if (!res.ok) {
-          throw new Error(body?.error || body?.message || `Secure API returned HTTP ${res.status}`);
+          const reason = body?.error || body?.message || `Secure upload API returned HTTP ${res.status}`;
+          throw new Error(body?.status === 'REJECTED_PILOT' ? `SAP validation rejected: ${reason}` : reason);
         }
         return body;
       };
@@ -1681,23 +1702,38 @@ Thanks.`;
       if (!upload?.upload_url || !upload?.fields || !upload?.submission_id) {
         throw new Error('The secure upload service returned incomplete instructions.');
       }
+
+      setMisSapUploadStep(1);
       setMisSapUploadNotice('Uploading the file securely to the private BBIL pilot archive...');
       const form = new FormData();
       Object.entries(upload.fields).forEach(([key, val]) => form.append(key, String(val)));
-      form.append('file', misSapFile); // File must be last for S3 presigned POST
+      form.append('file', misSapFile); // File must be last for S3 presigned POST.
       const s3Result = await fetch(upload.upload_url, { method: 'POST', mode: 'cors', body: form, credentials: 'omit' });
       if (!s3Result.ok) throw new Error(`Private S3 upload failed (HTTP ${s3Result.status}).`);
 
-      setMisSapUploadNotice('SAP file uploaded. Validating its daily production records...');
+      setMisSapUploadStep(2);
+      setMisSapUploadNotice('File uploaded. Checking reporting date, sheets and SAP production records...');
       const result = await api('/mis/sap/complete', { submission_id: upload.submission_id });
+      if (result?.status !== 'VALIDATED_PILOT_ONLY' && result?.status !== 'DUPLICATE_PILOT') {
+        throw new Error(result?.message || `Unexpected validation result: ${result?.status || 'unknown'}`);
+      }
       setMisSapUploadResult(result);
-      setMisSapUploadNotice(
-        `${result.status}: ${result.report_date || 'Date not available'} — ` +
-        `${result.dp_transactions || 0} Drug Product and ${result.ds_transactions || 0} Drug Substance transactions. ` +
-        'This is a PILOT validation only; the dashboard and deadline emails are unchanged.'
-      );
+      setMisSapUploadStep(3);
+
+      if (result.status === 'DUPLICATE_PILOT') {
+        setMisSapUploadPopupOutcome('duplicate');
+        setMisSapUploadNotice('This SAP file has already been validated in the pilot. No additional production data was added.');
+      } else {
+        setMisSapUploadPopupOutcome('validated');
+        setMisSapUploadNotice('SAP Excel file uploaded and validated successfully in the pilot.');
+      }
     } catch (error: any) {
-      setMisSapUploadNotice(`SAP upload could not be validated: ${error?.message || 'Unknown error'}`);
+      let message = error?.message || 'Unknown upload or validation error.';
+      if (message === 'Failed to fetch') {
+        message = 'Could not connect to the upload service. Check your network connection and try again.';
+      }
+      setMisSapUploadNotice(message);
+      setMisSapUploadPopupOutcome('error');
     } finally {
       setIsMisSapUploading(false);
     }
@@ -2598,6 +2634,111 @@ Thanks.`;
                   Cancel
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {showMisSapUploadPopup && (
+          <div className="modal-overlay" style={{ zIndex: 10000 }}>
+            <div
+              className="modal-content"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="bbil-sap-upload-popup-title"
+              aria-describedby="bbil-sap-upload-popup-description"
+              style={{ width: '92vw', maxWidth: '560px', boxSizing: 'border-box', textAlign: 'left', maxHeight: '88vh', overflowY: 'auto', padding: '25px' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                <span aria-hidden="true" style={{ fontSize: '30px', lineHeight: 1 }}>
+                  {misSapUploadPopupOutcome === 'validated' ? '✅' :
+                    misSapUploadPopupOutcome === 'duplicate' ? 'ℹ️' :
+                    misSapUploadPopupOutcome === 'error' ? '❌' : '⏳'}
+                </span>
+                <div>
+                  <h3 id="bbil-sap-upload-popup-title" style={{ margin: 0, fontSize: '20px', color: '#172554' }}>
+                    {misSapUploadPopupOutcome === 'validated' ? 'SAP File Validation Successful' :
+                      misSapUploadPopupOutcome === 'duplicate' ? 'SAP File Already Submitted to Pilot' :
+                      misSapUploadPopupOutcome === 'error' ? 'SAP Upload / Validation Error' :
+                      'SAP File Upload in Progress'}
+                  </h3>
+                  <div style={{ marginTop: '4px', color: '#64748b', fontSize: '12px' }}>SAP team Daily Update · Pilot</div>
+                </div>
+              </div>
+              <div
+                id="bbil-sap-upload-popup-description"
+                role="status"
+                aria-live="polite"
+                style={{
+                  padding: '11px 13px', borderRadius: '8px', lineHeight: 1.5,
+                  overflowWrap: 'anywhere', fontSize: '14px', marginBottom: '15px',
+                  color: misSapUploadPopupOutcome === 'error' ? '#991b1b' :
+                    misSapUploadPopupOutcome === 'validated' ? '#166534' : '#334155',
+                  background: misSapUploadPopupOutcome === 'error' ? '#fef2f2' :
+                    misSapUploadPopupOutcome === 'validated' ? '#f0fdf4' :
+                    misSapUploadPopupOutcome === 'duplicate' ? '#eff6ff' : '#f8fafc',
+                }}
+              >
+                {misSapUploadNotice}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '7px', marginBottom: '15px' }}>
+                {[
+                  'Verify employee session',
+                  'Upload workbook to secure BBIL pilot archive',
+                  'Validate SAP workbook and production records',
+                ].map((label, index) => {
+                  const complete = misSapUploadPopupOutcome === 'validated' ||
+                    misSapUploadPopupOutcome === 'duplicate' || misSapUploadStep > index;
+                  const failed = misSapUploadPopupOutcome === 'error' && misSapUploadStep === index;
+                  const active = misSapUploadPopupOutcome === 'running' && misSapUploadStep === index;
+                  return (
+                    <div key={label} style={{
+                      display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 11px',
+                      borderRadius: '8px', fontSize: '13px', lineHeight: 1.35,
+                      background: complete ? '#f0fdf4' : failed ? '#fef2f2' : active ? '#eef2ff' : '#f8fafc',
+                      color: complete ? '#166534' : failed ? '#991b1b' : active ? '#3730a3' : '#64748b',
+                    }}>
+                      <span aria-hidden="true" style={{ fontSize: '16px' }}>
+                        {complete ? '✓' : failed ? '✕' : active ? '⏳' : '○'}
+                      </span>
+                      <span style={{ fontWeight: active ? 700 : 500 }}>{label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {misSapUploadResult && (misSapUploadPopupOutcome === 'validated' || misSapUploadPopupOutcome === 'duplicate') && (
+                <div style={{ border: '1px solid #dbe4ef', padding: '12px 14px', borderRadius: '9px', background: '#fff', fontSize: '13px', lineHeight: 1.8, color: '#334155' }}>
+                  <div><strong>Validation status:</strong> {misSapUploadResult.status}</div>
+                  <div><strong>Reporting date:</strong> {misSapUploadResult.report_date || '—'}</div>
+                  <div><strong>Drug Product transactions:</strong> {misSapUploadResult.dp_transactions ?? '—'}</div>
+                  <div><strong>Drug Substance transactions:</strong> {misSapUploadResult.ds_transactions ?? '—'}</div>
+                  {misSapUploadResult.submission_id && (
+                    <div style={{ overflowWrap: 'anywhere' }}><strong>Pilot submission ID:</strong> {misSapUploadResult.submission_id}</div>
+                  )}
+                </div>
+              )}
+
+              <p style={{ background: '#fff7e6', borderRadius: '8px', padding: '10px 12px', margin: '15px 0', fontSize: '12px', lineHeight: 1.5, color: '#7c520f' }}>
+                <strong>Pilot validation only.</strong> This does not update the production QuickSight dashboard,
+                count toward the 12:30 PM submission deadline, or send automated emails.
+              </p>
+              {isMisSapUploading ? (
+                <p style={{ margin: '7px 0 0', textAlign: 'center', fontSize: '12px', color: '#64748b' }}>
+                  Please keep the page open while validation finishes.
+                </p>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '15px' }}>
+                  <button
+                    type="button"
+                    className="ok-btn"
+                    onClick={() => setShowMisSapUploadPopup(false)}
+                    autoFocus
+                  >
+                    OK
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
