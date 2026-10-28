@@ -21,10 +21,10 @@ const API_PRESIGNED = 'https://e3blv3dko6.execute-api.ap-south-1.amazonaws.com/P
 const API_MONTHLY_UPLOAD = `${API_BASE}/Production_Uploadlink`;
 const API_DAILY_UPLOAD = 'https://1whw41i19a.execute-api.ap-south-1.amazonaws.com/S1/Production_DailyUpload';
 
-// ====== MIS (daily update) PILOT: secure download ONLY ======
-// This URL is a separate Cognito JWT-authorized API, not an existing upload API.
-// The server verifies the Cognito access token and returns a short-lived S3 URL.
-const API_MIS_WORKING_FILE = 'https://c4a1jmxz88.execute-api.ap-south-1.amazonaws.com/mis/working-file';
+// ====== MIS (daily update): isolated, Cognito-authorized SAP upload PILOT ======
+// Replace this placeholder with the exact API base URL printed by the AWS installer.
+// This pilot archives and validates data only; it does NOT refresh QuickSight or send emails.
+const API_MIS_SAP_PILOT_BASE = 'https://x66dsqt3lc.execute-api.ap-south-1.amazonaws.com';
 
 const getMisIstDateLabel = (daysBack = 0): string =>
   new Intl.DateTimeFormat('en-GB', {
@@ -475,8 +475,10 @@ const App: React.FC = () => {
   const [dispatchHiddenColumns, setDispatchHiddenColumns] = useState<Array<keyof FileRow>>([]);
   const [dispatchValidationErrors, setDispatchValidationErrors] = useState<DispatchValidationError[]>([]);
   const [isDispatchCurrentDownloading, setIsDispatchCurrentDownloading] = useState<boolean>(false);
-  const [isMisWorkingFileDownloading, setIsMisWorkingFileDownloading] = useState<boolean>(false);
-  const [misDownloadNotice, setMisDownloadNotice] = useState<string>('');
+  const [misSapFile, setMisSapFile] = useState<File | null>(null);
+  const [isMisSapUploading, setIsMisSapUploading] = useState<boolean>(false);
+  const [misSapUploadNotice, setMisSapUploadNotice] = useState<string>('');
+  const [misSapUploadResult, setMisSapUploadResult] = useState<any>(null);
   const [showDispatchUploadProgress, setShowDispatchUploadProgress] = useState<boolean>(false);
   const [dispatchUploadProgressSteps, setDispatchUploadProgressSteps] = useState<DispatchProgressStep[]>(
     makeDispatchProgressSteps()
@@ -1637,73 +1639,67 @@ Thanks.`;
   };
 
 
-  // MIS pilot: only the authenticated working-file download exists so far.
-  // Do not route MIS through Dispatch, Monthly or Daily upload/download APIs.
-  const downloadMisCurrentWorkingFile = async () => {
+  // SAP pilot upload uses the same Amplify access token as the existing employee login.
+  // It only archives and validates the uploaded XLSX; no live submission is recorded.
+  const uploadMisSapPilot = async () => {
+    if (!misSapFile) {
+      setMisSapUploadNotice('Choose the daily SAP MIS Excel file first.');
+      return;
+    }
+    if (!/\.xlsx$/i.test(misSapFile.name) || misSapFile.size > 15 * 1024 * 1024 || misSapFile.size === 0) {
+      setMisSapUploadNotice('The file must be a nonempty .xlsx workbook no larger than 15 MB.');
+      return;
+    }
+    if (!API_MIS_SAP_PILOT_BASE.startsWith('https://')) {
+      setMisSapUploadNotice('The secure MIS API URL has not yet been configured.');
+      return;
+    }
     try {
-      setIsMisWorkingFileDownloading(true);
-      setMisDownloadNotice('Checking your employee login and requesting today’s MIS working file...');
-
-      // Use the current Amplify/Cognito ACCESS token, not a username or ID token.
+      setIsMisSapUploading(true);
+      setMisSapUploadResult(null);
+      setMisSapUploadNotice('Authorizing your employee session...');
       const session = await fetchAuthSession();
-      const accessToken = session.tokens?.accessToken?.toString();
-      if (!accessToken) {
-        throw new Error('No active employee access token. Please sign out and sign in again.');
-      }
+      const token = session.tokens?.accessToken?.toString();
+      if (!token) throw new Error('Employee login expired. Please sign in again.');
 
-      const res = await fetchWithTimeout(
-        API_MIS_WORKING_FILE,
-        {
-          method: 'GET',
-          headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
-          mode: 'cors',
-          credentials: 'omit',
-        },
-        25000
+      const api = async (path: string, data: any): Promise<any> => {
+        const res = await fetchWithTimeout(`${API_MIS_SAP_PILOT_BASE}${path}`, {
+          method: 'POST', credentials: 'omit', mode: 'cors',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        }, 60000);
+        const raw = await res.text().catch(() => '');
+        let body: any = {};
+        try { body = JSON.parse(raw); } catch { body = {}; }
+        if (!res.ok) {
+          throw new Error(body?.error || body?.message || `Secure API returned HTTP ${res.status}`);
+        }
+        return body;
+      };
+
+      const upload = await api('/mis/sap/start', { filename: misSapFile.name, size: misSapFile.size });
+      if (!upload?.upload_url || !upload?.fields || !upload?.submission_id) {
+        throw new Error('The secure upload service returned incomplete instructions.');
+      }
+      setMisSapUploadNotice('Uploading the file securely to the private BBIL pilot archive...');
+      const form = new FormData();
+      Object.entries(upload.fields).forEach(([key, val]) => form.append(key, String(val)));
+      form.append('file', misSapFile); // File must be last for S3 presigned POST
+      const s3Result = await fetch(upload.upload_url, { method: 'POST', mode: 'cors', body: form, credentials: 'omit' });
+      if (!s3Result.ok) throw new Error(`Private S3 upload failed (HTTP ${s3Result.status}).`);
+
+      setMisSapUploadNotice('SAP file uploaded. Validating its daily production records...');
+      const result = await api('/mis/sap/complete', { submission_id: upload.submission_id });
+      setMisSapUploadResult(result);
+      setMisSapUploadNotice(
+        `${result.status}: ${result.report_date || 'Date not available'} — ` +
+        `${result.dp_transactions || 0} Drug Product and ${result.ds_transactions || 0} Drug Substance transactions. ` +
+        'This is a PILOT validation only; the dashboard and deadline emails are unchanged.'
       );
-
-      const text = await res.text().catch(() => '');
-      let data: any = {};
-      try { data = text ? JSON.parse(text) : {}; }
-      catch { data = { message: text }; }
-
-      if (!res.ok) {
-        const reason = String(data?.error || data?.message || `HTTP ${res.status}`);
-        if (res.status === 401 || res.status === 403) {
-          throw new Error(
-            `Employee login was not accepted by the secure MIS API (HTTP ${res.status}). ` +
-            'The portal Cognito pool/client may not match the configured BBIL-Prod pool. ' + reason
-          );
-        }
-        if (res.status === 409) {
-          throw new Error('Today’s MIS working file has not been generated yet. Please contact the MIS administrator.');
-        }
-        throw new Error(reason);
-      }
-      if (typeof data?.url !== 'string' || !data.url.startsWith('https://')) {
-        throw new Error('The secure MIS API did not return a valid download link.');
-      }
-
-      const filename = String(data.filename || 'MIS_Working_File.xlsx');
-      const link = document.createElement('a');
-      link.href = data.url;
-      link.download = filename;
-      link.rel = 'noopener noreferrer';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      setMisDownloadNotice(`Download requested: ${filename}. The private link expires after two minutes.`);
     } catch (error: any) {
-      const detail = error?.name === 'AbortError'
-        ? 'Request timed out.'
-        : error?.message || 'Unable to request the working file.';
-      setMisDownloadNotice(`Download unavailable: ${detail}`);
-      setModalMessage(`Unable to download the MIS working file: ${detail}`);
-      setModalType('error');
-      setShowMessageModal(true);
+      setMisSapUploadNotice(`SAP upload could not be validated: ${error?.message || 'Unknown error'}`);
     } finally {
-      setIsMisWorkingFileDownloading(false);
+      setIsMisSapUploading(false);
     }
   };
 
@@ -2761,7 +2757,7 @@ Thanks.`;
         <h1 className="app-title">
           <u>
             BBIL Production Dashboard –{' '}
-            {activeTab === 'daily' ? 'Daily Update' : activeTab === 'dispatch' ? 'Dispatch (daily update)' : activeTab === 'mis' ? 'MIS Daily Update' : 'Monthly Update'}
+            {activeTab === 'daily' ? 'Daily Update' : activeTab === 'dispatch' ? 'Dispatch (daily update)' : activeTab === 'mis' ? 'SAP team Daily Update' : 'Monthly Update'}
           </u>
         </h1>
 
@@ -2804,7 +2800,7 @@ Thanks.`;
               className={`tab-btn ${activeTab === 'mis' ? 'active' : ''}`}
               onClick={() => setActiveTab('mis')}
             >
-              MIS Daily Update
+              SAP team Daily Update
             </button>
           </nav>
         </div>
@@ -2822,61 +2818,61 @@ Thanks.`;
         {activeTab === 'mis' ? (
           <div className="container">
             <div className="left-column">
-              <div className="calendar-section">
-                <h2>📥 Current MIS Working File</h2>
-                <p style={{ margin: '8px 0', color: '#444', lineHeight: 1.55 }}>
-                  Download the compact daily MIS workbook for <strong>{getMisIstDateLabel()}</strong>.
-                  The file retains all 11 original worksheet names.
-                </p>
-                <p style={{ margin: '8px 0', color: '#555', lineHeight: 1.5 }}>
-                  Permitted daily-entry dates: <strong>{getMisIstDateLabel(2)}</strong> and{' '}
-                  <strong>{getMisIstDateLabel(1)}</strong> (India time).
-                </p>
-                <p style={{ margin: '8px 0 14px', color: '#666', fontSize: '13px', lineHeight: 1.5 }}>
-                  Older records and reference sheets are protected. This pilot verifies secure employee downloads;
-                  the backend will enforce date restrictions when uploads are enabled.
-                </p>
-                <div className="download-button">
-                  <button
-                    type="button"
-                    className="download-btn"
-                    onClick={downloadMisCurrentWorkingFile}
-                    disabled={isMisWorkingFileDownloading}
-                  >
-                    {isMisWorkingFileDownloading
-                      ? 'Authorizing MIS Download...'
-                      : `⬇ Download Current MIS File — ${getMisIstDateLabel()}`}
-                  </button>
-                </div>
-                {misDownloadNotice && (
-                  <p role="status" style={{ margin: '12px 0 0', color: '#5b21b6', fontSize: '13px', lineHeight: 1.5 }}>
-                    {misDownloadNotice}
-                  </p>
-                )}
-              </div>
               <div className="upload-section">
-                <h2>📤 MIS Daily Upload — Pilot</h2>
-                <p style={{ color: '#555', lineHeight: 1.55 }}>
-                  Uploads are not active yet. We will enable them only after secure server-side
-                  validation, historical-record protection and test synchronization are ready.
+                <h2>📤 SAP Daily MIS File — Secure Upload Pilot</h2>
+                <p style={{ color: '#444', lineHeight: 1.6 }}>
+                  Export the standard 11-sheet SAP MIS workbook for the previous day's production.
+                  You can upload it directly; no manual editing or working-file download is required.
                 </p>
-                <div className="upload-form">
-                  <button type="button" className="upload-btn" disabled title="Secure MIS upload backend not yet deployed">
-                    MIS Upload — Not Yet Enabled
+                <p style={{ color: '#555', fontSize: '13px' }}>
+                  Typical report date: <strong>{getMisIstDateLabel(1)}</strong> (IST).
+                  This pilot permits historical test files but does not yet count as a live daily submission.
+                </p>
+                <div className="upload-form" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <input
+                    type="file"
+                    accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    disabled={isMisSapUploading}
+                    onChange={e => {
+                      setMisSapFile(e.target.files?.[0] || null);
+                      setMisSapUploadNotice('');
+                      setMisSapUploadResult(null);
+                    }}
+                    aria-label="Choose SAP daily MIS Excel file"
+                    className="file-input"
+                  />
+                  <button type="button" className="upload-btn"
+                    disabled={isMisSapUploading || !misSapFile}
+                    onClick={uploadMisSapPilot}>
+                    {isMisSapUploading ? 'Uploading and validating SAP MIS...' : 'Upload SAP MIS File — Pilot'}
                   </button>
+                  {misSapUploadNotice && (
+                    <p role="status" style={{ margin: 0, color: '#4338ca', lineHeight: 1.5 }}>
+                      {misSapUploadNotice}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
             <div className="file-list" style={{ position: 'relative' }}>
-              <h2>📋 MIS Daily Update — Pilot Status</h2>
-              <p style={{ color: '#444', lineHeight: 1.55 }}>
-                <strong>Download:</strong> Available to an employee whose active Cognito login is accepted by the MIS pilot API.
-              </p>
-              <p style={{ color: '#555', lineHeight: 1.55 }}>
-                <strong>Upload and update history:</strong> Not yet enabled. The existing Monthly, Daily and Dispatch workflows continue separately.
-              </p>
-              <p style={{ color: '#666', fontSize: '13px', lineHeight: 1.55 }}>
-                Please use the download button to verify access. Do not use this pilot for production MIS submissions yet.
+              <h2>📋 Daily SAP Validation Status</h2>
+              {misSapUploadResult ? (
+                <div style={{ lineHeight: 1.8, color: '#333' }}>
+                  <p><strong>Status:</strong> {misSapUploadResult.status}</p>
+                  <p><strong>Reporting date:</strong> {misSapUploadResult.report_date || '—'}</p>
+                  <p><strong>Drug Product transactions:</strong> {misSapUploadResult.dp_transactions ?? '—'}</p>
+                  <p><strong>Drug Substance transactions:</strong> {misSapUploadResult.ds_transactions ?? '—'}</p>
+                  <p><strong>Submission ID:</strong> {misSapUploadResult.submission_id || '—'}</p>
+                </div>
+              ) : (
+                <p style={{ color: '#555', lineHeight: 1.55 }}>
+                  Choose a SAP workbook and upload it for server-side validation.
+                  You will see the reporting date and validation result here.
+                </p>
+              )}
+              <p style={{ background: '#fff5d6', padding: '12px', borderRadius: '8px', color: '#6b4d17', lineHeight: 1.5 }}>
+                <strong>Pilot only:</strong> The production dashboard, approved Planned values,
+                historical data, 12:30 PM reminders and automatic emails are not changed by these tests.
               </p>
             </div>
           </div>
