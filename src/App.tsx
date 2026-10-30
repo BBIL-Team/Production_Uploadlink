@@ -2240,12 +2240,118 @@ Thanks.`;
             width: 100%;
           }
         }
+        /* ====================================================================
+           SAP team Daily Update — distinct ocean teal theme.
+           VISUAL ONLY: Dispatch remains purple; other tabs are unchanged.
+           SAP retains Dispatch's responsive containment, but uses teal colors.
+           ==================================================================== */
+
+        .app-header.mis-theme {
+          background: linear-gradient(115deg, #073b4c 0%, #0a626b 54%, #0e8985 100%) !important;
+          border-bottom: 4px solid #5eead4 !important;
+          box-shadow: 0 4px 18px rgba(7, 59, 76, 0.20) !important;
+        }
+        .app-header.mis-theme .username,
+        .app-header.mis-theme .phone-number {
+          color: #ffffff !important;
+        }
+        .app-header.mis-theme .sign-out-btn,
+        .app-header.mis-theme .update-username-btn {
+          background: #ffffff !important;
+          color: #075e62 !important;
+          border: 1px solid #99f6e4 !important;
+        }
+        .app-header.mis-theme .sign-out-btn:hover,
+        .app-header.mis-theme .update-username-btn:hover {
+          background: #ecfdf5 !important;
+        }
+
+        .app-main.mis-theme {
+          background: linear-gradient(180deg, #effcfa 0%, #f6fdfc 44%, #ffffff 100%) !important;
+        }
+        .app-main.mis-theme .app-title {
+          color: #0a5963 !important;
+          text-decoration-color: #14b8a6 !important;
+        }
+        .app-main.mis-theme .top-tabs {
+          border-color: #7dd3c7 !important;
+          background: #ffffff !important;
+          box-shadow: 0 3px 14px rgba(15, 118, 110, 0.11) !important;
+        }
+        .app-main.mis-theme .top-tabs .tab-btn.active {
+          background: linear-gradient(125deg, #0b6572 0%, #0d9488 100%) !important;
+          color: #ffffff !important;
+          border-color: #0f766e !important;
+          box-shadow: 0 3px 12px rgba(13, 148, 136, 0.25) !important;
+        }
+        .app-main.mis-theme .top-tabs .tab-btn:not(.active):hover {
+          background: #e7f8f6 !important;
+          border-color: #7dd3c7 !important;
+          color: #095c65 !important;
+        }
+
+        .app-main.mis-theme .calendar-section,
+        .app-main.mis-theme .upload-section,
+        .app-main.mis-theme .file-list {
+          border-color: #9ddbd4 !important;
+          background: #ffffff !important;
+          box-shadow: 0 5px 18px rgba(12, 100, 105, 0.09) !important;
+        }
+        .app-main.mis-theme .calendar-section h2,
+        .app-main.mis-theme .upload-section h2,
+        .app-main.mis-theme .file-list h2 {
+          color: #0a5963 !important;
+        }
+
+        .app-main.mis-theme .upload-btn,
+        .app-main.mis-theme .download-btn,
+        .app-main.mis-theme .submit-btn,
+        .app-main.mis-theme .ok-btn {
+          background: linear-gradient(130deg, #0b6572 0%, #0d9488 100%) !important;
+          color: #ffffff !important;
+          border-color: #0f766e !important;
+          box-shadow: 0 3px 11px rgba(13, 148, 136, 0.18) !important;
+        }
+        .app-main.mis-theme .upload-btn:hover:not(:disabled),
+        .app-main.mis-theme .download-btn:hover:not(:disabled),
+        .app-main.mis-theme .submit-btn:hover:not(:disabled),
+        .app-main.mis-theme .ok-btn:hover:not(:disabled) {
+          background: linear-gradient(130deg, #084d59 0%, #0b766d 100%) !important;
+          box-shadow: 0 4px 14px rgba(7, 89, 98, 0.25) !important;
+        }
+        .app-main.mis-theme .upload-btn:disabled,
+        .app-main.mis-theme .download-btn:disabled {
+          opacity: 0.55 !important;
+          cursor: not-allowed;
+          box-shadow: none !important;
+        }
+        .app-main.mis-theme .file-input {
+          border-color: #99dcd5 !important;
+          accent-color: #0f766e;
+        }
+        .app-main.mis-theme .file-input:focus-visible,
+        .app-main.mis-theme .top-tabs .tab-btn:focus-visible,
+        .app-main.mis-theme .upload-btn:focus-visible {
+          outline: 3px solid #2dd4bf !important;
+          outline-offset: 3px;
+        }
+        .app-main.mis-theme .modal-content {
+          border-top: 4px solid #0d9488 !important;
+        }
+        .app-main.mis-theme #bbil-sap-upload-popup-title {
+          color: #0a5963 !important;
+        }
+        .app-main.mis-theme .modal-content .ok-btn {
+          background: linear-gradient(130deg, #0b6572, #0d9488) !important;
+          border-color: #0f766e !important;
+          color: #ffffff !important;
+        }
       `}</style>
 
       <header
         ref={headerRef}
         className={`app-header ${
-          activeTab === 'daily' ? 'daily-theme' : (activeTab === 'dispatch' || activeTab === 'mis') ? 'dispatch-theme' : ''
+          activeTab === 'daily' ? 'daily-theme' : activeTab === 'dispatch' ? 'dispatch-theme' : activeTab === 'mis' ? 'dispatch-theme mis-theme' : ''
         }`}
       >
         <div style={{ width: '130px', height: '100%', overflow: 'hidden', borderRadius: '8px', marginLeft: '20px' }}>
@@ -2280,7 +2386,7 @@ Thanks.`;
 
       <main
         className={`app-main ${
-          activeTab === 'daily' ? 'daily-theme' : (activeTab === 'dispatch' || activeTab === 'mis') ? 'dispatch-theme' : ''
+          activeTab === 'daily' ? 'daily-theme' : activeTab === 'dispatch' ? 'dispatch-theme' : activeTab === 'mis' ? 'dispatch-theme mis-theme' : ''
         }`}
         style={{
           // The header/logo bar is fixed/overlaying the page in your CSS.
@@ -2994,7 +3100,7 @@ Thanks.`;
                     {isMisSapUploading ? 'Uploading and validating SAP MIS...' : 'Upload SAP MIS File — Pilot'}
                   </button>
                   {misSapUploadNotice && (
-                    <p role="status" style={{ margin: 0, color: '#4338ca', lineHeight: 1.5 }}>
+                    <p role="status" style={{ margin: 0, color: '#0f766e', lineHeight: 1.5 }}>
                       {misSapUploadNotice}
                     </p>
                   )}
