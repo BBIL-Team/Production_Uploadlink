@@ -80,6 +80,14 @@ interface TooltipState {
   y: number;
 }
 
+type MisSapSubmittedFile = {
+  submission_id: string;
+  file_name: string;
+  size_bytes: number;
+  file_type: string;
+  uploaded_at: string;
+};
+
 type FileRow = {
   id: number;
   fileName: string;
@@ -479,6 +487,13 @@ const App: React.FC = () => {
   const [isMisSapUploading, setIsMisSapUploading] = useState<boolean>(false);
   const [misSapUploadNotice, setMisSapUploadNotice] = useState<string>('');
   const [misSapUploadResult, setMisSapUploadResult] = useState<any>(null);
+  const [misSapAccountEmail, setMisSapAccountEmail] = useState<string>('');
+  const [misSapFiles, setMisSapFiles] = useState<MisSapSubmittedFile[]>([]);
+  const [misSapFilesLoading, setMisSapFilesLoading] = useState<boolean>(false);
+  const [misSapFilesError, setMisSapFilesError] = useState<string>('');
+  const [misSapDownloaderId, setMisSapDownloaderId] = useState<string>('');
+  const [misSapFilesSort, setMisSapFilesSort] = useState<'date' | 'file' | 'size'>('date');
+  const [misSapFilesSortAsc, setMisSapFilesSortAsc] = useState<boolean>(false);
   // Separate SAP pilot popup: does not change the Monthly, Daily or Dispatch modals.
   const [showMisSapUploadPopup, setShowMisSapUploadPopup] = useState<boolean>(false);
   const [misSapUploadPopupOutcome, setMisSapUploadPopupOutcome] = useState<'running' | 'validated' | 'duplicate' | 'error'>('running');
@@ -924,9 +939,11 @@ Thanks.`;
           phoneNumber && phoneNumber.length >= 2 ? `91${'x'.repeat(phoneNumber.length - 4)}${phoneNumber.slice(-2)}` : '';
 
         setUserAttributes({ username, phoneNumber: maskedPhoneNumber });
+        setMisSapAccountEmail(String(attributes?.email || ''));
       } catch (error) {
         console.error('Error fetching user data:', error);
         setUserAttributes({ username: '', phoneNumber: '' });
+        setMisSapAccountEmail('');
       } finally {
         setLoading(false);
       }
@@ -1645,6 +1662,79 @@ Thanks.`;
   };
 
 
+  // SAP submitted-file list is scoped to the authenticated Cognito subject in the API.
+  // S3 objects remain private; download links are generated on demand after ownership check.
+  const loadMisSapFiles = async () => {
+    setMisSapFilesLoading(true);
+    setMisSapFilesError('');
+    try {
+      const session = await fetchAuthSession();
+      const token = session.tokens?.accessToken?.toString();
+      if (!token) throw new Error('Your login has expired. Sign in again.');
+      const res = await fetchWithTimeout(`${API_MIS_SAP_PILOT_BASE}/mis/sap/files`, {
+        method: 'GET', mode: 'cors', credentials: 'omit',
+        headers: { Authorization: `Bearer ${token}` },
+      }, 30000);
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok || !Array.isArray(payload.files)) {
+        throw new Error(payload.error || `Cannot load SAP files (HTTP ${res.status}).`);
+      }
+      setMisSapFiles(payload.files);
+    } catch (error: any) {
+      setMisSapFilesError(error?.message || 'Unable to retrieve your submitted SAP files.');
+    } finally {
+      setMisSapFilesLoading(false);
+    }
+  };
+
+  const downloadMisSapFile = async (submissionId: string) => {
+    setMisSapDownloaderId(submissionId);
+    setMisSapFilesError('');
+    try {
+      const session = await fetchAuthSession();
+      const token = session.tokens?.accessToken?.toString();
+      if (!token) throw new Error('Your login has expired. Sign in again.');
+      const res = await fetchWithTimeout(
+        `${API_MIS_SAP_PILOT_BASE}/mis/sap/download?submission_id=${encodeURIComponent(submissionId)}`,
+        { method: 'GET', mode: 'cors', credentials: 'omit', headers: { Authorization: `Bearer ${token}` } },
+        30000
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || typeof data.download_url !== 'string' || !data.download_url.startsWith('https://')) {
+        throw new Error(data.error || `Unable to download SAP file (HTTP ${res.status}).`);
+      }
+      const link = document.createElement('a');
+      link.href = data.download_url;
+      link.rel = 'noopener noreferrer';
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error: any) {
+      setMisSapFilesError(error?.message || 'Unable to download this SAP file.');
+    } finally {
+      setMisSapDownloaderId('');
+    }
+  };
+
+  // Load submitted SAP files whenever the employee opens the SAP tab.
+  useEffect(() => {
+    if (activeTab === 'mis') void loadMisSapFiles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  const sortedMisSapFiles = [...misSapFiles].sort((a, b) => {
+    let result = 0;
+    if (misSapFilesSort === 'size') result = a.size_bytes - b.size_bytes;
+    else if (misSapFilesSort === 'file') result = a.file_name.localeCompare(b.file_name);
+    else result = a.uploaded_at.localeCompare(b.uploaded_at);
+    return misSapFilesSortAsc ? result : -result;
+  });
+  const sortMisSapBy = (field: 'date' | 'file' | 'size') => {
+    if (misSapFilesSort === field) setMisSapFilesSortAsc(!misSapFilesSortAsc);
+    else { setMisSapFilesSort(field); setMisSapFilesSortAsc(field !== 'date'); }
+  };
+
   // SAP pilot upload uses the employee's existing Cognito access token.
   // The modal deliberately says VALIDATED (PILOT), never "dashboard updated":
   // this endpoint archives and validates but does not refresh live QuickSight.
@@ -1719,6 +1809,7 @@ Thanks.`;
       }
       setMisSapUploadResult(result);
       setMisSapUploadStep(3);
+      void loadMisSapFiles();
 
       if (result.status === 'DUPLICATE_PILOT') {
         setMisSapUploadPopupOutcome('duplicate');
@@ -2334,6 +2425,45 @@ Thanks.`;
         .app-main.mis-theme .upload-btn:focus-visible {
           outline: 3px solid #2dd4bf !important;
           outline-offset: 3px;
+        }
+        /* SAP submitted files: Dispatch layout with SAP's teal palette. */
+        .app-main.mis-theme .sap-files-section {
+          width: 100% !important;
+          max-width: 100% !important;
+          margin-top: 16px;
+          box-sizing: border-box;
+        }
+        .app-main.mis-theme .sap-files-table {
+          width: 100%;
+          min-width: 980px;
+          table-layout: fixed;
+        }
+        .app-main.mis-theme .sap-files-table thead th {
+          background: linear-gradient(125deg, #0b6572, #0d9488) !important;
+          color: #fff !important;
+          border-color: #0d9488 !important;
+          cursor: default;
+        }
+        .app-main.mis-theme .sap-files-table thead th.sap-sortable {
+          cursor: pointer;
+        }
+        .app-main.mis-theme .sap-files-table tbody tr:nth-child(even) {
+          background: #f0fdfa !important;
+        }
+        .app-main.mis-theme .sap-files-table tbody tr:hover {
+          background: #ccfbf1 !important;
+        }
+        .app-main.mis-theme .sap-files-table .download-link {
+          color: #0f766e !important;
+          font-weight: 700;
+        }
+        .app-main.mis-theme .sap-files-table .dispatch-uploaded-by {
+          overflow-wrap: anywhere;
+          white-space: normal;
+        }
+        .app-main.mis-theme .sap-files-section .table-container {
+          max-width: 100%;
+          overflow-x: auto;
         }
         .app-main.mis-theme .modal-content {
           border-top: 4px solid #0d9488 !important;
@@ -3065,6 +3195,7 @@ Thanks.`;
         )}
 
         {activeTab === 'mis' ? (
+          <>
           <div className="container">
             <div className="left-column">
               <div className="upload-section">
@@ -3129,6 +3260,74 @@ Thanks.`;
               </p>
             </div>
           </div>
+          <section className="file-list sap-files-section" aria-label="SAP files submitted">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
+              <h2 style={{ margin: 0 }}>📋 List of Files Submitted</h2>
+              <button type="button" className="download-btn"
+                style={{ width: 'auto', minWidth: '126px', padding: '9px 14px' }}
+                disabled={misSapFilesLoading}
+                onClick={() => void loadMisSapFiles()}>
+                {misSapFilesLoading ? 'Refreshing...' : '↻ Refresh list'}
+              </button>
+            </div>
+            <p style={{ margin: '0 0 12px', fontSize: '13px', color: '#475569' }}>
+              Validated SAP workbooks uploaded from your employee account. Only accepted files appear here.
+            </p>
+            {misSapFilesError && (
+              <p role="alert" style={{ padding: '10px', color: '#991b1b', background: '#fef2f2', borderRadius: '7px' }}>
+                {misSapFilesError}
+              </p>
+            )}
+            <div className="table-container">
+              <table className="file-table dispatch-file-table sap-files-table">
+                <thead>
+                  <tr>
+                    <th className="dispatch-serial">S.No.</th>
+                    <th className="dispatch-file-name sap-sortable" onClick={() => sortMisSapBy('file')}>File Name ↕</th>
+                    <th className="dispatch-file-type">File Type</th>
+                    <th className="dispatch-file-size sap-sortable" onClick={() => sortMisSapBy('size')}>Filesize ↕</th>
+                    <th className="dispatch-date-uploaded sap-sortable" onClick={() => sortMisSapBy('date')}>Date Uploaded ↕</th>
+                    <th className="dispatch-uploaded-by">Uploaded By</th>
+                    <th className="dispatch-download-link-cell">Download Link</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {misSapFilesLoading && misSapFiles.length === 0 ? (
+                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: '18px' }}>Loading SAP files...</td></tr>
+                  ) : sortedMisSapFiles.length === 0 ? (
+                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: '18px' }}>
+                      {misSapFilesError ? 'Unable to show SAP submissions.' : 'No validated SAP files submitted from this account yet.'}
+                    </td></tr>
+                  ) : sortedMisSapFiles.map((item, index) => (
+                    <tr key={item.submission_id}>
+                      <td className="dispatch-serial">{index + 1}</td>
+                      <td className="dispatch-file-name" title={item.file_name}>{item.file_name}</td>
+                      <td className="dispatch-file-type">{item.file_type || 'XLSX'}</td>
+                      <td className="dispatch-file-size">{(item.size_bytes / 1024).toFixed(1)} KB</td>
+                      <td className="dispatch-date-uploaded">
+                        {item.uploaded_at ? new Date(item.uploaded_at).toLocaleString('en-IN', {
+                          timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', year: 'numeric',
+                          hour: '2-digit', minute: '2-digit', hour12: true,
+                        }) : '—'}
+                      </td>
+                      <td className="dispatch-uploaded-by" title={misSapAccountEmail || userAttributes.username || ''}>
+                        {misSapAccountEmail || userAttributes.username || 'Your employee account'}
+                      </td>
+                      <td className="dispatch-download-link-cell">
+                        <button type="button" className="download-link"
+                          style={{ background: 'none', border: 'none', padding: '3px 6px', cursor: 'pointer' }}
+                          disabled={misSapDownloaderId === item.submission_id}
+                          onClick={() => void downloadMisSapFile(item.submission_id)}>
+                          {misSapDownloaderId === item.submission_id ? 'Preparing...' : 'Download'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+          </>
         ) : activeTab === 'monthly' ? (
           <div className="container">
             <div className="left-column">
