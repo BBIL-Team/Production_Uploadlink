@@ -8,5 +8,5 @@ const backend = defineBackend({
 });
 
 backend.data.resources.cfnResources.cfnApiKey?.overrideLogicalId(
-  `recoverApiKey${new Date().getTime()}`
+  'recoverApiKey1793350131895'
 );
