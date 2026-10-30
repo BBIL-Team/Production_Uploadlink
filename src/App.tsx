@@ -87,6 +87,7 @@ type MisSapSubmittedFile = {
   file_type: string;
   uploaded_at: string;
   uploaded_by: string;
+  validation_status?: string;
 };
 
 type FileRow = {
@@ -1721,6 +1722,21 @@ Thanks.`;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
+  // Status labels are taken from the uploaded file's backend validation state,
+  // never inferred from filename, download availability, or the signed-in account.
+  const misSapValidationStatus = (status?: string) => {
+    switch (status) {
+      case 'VALIDATED_PILOT_ONLY':
+        return { label: 'Validated (Pilot)', className: 'sap-status-validated' };
+      case 'REJECTED_PILOT':
+        return { label: 'Rejected', className: 'sap-status-rejected' };
+      case 'DUPLICATE_PILOT':
+        return { label: 'Duplicate', className: 'sap-status-duplicate' };
+      default:
+        return { label: 'Unknown', className: 'sap-status-unknown' };
+    }
+  };
+
   const sortedMisSapFiles = [...misSapFiles].sort((a, b) => {
     let result = 0;
     if (misSapFilesSort === 'size') result = a.size_bytes - b.size_bytes;
@@ -2438,7 +2454,8 @@ Thanks.`;
         }
         .app-main.mis-theme .sap-files-table {
           width: 100%;
-          min-width: 980px;
+          /* Eight readable columns live inside the existing horizontal scroller. */
+          min-width: 1420px;
           table-layout: fixed;
         }
         .app-main.mis-theme .sap-files-table thead th {
@@ -2460,9 +2477,53 @@ Thanks.`;
           color: #0f766e !important;
           font-weight: 700;
         }
+        /* SAP-only: keep long employee email addresses on one line. */
         .app-main.mis-theme .sap-files-table .dispatch-uploaded-by {
-          overflow-wrap: anywhere;
-          white-space: normal;
+          width: 340px;
+          min-width: 340px;
+          white-space: nowrap;
+          overflow-wrap: normal;
+          word-break: normal;
+          overflow: visible;
+          text-overflow: clip;
+          font-size: 12px;
+          line-height: 1.4;
+        }
+        .app-main.mis-theme .sap-files-table .sap-validation-status {
+          width: 155px;
+          min-width: 155px;
+          text-align: center;
+          white-space: nowrap;
+        }
+        .app-main.mis-theme .sap-files-table .sap-validation-badge {
+          display: inline-block;
+          padding: 5px 9px;
+          border-radius: 999px;
+          font-size: 11px;
+          font-weight: 700;
+          line-height: 1.2;
+          white-space: nowrap;
+          border: 1px solid transparent;
+        }
+        .app-main.mis-theme .sap-files-table .sap-status-validated {
+          background: #dcfce7;
+          color: #166534;
+          border-color: #86efac;
+        }
+        .app-main.mis-theme .sap-files-table .sap-status-rejected {
+          background: #fee2e2;
+          color: #991b1b;
+          border-color: #fca5a5;
+        }
+        .app-main.mis-theme .sap-files-table .sap-status-duplicate {
+          background: #dbeafe;
+          color: #1e40af;
+          border-color: #93c5fd;
+        }
+        .app-main.mis-theme .sap-files-table .sap-status-unknown {
+          background: #f1f5f9;
+          color: #475569;
+          border-color: #cbd5e1;
         }
         /* Seven columns retain readable widths; only this table scrolls. */
         .app-main.mis-theme .sap-files-section .table-container {
@@ -3292,6 +3353,7 @@ Thanks.`;
             </div>
             <p style={{ margin: '0 0 12px', fontSize: '13px', color: '#475569' }}>
               Completed SAP workbooks submitted by all portal employees, including files rejected during validation.
+              Validation status refers to the SAP upload pilot, not a live QuickSight dashboard update.
             </p>
             {misSapFilesError && (
               <p role="alert" style={{ padding: '10px', color: '#991b1b', background: '#fef2f2', borderRadius: '7px' }}>
@@ -3308,14 +3370,15 @@ Thanks.`;
                     <th className="dispatch-file-size sap-sortable" onClick={() => sortMisSapBy('size')}>Filesize ↕</th>
                     <th className="dispatch-date-uploaded sap-sortable" onClick={() => sortMisSapBy('date')}>Date Uploaded ↕</th>
                     <th className="dispatch-uploaded-by">Uploaded By</th>
+                    <th className="sap-validation-status">Validation Status</th>
                     <th className="dispatch-download-link-cell">Download Link</th>
                   </tr>
                 </thead>
                 <tbody>
                   {misSapFilesLoading && misSapFiles.length === 0 ? (
-                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: '18px' }}>Loading SAP files...</td></tr>
+                    <tr><td colSpan={8} style={{ textAlign: 'center', padding: '18px' }}>Loading SAP files...</td></tr>
                   ) : sortedMisSapFiles.length === 0 ? (
-                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: '18px' }}>
+                    <tr><td colSpan={8} style={{ textAlign: 'center', padding: '18px' }}>
                       {misSapFilesError ? 'Unable to show SAP submissions.' : 'No completed SAP submissions are available yet.'}
                     </td></tr>
                   ) : sortedMisSapFiles.map((item, index) => (
@@ -3332,6 +3395,11 @@ Thanks.`;
                       </td>
                       <td className="dispatch-uploaded-by" title={item.uploaded_by || ''}>
                         {item.uploaded_by || '—'}
+                      </td>
+                      <td className="sap-validation-status" title={item.validation_status || 'Unknown status'}>
+                        <span className={`sap-validation-badge ${misSapValidationStatus(item.validation_status).className}`}>
+                          {misSapValidationStatus(item.validation_status).label}
+                        </span>
                       </td>
                       <td className="dispatch-download-link-cell">
                         <button type="button" className="download-link"
