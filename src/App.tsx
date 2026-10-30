@@ -2710,7 +2710,7 @@ Thanks.`;
               {misSapUploadResult && (misSapUploadPopupOutcome === 'validated' || misSapUploadPopupOutcome === 'duplicate') && (
                 <div style={{ border: '1px solid #dbe4ef', padding: '12px 14px', borderRadius: '9px', background: '#fff', fontSize: '13px', lineHeight: 1.8, color: '#334155' }}>
                   <div><strong>Validation status:</strong> {misSapUploadResult.status}</div>
-                  <div><strong>Reporting date:</strong> {misSapUploadResult.report_date || '—'}</div>
+                  <div><strong>Reporting dates:</strong> {Array.isArray(misSapUploadResult.report_dates) && misSapUploadResult.report_dates.length ? misSapUploadResult.report_dates.join(', ') : (misSapUploadResult.report_date || '—')}</div>
                   <div><strong>Drug Product transactions:</strong> {misSapUploadResult.dp_transactions ?? '—'}</div>
                   <div><strong>Drug Substance transactions:</strong> {misSapUploadResult.ds_transactions ?? '—'}</div>
                   {misSapUploadResult.submission_id && (
@@ -2962,14 +2962,14 @@ Thanks.`;
               <div className="upload-section">
                 <h2>📤 SAP Daily MIS File — Secure Upload Pilot</h2>
                 <p style={{ color: '#444', lineHeight: 1.6 }}>
-                  Export the standard 11-sheet SAP MIS workbook for the previous day's production.
+                  Export the standard 11-sheet SAP MIS workbook for yesterday, the day before, or both days in one file.
                   You can upload it directly; no manual editing or working-file download is required.
                 </p>
                 <p style={{ color: '#555', fontSize: '13px' }}>
                   <strong>Accepted SAP transaction dates (IST):</strong>{' '}
                   <strong>{getMisIstDateLabel(2)}</strong> or{' '}
                   <strong>{getMisIstDateLabel(1)}</strong> only.
-                  Today, older dates and future transaction dates will be rejected.
+                  Both permitted dates may appear together in one workbook. Today, older dates and future transaction dates will be rejected.
                   Inventory may contain a current-day snapshot; historical reference sheets are preserved.
                   This is a validation pilot and does not count as a live submission.
                 </p>
@@ -3004,7 +3004,7 @@ Thanks.`;
               {misSapUploadResult ? (
                 <div style={{ lineHeight: 1.8, color: '#333' }}>
                   <p><strong>Status:</strong> {misSapUploadResult.status}</p>
-                  <p><strong>Reporting date:</strong> {misSapUploadResult.report_date || '—'}</p>
+                  <p><strong>Reporting dates:</strong> {Array.isArray(misSapUploadResult.report_dates) && misSapUploadResult.report_dates.length ? misSapUploadResult.report_dates.join(', ') : (misSapUploadResult.report_date || '—')}</p>
                   <p><strong>Drug Product transactions:</strong> {misSapUploadResult.dp_transactions ?? '—'}</p>
                   <p><strong>Drug Substance transactions:</strong> {misSapUploadResult.ds_transactions ?? '—'}</p>
                   <p><strong>Submission ID:</strong> {misSapUploadResult.submission_id || '—'}</p>
@@ -3012,7 +3012,7 @@ Thanks.`;
               ) : (
                 <p style={{ color: '#555', lineHeight: 1.55 }}>
                   Choose a SAP workbook and upload it for server-side validation.
-                  You will see the reporting date and validation result here.
+                  You will see the reporting date(s) and validation result here.
                 </p>
               )}
               <p style={{ background: '#fff5d6', padding: '12px', borderRadius: '8px', color: '#6b4d17', lineHeight: 1.5 }}>
