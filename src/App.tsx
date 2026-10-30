@@ -2427,11 +2427,16 @@ Thanks.`;
           outline-offset: 3px;
         }
         /* SAP submitted files: Dispatch layout with SAP's teal palette. */
-        .app-main.mis-theme .sap-files-section {
+        /* SAP files live within the right-hand validation card, not across the page. */
+        .app-main.mis-theme .file-list > .sap-files-section {
           width: 100% !important;
           max-width: 100% !important;
-          margin-top: 16px;
+          min-width: 0;
           box-sizing: border-box;
+          overflow: hidden;
+          border-top: 1px solid #c7e9e5;
+          margin-top: 20px;
+          padding-top: 20px;
         }
         .app-main.mis-theme .sap-files-table {
           width: 100%;
@@ -2461,9 +2466,28 @@ Thanks.`;
           overflow-wrap: anywhere;
           white-space: normal;
         }
+        /* Seven columns retain readable widths; only this table scrolls. */
         .app-main.mis-theme .sap-files-section .table-container {
+          display: block;
+          width: 100%;
           max-width: 100%;
-          overflow-x: auto;
+          min-width: 0;
+          overflow-x: auto !important;
+          overflow-y: hidden;
+          box-sizing: border-box;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: thin;
+          scrollbar-color: #0d9488 #e6f7f4;
+        }
+        .app-main.mis-theme .sap-files-section .table-container::-webkit-scrollbar {
+          height: 10px;
+        }
+        .app-main.mis-theme .sap-files-section .table-container::-webkit-scrollbar-thumb {
+          background: #0d9488;
+          border-radius: 8px;
+        }
+        .app-main.mis-theme .sap-files-section .table-container::-webkit-scrollbar-track {
+          background: #e6f7f4;
         }
         .app-main.mis-theme .modal-content {
           border-top: 4px solid #0d9488 !important;
@@ -3258,9 +3282,7 @@ Thanks.`;
                 <strong>Pilot only:</strong> The production dashboard, approved Planned values,
                 historical data, 12:30 PM reminders and automatic emails are not changed by these tests.
               </p>
-            </div>
-          </div>
-          <section className="file-list sap-files-section" aria-label="SAP files submitted">
+              <section className="sap-files-section" aria-label="SAP files submitted">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
               <h2 style={{ margin: 0 }}>📋 List of Files Submitted</h2>
               <button type="button" className="download-btn"
@@ -3326,7 +3348,9 @@ Thanks.`;
                 </tbody>
               </table>
             </div>
-          </section>
+              </section>
+            </div>
+          </div>
           </>
         ) : activeTab === 'monthly' ? (
           <div className="container">
