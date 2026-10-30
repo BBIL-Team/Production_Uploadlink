@@ -2288,6 +2288,8 @@ Thanks.`;
           paddingTop:
             activeTab === 'daily'
               ? 'calc(var(--header-h, 110px) + 324px)'
+              : activeTab === 'mis'
+              ? '24px'
               : 'calc(var(--header-h, 110px) + 24px)',
           boxSizing: 'border-box',
         }}
