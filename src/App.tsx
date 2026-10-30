@@ -86,6 +86,7 @@ type MisSapSubmittedFile = {
   size_bytes: number;
   file_type: string;
   uploaded_at: string;
+  uploaded_by: string;
 };
 
 type FileRow = {
@@ -487,7 +488,6 @@ const App: React.FC = () => {
   const [isMisSapUploading, setIsMisSapUploading] = useState<boolean>(false);
   const [misSapUploadNotice, setMisSapUploadNotice] = useState<string>('');
   const [misSapUploadResult, setMisSapUploadResult] = useState<any>(null);
-  const [misSapAccountEmail, setMisSapAccountEmail] = useState<string>('');
   const [misSapFiles, setMisSapFiles] = useState<MisSapSubmittedFile[]>([]);
   const [misSapFilesLoading, setMisSapFilesLoading] = useState<boolean>(false);
   const [misSapFilesError, setMisSapFilesError] = useState<string>('');
@@ -939,11 +939,9 @@ Thanks.`;
           phoneNumber && phoneNumber.length >= 2 ? `91${'x'.repeat(phoneNumber.length - 4)}${phoneNumber.slice(-2)}` : '';
 
         setUserAttributes({ username, phoneNumber: maskedPhoneNumber });
-        setMisSapAccountEmail(String(attributes?.email || ''));
       } catch (error) {
         console.error('Error fetching user data:', error);
         setUserAttributes({ username: '', phoneNumber: '' });
-        setMisSapAccountEmail('');
       } finally {
         setLoading(false);
       }
@@ -1662,8 +1660,8 @@ Thanks.`;
   };
 
 
-  // SAP submitted-file list is scoped to the authenticated Cognito subject in the API.
-  // S3 objects remain private; download links are generated on demand after ownership check.
+  // SAP submitted-file list covers all signed-in portal users. Cognito JWT is
+  // checked by the backend. S3 download links are signed on demand.
   const loadMisSapFiles = async () => {
     setMisSapFilesLoading(true);
     setMisSapFilesError('');
@@ -1681,7 +1679,7 @@ Thanks.`;
       }
       setMisSapFiles(payload.files);
     } catch (error: any) {
-      setMisSapFilesError(error?.message || 'Unable to retrieve your submitted SAP files.');
+      setMisSapFilesError(error?.message || 'Unable to retrieve the SAP submission register.');
     } finally {
       setMisSapFilesLoading(false);
     }
@@ -3293,7 +3291,7 @@ Thanks.`;
               </button>
             </div>
             <p style={{ margin: '0 0 12px', fontSize: '13px', color: '#475569' }}>
-              Validated SAP workbooks uploaded from your employee account. Only accepted files appear here.
+              Completed SAP workbooks submitted by all portal employees, including files rejected during validation.
             </p>
             {misSapFilesError && (
               <p role="alert" style={{ padding: '10px', color: '#991b1b', background: '#fef2f2', borderRadius: '7px' }}>
@@ -3318,7 +3316,7 @@ Thanks.`;
                     <tr><td colSpan={7} style={{ textAlign: 'center', padding: '18px' }}>Loading SAP files...</td></tr>
                   ) : sortedMisSapFiles.length === 0 ? (
                     <tr><td colSpan={7} style={{ textAlign: 'center', padding: '18px' }}>
-                      {misSapFilesError ? 'Unable to show SAP submissions.' : 'No validated SAP files submitted from this account yet.'}
+                      {misSapFilesError ? 'Unable to show SAP submissions.' : 'No completed SAP submissions are available yet.'}
                     </td></tr>
                   ) : sortedMisSapFiles.map((item, index) => (
                     <tr key={item.submission_id}>
@@ -3332,8 +3330,8 @@ Thanks.`;
                           hour: '2-digit', minute: '2-digit', hour12: true,
                         }) : '—'}
                       </td>
-                      <td className="dispatch-uploaded-by" title={misSapAccountEmail || userAttributes.username || ''}>
-                        {misSapAccountEmail || userAttributes.username || 'Your employee account'}
+                      <td className="dispatch-uploaded-by" title={item.uploaded_by || ''}>
+                        {item.uploaded_by || '—'}
                       </td>
                       <td className="dispatch-download-link-cell">
                         <button type="button" className="download-link"
