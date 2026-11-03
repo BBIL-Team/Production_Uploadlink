@@ -2088,6 +2088,31 @@ Thanks.`;
     };
   }, []);
 
+  // Keep the SAP page heading fully below the fixed header. App.css may
+  // reserve additional/negative vertical space, so measure the rendered
+  // heading instead of assuming a fixed header height is sufficient.
+  const sapTitleRef = useRef<HTMLHeadingElement>(null);
+  const [sapExtraClearance, setSapExtraClearance] = useState(0);
+  useEffect(() => {
+    if (activeTab !== 'mis') return;
+
+    // A previous tab can leave the browser partway down the document.
+    window.scrollTo(0, 0);
+
+    const frame = window.requestAnimationFrame(() => {
+      const header = headerRef.current;
+      const title = sapTitleRef.current;
+      if (!header || !title) return;
+
+      const required = Math.max(
+        0,
+        Math.ceil(header.getBoundingClientRect().bottom + 18 - title.getBoundingClientRect().top)
+      );
+      if (required > 0) setSapExtraClearance((current) => current + required);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeTab]);
+
   return (
     <>
       <style>{`
@@ -2608,8 +2633,12 @@ Thanks.`;
             activeTab === 'daily'
               ? 'calc(var(--header-h, 110px) + 324px)'
               : activeTab === 'mis'
-              ? 'calc(var(--header-h, 110px) + 24px)'
+              ? `calc(var(--header-h, 110px) + 24px + ${sapExtraClearance}px)`
               : 'calc(var(--header-h, 110px) + 24px)',
+          // The Dispatch layout uses overflow-x:hidden, which prevents
+          // window-relative sticky navigation. Clip only on the SAP tab.
+          overflowX: activeTab === 'mis' ? 'clip' : undefined,
+          overflowY: activeTab === 'mis' ? 'visible' : undefined,
           boxSizing: 'border-box',
         }}
       >
@@ -3216,7 +3245,7 @@ Thanks.`;
           </div>
         )}
 
-        <h1 className="app-title">
+        <h1 className="app-title" ref={sapTitleRef}>
           <u>
             BBIL Production Dashboard –{' '}
             {activeTab === 'daily' ? 'Daily Update' : activeTab === 'dispatch' ? 'Dispatch (daily update)' : activeTab === 'mis' ? 'SAP team Daily Update' : 'Monthly Update'}
@@ -3227,8 +3256,13 @@ Thanks.`;
           style={{
             width: '100%',
             margin: '0 auto 18px auto',
-            position: 'relative',
-            zIndex: 20,
+            // On SAP, keep navigation below the fixed header while scrolling.
+            position: activeTab === 'mis' ? 'sticky' : 'relative',
+            top: activeTab === 'mis' ? 'calc(var(--header-h, 110px) + 6px)' : undefined,
+            zIndex: activeTab === 'mis' ? 900 : 20,
+            background: activeTab === 'mis' ? '#f2fbf9' : undefined,
+            borderRadius: activeTab === 'mis' ? '8px' : undefined,
+            padding: activeTab === 'mis' ? '5px 0' : undefined,
           }}
         >
           <nav className="top-tabs" role="tablist" aria-label="Upload views" style={{ flexWrap: 'wrap' }}>
